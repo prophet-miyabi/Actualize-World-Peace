@@ -1,0 +1,105 @@
+import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import LandingView, { buildTokens, HeroSection, StrengthsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
+
+// SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
+// 検索エンジン・SNSのクローラーには中身が空のページに見えてしまうため）
+const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
+
+async function fetchLp(slug: string): Promise<Lp | null> {
+  try {
+    const res = await fetch(`${API}/lp/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+// アクセス元のドメイン（共有URL／独自ドメインどちらでも、実際に見えているURLに合わせる）
+async function currentOrigin() {
+  const h = await headers();
+  const host = h.get('host') || 'localhost:3000';
+  const proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+
+type Params = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { slug } = await params;
+  const lp = await fetchLp(slug);
+  if (!lp) return { title: 'ページが見つかりません', robots: { index: false, follow: false } };
+
+  const origin = await currentOrigin();
+  const description = [lp.heroTitle, ...lp.strengths.filter(Boolean)].join(' / ').slice(0, 155);
+  const imageUrl = lp.hasImage ? `${origin}/api/lp/${encodeURIComponent(lp.slug)}/image?v=${lp.imageVersion}` : undefined;
+  const canonical = `${origin}/${lp.slug}`;
+
+  return {
+    title: `${lp.businessName} | ${lp.heroTitle}`,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: lp.businessName,
+      description,
+      type: 'website',
+      url: canonical,
+      locale: 'ja_JP',
+      images: imageUrl ? [imageUrl] : undefined
+    },
+    twitter: {
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title: lp.businessName,
+      description,
+      images: imageUrl ? [imageUrl] : undefined
+    }
+  };
+}
+
+export default async function LandingPage({ params }: Params) {
+  const { slug } = await params;
+  const lp = await fetchLp(slug);
+  if (!lp) notFound();
+
+  // 画像は版数付きURLで配信し、デザインを作り直したときだけ新しい画像を読み込む
+  const imageUrl = lp.hasImage ? `/api/lp/${encodeURIComponent(lp.slug)}/image?v=${lp.imageVersion}` : null;
+
+  // 検索結果でお店の情報として認識されやすくするための構造化データ
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: lp.businessName,
+    description: [lp.heroTitle, ...lp.strengths.filter(Boolean)].join('。'),
+    ...(imageUrl ? { image: imageUrl } : {})
+  };
+  const jsonLdScript = (
+    // eslint-disable-next-line react/no-danger
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+  );
+
+  // hp = 複数ページ。ホームにはヒーローと強みだけを置き、機能ごとの内容は専用ページに分ける
+  if (lp.siteType === 'hp' && lp.sections.length > 0) {
+    const tokens = buildTokens(lp.design);
+    return (
+      <>
+        {jsonLdScript}
+        <div style={{ background: tokens.p.background, color: tokens.p.text, fontFamily: tokens.font.body }} className="min-h-screen">
+          <SiteNav lp={lp} tokens={tokens} current="" />
+          <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
+          <StrengthsSection lp={lp} tokens={tokens} />
+          <LineCtaSection lp={lp} tokens={tokens} />
+          <SiteFooter lp={lp} tokens={tokens} />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {jsonLdScript}
+      <LandingView lp={lp} imageUrl={imageUrl} />
+    </>
+  );
+}

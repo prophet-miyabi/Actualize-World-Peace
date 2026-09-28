@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String? // active / past_due / canceled / null(未加入)
+
+  // 管理者フラグ。/auth/register からは絶対に設定できず、DBを直接操作した場合のみtrueになる。
+  // 課金ゲートを素通りできる（テスト用・実際の支払いなしで全機能を確認するため）
+  isAdmin Boolean @default(false)
+
+  // スマホアプリのプッシュ通知先（Expo Push Token）。通知オフ・アプリ削除時はnull
+  expoPushToken String?
+
+  // trueにすると、AIコンプライアンス担当の審査に通ったSNS投稿下書きを、人間の承認なしで自動的に投稿予約する。
+  // 既定はfalse（本人がダッシュボードで明示的にオンにするまで有効にならない）
+  autoPublishEnabled Boolean @default(false)
+
+  landingPages   LandingPage[]
+  lineConfig     LineConfig?
+  socialAccounts SocialAccount[]
+  scheduledPosts ScheduledPost[]
+  agentTasks     AgentTask[]
+}
+
+// 役割ごとのAIエージェント（マーケティング担当・成長分析担当など）が定期実行で作った成果物。
+// 「作成・分析」は自動で行うが、実際にSNS投稿するなど外部に影響する実行は、
+// コンプライアンス担当エージェントの審査を経たうえで、人間の承認（approve）または
+// 本人が有効にしたautoPublishEnabledによる自動承認のいずれかを経てから行う
+model AgentTask {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  role      String    // marketing / growth / compliance
+  kind      String    // sns_post_draft / lp_health_check
+  lpId      String?
+  output    Json      // エージェントが作った内容（下書き文章・分析結果など）
+  status    String    @default("pending_review") // pending_review / approved / rejected
+  // コンプライアンス担当エージェントの審査結果（sns_post_draftのみ）
+  reviewPassed Boolean?
+  reviewNote   String?
+  autoApproved Boolean  @default(false) // trueなら人間の承認を経ず自動で承認・投稿予約された
+  createdAt DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([userId, status])
+}
+
+// X / Instagram / YouTube / TikTok の連携。OAuthのアクセストークンを保管する。
+// トークンは平文保存（LineConfigと同様、暗号化はフェーズ2で対応）
+model SocialAccount {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  platform      String    // x / instagram / youtube / tiktok
+  accountLabel  String?   // 表示用（アカウント名・チャンネル名など）
+  externalId    String?   // プラットフォーム側のアカウントID
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  connectedAt   DateTime  @default(now())
+
+  @@unique([userId, platform])
+}
+
+// 複数プラットフォーム同時投稿の予約。Redis不要のDBポーリング方式（backend/src/social/scheduler.ts）で実行する
+model ScheduledPost {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  text        String
+  mediaUrl    String?
+  platforms   String[] // 例: ["x","instagram"]
+  scheduledAt DateTime
+  status      String   @default("pending") // pending / processing / done / failed
+  attempts    Int      @default(0)
+  results     Json?    // { x: {ok:true, postId}, instagram: {ok:false, error} } 形式
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+}
+
+model LandingPage {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  slug           String   @unique
+  businessName   String
+  heroTitle      String
+  strengths      String[]
+  socialProof    String?
+  scarcityOffer  String?
+  pageViews      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  // lp = 1ページで完結（申し込み・予約への行動に集中）
+  // hp = 複数ページ（ホーム＋機能ごとに専用ページ＋ナビゲーション）
+  siteType String @default("lp")
+  // ユーザーが完成例から選んだ土台デザイン（PRESET_METAのid）。未選択ならnull
+  templateKey String?
+
+  // 独自ドメイン（例: www.example.jp）。DNSのCNAME確認が取れたらverified=true
+  customDomain         String?  @unique
+  customDomainVerified Boolean  @default(false)
+
+  // AIが作成したデザイン（配色・書体・レイアウト）。nullなら業種に合うプリセットを使う
+  design          Json?
+  designSource    String?   // ai / preset
+  designStatus    String?   // generating / ready
+  designUpdatedAt DateTime?
+  // Geminiが生成したメイン画像（JPEG）。どの公開先でも消えないようDBに保存する
+  heroImage       Bytes?
+  heroImageType   String?
+
+  // 追加した機能（セクション）。[{ feature, content, inputs, promptBy, updatedAt }]
+  // inputs は店主の回答（編集用）で、公開ページには出さない
+  sections Json?
+
+  photos Photo[]
+}
+
+// 店主がアップロードした実物の写真とロゴ。Geminiで補正した版（enhanced）はClaudeの審査に通った場合だけ使う
+model Photo {
+  id            String      @id @default(cuid())
+  lpId          String
+  lp            LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  isLogo        Boolean     @default(false)
+  position      Int         @default(0)
+  original      Bytes
+  originalType  String
+  enhanced      Bytes?
+  enhancedType  String?
+  enhanceStatus String?     // done / rejected / failed / null(未処理)
+  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime    @default(now())
+
+  @@index([lpId])
+}
+
+// channelSecret / channelAccessToken はアプリ層で暗号化してから保存すること
+// (フェーズ2で対応。平文保存のままでは他事業者のLINEアカウントの乗っ取りに直結する)
+model LineConfig {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  // 無料お試し中はLINEをまだ持っていない顧客もいるため、作成時点では未入力を許可する
+  channelId          String?
+  channelSecret      String?
+  channelAccessToken String?
+  // Webhookの自動登録（setupLineWebhook）を既に実行済みか。有料プラン加入時に一度だけ実行する
+  webhookActivated   Boolean  @default(false)
+  friendsAdded       Int      @default(0)
+  createdAt          DateTime @default(now())
+}
+
+// AWP自体の見た目（マーケティングLP・ウィザードなどの装飾画像）。
+// 顧客のLPとは無関係。管理者が管理画面からAIで生成・差し替えできる（キー単位で1枚だけ保持）
+model SiteAsset {
+  key       String   @id
+  image     Bytes
+  mimeType  String
+  prompt    String
+  updatedAt DateTime @updatedAt
+}
+
+model Inquiry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  senderName String
+  message   String
+  source    String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}

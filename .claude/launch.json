@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "webline-backend",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\qqrb3\\Documents\\webline-sync-setup\\webline-sync\\backend\\node_modules\\ts-node-dev\\lib\\bin.js", "--respawn", "--transpile-only", "C:\\Users\\qqrb3\\Documents\\webline-sync-setup\\webline-sync\\backend\\src\\server.ts"],
+      "port": 8000
+    },
+    {
+      "name": "webline-frontend",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\qqrb3\\Documents\\webline-sync-setup\\webline-sync\\frontend\\node_modules\\next\\dist\\bin\\next", "dev"],
+      "port": 3000
+    }
+  ]
+}

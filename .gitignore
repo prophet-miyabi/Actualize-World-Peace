@@ -1,0 +1,32 @@
+# 依存関係
+node_modules/
+
+# 秘密情報（.env.example は残す）
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# ビルド成果物
+.next/
+dist/
+build/
+
+# Expo / モバイル
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# ログ・OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Prisma
+backend/prisma/*.db
+mobile/

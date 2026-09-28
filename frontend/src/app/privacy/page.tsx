@@ -1,0 +1,64 @@
+// プライバシーポリシー（App Store / Google Play の審査で URL の提出が必須）
+// 【公開前に必ず】運営者情報の【】部分を記入し、内容を実際の運用と照らして確認すること。
+export default function Privacy() {
+  return (
+    <main className="max-w-3xl mx-auto p-6 sm:p-10 bg-white min-h-screen leading-relaxed text-gray-800">
+      <h1 className="text-2xl font-bold mb-2">プライバシーポリシー</h1>
+      <p className="text-sm text-gray-500 mb-8">制定日：【2026年◯月◯日】</p>
+
+      <p className="mb-6">
+        【運営者名】（以下「当社」）は、AWP（Webサービスおよびスマートフォンアプリ。以下「本サービス」）における利用者の情報を、以下のとおり取り扱います。
+      </p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">1. 取得する情報</h2>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>アカウント情報：メールアドレス、店舗名・事業者名、パスワード（暗号化して保存）</li>
+        <li>ランディングページの掲載内容、独自ドメイン名</li>
+        <li>LINE公式アカウントの連携情報（チャネルID、チャネルシークレット、アクセストークン）</li>
+        <li>LINE公式アカウントに寄せられたお問い合わせの内容と送信者の識別子</li>
+        <li>お支払い情報：決済代行会社（Stripe）が管理します。カード番号を当社が保存することはありません</li>
+        <li>スマートフォンアプリの通知用トークン（通知を許可した場合のみ）</li>
+        <li>ランディングページの閲覧数</li>
+      </ul>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">2. 利用目的</h2>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>本サービスの提供（ページの公開、LINEの自動応答、お問い合わせの表示・通知）</li>
+        <li>利用料金の請求</li>
+        <li>お問い合わせへの対応、重要なお知らせの連絡</li>
+        <li>不正利用の防止、本サービスの改善</li>
+      </ul>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">3. 外部サービスへの提供</h2>
+      <p className="mb-2">本サービスの提供に必要な範囲で、以下の事業者に情報を送信します。</p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>Stripe, Inc.（決済処理）</li>
+        <li>LY Corporation（LINE公式アカウントとの連携）</li>
+        <li>Anthropic, PBC（AIによる文章・デザイン作成機能を利用した場合、入力された事業内容）</li>
+        <li>Google LLC（Geminiによる画像生成機能を利用した場合、画像の指示文）</li>
+        <li>Cloudflare, Inc.（Workers AIによる画像生成機能を利用した場合、画像の指示文）</li>
+        <li>Expo（650 Industries, Inc.）（スマートフォンへの通知配信）</li>
+      </ul>
+      <p className="mt-2">法令に基づく場合を除き、上記以外の第三者に個人情報を提供することはありません。</p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">4. 広告（アフィリエイト）について</h2>
+      <p>
+        本サービスには、提携事業者のサービスを紹介する広告リンクが含まれる場合があります。リンク先での取得情報は、各事業者の方針に従って取り扱われます。
+      </p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">5. 保存期間とアカウントの削除</h2>
+      <p>
+        情報はアカウントが存在する間保存します。アプリの「設定」→「アカウントを削除」から、いつでもアカウントと関連データ（ページ、LINE連携情報、お問い合わせ履歴）を削除できます。有料プランは削除時に自動で解約されます。
+      </p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">6. 安全管理</h2>
+      <p>通信の暗号化、パスワードのハッシュ化など、情報の漏えい・改ざんを防ぐための措置を講じます。</p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">7. お問い合わせ窓口</h2>
+      <p>【運営者名】 ／ 【メールアドレス】</p>
+
+      <h2 className="text-lg font-bold mt-8 mb-2">8. 改定</h2>
+      <p>本ポリシーを改定する場合は、本ページでお知らせします。</p>
+    </main>
+  );
+}
