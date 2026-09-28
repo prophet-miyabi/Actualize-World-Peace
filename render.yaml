@@ -1,0 +1,94 @@
+# Render.com のBlueprint（複数サービスをまとめて作成する設定ファイル）。
+# 使い方: Renderダッシュボードで「New +」→「Blueprint」→ このGitHubリポジトリを選択するだけで、
+# 下記のサービスとデータベースが自動的に作成される。
+# APIキー等の秘密情報（sync: false のもの）は、作成後にRenderダッシュボード側で入力すること。
+
+databases:
+  - name: awp-db
+    databaseName: awp
+    plan: free
+
+services:
+  # バックエンド（Express API・スケジューラ・AIエージェントループ）
+  - type: web
+    name: awp-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: awp-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: INDEXNOW_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: X_CLIENT_SECRET
+        sync: false
+      - key: INSTAGRAM_CLIENT_ID
+        sync: false
+      - key: INSTAGRAM_CLIENT_SECRET
+        sync: false
+      - key: FACEBOOK_CLIENT_ID
+        sync: false
+      - key: FACEBOOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_CLIENT_ID
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: CUSTOM_DOMAIN_CNAME_TARGET
+        sync: false
+      - key: AFF_XSERVER_DOMAIN_URL
+        sync: false
+      - key: AFF_XSERVER_URL
+        sync: false
+      # 本番では絶対に設定しない（管理者の裏口ログイン用・テスト専用）
+      # ENABLE_DEV_LOGIN / DEV_LOGIN_CODE
+
+  # フロントエンド（Next.js）
+  - type: web
+    name: awp-frontend
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      # awp-backend の公開URL（Renderで確認: サービス画面右上に表示される https://awp-backend-xxxx.onrender.com）を入力
+      - key: API_ORIGIN
+        sync: false
+      # 上と同じURLの末尾に /api を付けた値（例: https://awp-backend-xxxx.onrender.com/api）を入力
+      - key: API_INTERNAL_URL
+        sync: false
+      - key: SITE_URL
+        sync: false
+      - key: MAIN_HOSTS
+        sync: false
