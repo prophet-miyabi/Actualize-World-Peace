@@ -30,3 +30,6 @@ Thumbs.db
 # Prisma
 backend/prisma/*.db
 mobile/
+
+# TypeScriptの増分ビルドキャッシュ
+*.tsbuildinfo

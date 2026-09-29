@@ -9,14 +9,15 @@ databases:
     plan: free
 
 services:
-  # バックエンド（Express API・スケジューラ・AIエージェントループ）
+  # バックエンド（Express API・スケジューラ・AIエージェントループ・ブラウザ自動化）
+  # PlaywrightがChromiumを動かすための依存関係を含めるため、通常のNode実行環境ではなくDockerでビルドする
+  # （backend/Dockerfile参照。起動コマンドはDockerfileのCMDに従う）
   - type: web
     name: awp-backend
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     plan: free
-    rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
     envVars:
       - key: DATABASE_URL
         fromDatabase:

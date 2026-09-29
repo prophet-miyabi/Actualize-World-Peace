@@ -203,6 +203,7 @@ function DashboardInner() {
             </button>
             <Link href="/social" className="text-blue-600 underline">SNS連携・予約投稿</Link>
             <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
+            <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
           </div>
         ) : data.lp ? (
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-800 text-sm">

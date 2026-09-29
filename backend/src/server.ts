@@ -9,6 +9,7 @@ import billingRoutes, { stripeWebhookHandler } from './routes/billing';
 import socialRoutes from './routes/social';
 import siteAssetRoutes from './routes/siteAssets';
 import agentRoutes from './routes/agents';
+import automationRoutes from './routes/automation';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 
@@ -36,6 +37,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/site-assets', siteAssetRoutes);
 app.use('/api/agent-tasks', agentRoutes);
+app.use('/api/automation', automationRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

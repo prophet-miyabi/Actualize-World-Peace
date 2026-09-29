@@ -29,11 +29,46 @@ model User {
   // 既定はfalse（本人がダッシュボードで明示的にオンにするまで有効にならない）
   autoPublishEnabled Boolean @default(false)
 
-  landingPages   LandingPage[]
-  lineConfig     LineConfig?
-  socialAccounts SocialAccount[]
-  scheduledPosts ScheduledPost[]
-  agentTasks     AgentTask[]
+  landingPages        LandingPage[]
+  lineConfig          LineConfig?
+  socialAccounts      SocialAccount[]
+  scheduledPosts      ScheduledPost[]
+  agentTasks          AgentTask[]
+  automationWorkflows AutomationWorkflow[]
+}
+
+// 「どのサイトで、どの操作をするか」を編集できるブラウザ操作の自動化ワークフロー。
+// パスワード・カード番号・CVV等を入力する手順は保存・実行のどちらの時点でも拒否する
+// （backend/src/automation/safety.ts）。定型的な繰り返し作業（情報収集・フォーム入力の下書きなど）向け。
+model AutomationWorkflow {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  targetUrl   String
+  // [{ action: 'navigate'|'click'|'type'|'select'|'waitFor'|'extract', selector?, value?, label? }, ...]
+  steps       Json
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs AutomationRun[]
+
+  @@index([userId])
+}
+
+model AutomationRun {
+  id           String             @id @default(cuid())
+  workflowId   String
+  workflow     AutomationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status       String             @default("running") // running / success / failed / blocked
+  // 各手順の実行結果、ブロックされた場合はその理由を記録する
+  log          Json?
+  blockedStep  Int?
+  startedAt    DateTime           @default(now())
+  finishedAt   DateTime?
+
+  @@index([workflowId, startedAt])
 }
 
 // 役割ごとのAIエージェント（マーケティング担当・成長分析担当など）が定期実行で作った成果物。
