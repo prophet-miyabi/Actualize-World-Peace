@@ -204,6 +204,7 @@ function DashboardInner() {
             <Link href="/social" className="text-blue-600 underline">SNS連携・予約投稿</Link>
             <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
             <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
+            <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
           </div>
         ) : data.lp ? (
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-800 text-sm">
@@ -215,6 +216,7 @@ function DashboardInner() {
           </div>
         )}
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-2">サイトの外装画像を管理 →</Link>}
+        {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
       </div>
 
       {data.lp ? (

@@ -2,6 +2,8 @@ import prisma from '../prisma';
 import { draftForPlatform, SNS_PLATFORMS } from './marketing';
 import { checkLpHealth } from './growth';
 import { reviewSocialDraft } from './compliance';
+import { diagnoseOpenErrors } from './monitoring';
+import { captureError } from '../lib/errors';
 
 // 役割ごとのエージェント（プラットフォーム別のマーケティング担当・成長分析担当・コンプライアンス担当）を
 // 定期的に動かすループ。「作成・分析・審査」までは完全に自動で行う。
@@ -17,12 +19,17 @@ export async function runAgentsForUser(userId: string) {
   if (!lp) return;
 
   // 成長分析担当：指摘事項があれば最新の1件だけを残す（古い未承認分は消して積み上がらないようにする）
+  const variants = await prisma.lpVariant.findMany({
+    where: { lpId: lp.id, enabled: true },
+    select: { label: true, isControl: true, impressions: true, conversions: true }
+  });
   const health = checkLpHealth({
     pageViews: lp.pageViews,
     sections: lp.sections,
     customDomain: lp.customDomain,
     designSource: lp.designSource,
-    hasImage: !!lp.heroImage
+    hasImage: !!lp.heroImage,
+    variants
   });
   await prisma.agentTask.deleteMany({ where: { userId, role: 'growth', kind: 'lp_health_check', status: 'pending_review' } });
   if (health.issues.length > 0) {
@@ -55,6 +62,7 @@ export async function runAgentsForUser(userId: string) {
           reviewNote = review.reason;
         } catch (e: any) {
           console.error(`compliance review (${platform}) failed`, userId, e?.message);
+          void captureError('compliance_review', e, { userId, platform });
         }
       }
 
@@ -79,6 +87,7 @@ export async function runAgentsForUser(userId: string) {
       });
     } catch (e: any) {
       console.error(`marketing agent (${platform}) failed`, userId, e?.message);
+      void captureError('marketing_agent', e, { userId, platform });
     }
   }
 }
@@ -89,6 +98,8 @@ async function tick() {
   for (const u of users) {
     await runAgentsForUser(u.id).catch((e) => console.error('agent loop failed', u.id, e?.message));
   }
+  // 監視担当：ユーザー単位ではなくシステム全体で、未診断のエラーをまとめて分析する
+  await diagnoseOpenErrors().catch((e) => console.error('monitoring agent tick failed', e?.message));
 }
 
 let started = false;

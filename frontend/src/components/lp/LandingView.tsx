@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { LineFriendAddLink } from './LineFriendAddLink';
 
 // 公開LPの表示。AIが決めたデザイン（配色・書体・角丸・レイアウト）の値だけで見た目を組み立てる。
 // AIの出力をHTMLとして埋め込むことはせず、すべて文字として表示する（不正なスクリプトが入り込まない）。
@@ -27,6 +28,8 @@ export type Lp = {
   hasImage: boolean;
   imageVersion: number;
   sections: { feature: string; content: any }[];
+  // A/Bテストで選ばれたバリエーションのID。テスト未実施ならnull（バックエンドがすでにheroTitleへ反映済み）
+  variantId?: string | null;
 };
 
 const FONT_FAMILY: Record<Design['font'], { body: string; heading: string; headingWeight: number }> = {
@@ -320,8 +323,8 @@ export function LineCtaSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
         {lp.scarcityOffer && <p className="font-bold mb-5" style={{ color: p.background, opacity: 0.9 }}>{lp.scarcityOffer}</p>}
         <h2 style={{ ...headingStyle, color: p.background }} className="text-2xl sm:text-4xl mb-6">お気軽にご相談ください</h2>
         <p className="mb-10 opacity-80 leading-relaxed">LINEから24時間受け付けています。担当者よりご返信いたします。</p>
-        <a href="https://line.me/R/" target="_blank" rel="noopener noreferrer" style={{ ...ctaStyle, background: '#06C755', color: '#ffffff' }}
-          className="inline-block px-10 py-5 font-bold text-lg shadow-lg">LINEで友だち追加する</a>
+        <LineFriendAddLink slug={lp.slug} variantId={lp.variantId ?? null} style={{ ...ctaStyle, background: '#06C755', color: '#ffffff' }}
+          className="inline-block px-10 py-5 font-bold text-lg shadow-lg">LINEで友だち追加する</LineFriendAddLink>
       </div>
     </section>
   );

@@ -10,8 +10,10 @@ import socialRoutes from './routes/social';
 import siteAssetRoutes from './routes/siteAssets';
 import agentRoutes from './routes/agents';
 import automationRoutes from './routes/automation';
+import monitoringRoutes from './routes/monitoring';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
+import { captureError } from './lib/errors';
 
 const app = express();
 app.use(cors());
@@ -38,10 +40,12 @@ app.use('/api/social', socialRoutes);
 app.use('/api/site-assets', siteAssetRoutes);
 app.use('/api/agent-tasks', agentRoutes);
 app.use('/api/automation', automationRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error', err?.message || err);
+  void captureError('unhandled', err, { method: req.method, path: req.path });
   if (res.headersSent) return;
   res.status(500).json({ error: 'サーバーでエラーが発生しました。時間をおいて再度お試しください。' });
 });

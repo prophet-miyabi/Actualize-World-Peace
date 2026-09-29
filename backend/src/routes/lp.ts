@@ -247,7 +247,7 @@ export async function setupLineWebhook(tenantId: string, channelAccessToken: str
 }
 
 // アプリの画面やAPIと同じ名前のURLは、LPが表示できなくなるので使わせない
-const RESERVED_SLUGS = ['login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design', 'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social', 'agents', 'automation', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt'];
+const RESERVED_SLUGS = ['login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design', 'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social', 'agents', 'automation', 'growth', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt'];
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
 // 無料お試し中はLP/HPの作成・編集・AI生成はできるが、実際の公開（LINE連携の有効化・公開URLの提供）はこれがtrueになってから
@@ -485,18 +485,86 @@ router.get('/:slug/image', async (req, res) => {
   res.send(Buffer.from(lp.heroImage));
 });
 
+// ---- A/Bテスト（見出しのバリエーション） ----
+// 有効な行の中から均等な確率で1つ選ぶ。行が1つもなければnull（=既存のheroTitleのまま、今まで通りの挙動）
+function pickVariant<T>(variants: T[]): T | null {
+  if (variants.length === 0) return null;
+  return variants[Math.floor(Math.random() * variants.length)];
+}
+
+router.get('/variants', authenticate, async (req: AuthRequest, res) => {
+  const lp = await resolveLp(req.user!.id, req.query.lpId);
+  if (!lp) return res.status(404).json({ error: 'LPが見つかりません' });
+  const variants = await prisma.lpVariant.findMany({ where: { lpId: lp.id }, orderBy: { createdAt: 'asc' } });
+  res.json({ variants });
+});
+
+// 新しいバリエーションを1件追加する。まだ1件もなければ、既定のheroTitleを「対照群」として自動で複製する
+router.post('/variants', authenticate, async (req: AuthRequest, res) => {
+  const lp = await resolveLp(req.user!.id, req.body.lpId);
+  if (!lp) return res.status(404).json({ error: 'LPが見つかりません' });
+  const heroTitle = String(req.body.heroTitle || '').trim();
+  const label = String(req.body.label || '').trim();
+  if (!heroTitle || !label) return res.status(400).json({ error: 'label / heroTitle は必須です' });
+
+  const existingCount = await prisma.lpVariant.count({ where: { lpId: lp.id } });
+  if (existingCount === 0) {
+    await prisma.lpVariant.create({
+      data: { lpId: lp.id, label: '既定（対照群）', heroTitle: lp.heroTitle, isControl: true }
+    });
+  }
+  const variant = await prisma.lpVariant.create({ data: { lpId: lp.id, label, heroTitle } });
+  res.status(201).json({ variant });
+});
+
+router.put('/variants/:id', authenticate, async (req: AuthRequest, res) => {
+  const lp = await resolveLp(req.user!.id, req.body.lpId);
+  const existing = lp && await prisma.lpVariant.findFirst({ where: { id: String(req.params.id), lpId: lp.id } });
+  if (!existing) return res.status(404).json({ error: '見つかりません' });
+  const { label, heroTitle, enabled } = req.body as { label?: string; heroTitle?: string; enabled?: boolean };
+  const variant = await prisma.lpVariant.update({
+    where: { id: existing.id },
+    data: { label: label ?? existing.label, heroTitle: heroTitle ?? existing.heroTitle, enabled: enabled ?? existing.enabled }
+  });
+  res.json({ variant });
+});
+
+router.delete('/variants/:id', authenticate, async (req: AuthRequest, res) => {
+  const lp = await resolveLp(req.user!.id, req.query.lpId);
+  const existing = lp && await prisma.lpVariant.findFirst({ where: { id: String(req.params.id), lpId: lp.id } });
+  if (!existing) return res.status(404).json({ error: '見つかりません' });
+  await prisma.lpVariant.delete({ where: { id: existing.id } });
+  res.json({ ok: true });
+});
+
+// LINE友だち追加ボタンのクリック（=コンバージョン）を記録する。公開ページからの匿名リクエストのため認証なし
+router.post('/:slug/convert', async (req, res) => {
+  const variantId = String(req.body?.variantId || '');
+  if (!variantId) return res.status(400).json({ error: 'variantId is required' });
+  await prisma.lpVariant.updateMany({ where: { id: variantId }, data: { conversions: { increment: 1 } } });
+  res.json({ ok: true });
+});
+
 // 特定のLPデータを取得（公開用）。有料プランに加入している間だけ実際に公開される
 // （無料お試し中や解約後は、本人がダッシュボードでプレビューを見ることはできても、このURLは404になる）
 router.get('/:slug', async (req, res) => {
   const lp = await prisma.landingPage.findUnique({
     where: { slug: req.params.slug },
-    include: { user: { select: { isAdmin: true, subscriptionStatus: true } } }
+    include: { user: { select: { isAdmin: true, subscriptionStatus: true } }, variants: { where: { enabled: true } } }
   });
   if (!lp || !isPaidUser(lp.user)) return res.status(404).json({ error: 'Not found' });
   // PV増加
   await prisma.landingPage.update({ where: { id: lp.id }, data: { pageViews: { increment: 1 } } });
-  const { user, ...lpData } = lp;
-  res.json(publicLp(lpData));
+  const { user, variants, ...lpData } = lp;
+  const variant = pickVariant(variants);
+  if (variant) {
+    void prisma.lpVariant.update({ where: { id: variant.id }, data: { impressions: { increment: 1 } } }).catch(() => {});
+  }
+  res.json({
+    ...publicLp(lpData),
+    heroTitle: variant?.heroTitle || lpData.heroTitle,
+    variantId: variant?.id ?? null
+  });
 });
 
 // ダッシュボードデータ取得（本人はいつでも自分のLPを確認できる。公開されているかは別途billing/statusで判断）

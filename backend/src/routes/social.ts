@@ -8,6 +8,7 @@ import { instagramAuthorizeUrl, exchangeInstagramCode } from '../social/platform
 import { facebookAuthorizeUrl, exchangeFacebookCode } from '../social/platforms/facebook';
 import { xAuthorizeUrl, exchangeXCode, generatePkce } from '../social/platforms/x';
 import { tiktokAuthorizeUrl, exchangeTikTokCode } from '../social/platforms/tiktok';
+import { captureError } from '../lib/errors';
 
 const router = Router();
 
@@ -131,7 +132,10 @@ router.get('/:platform/callback', async (req, res) => {
     return { ok: false as const, error: 'このプラットフォームの連携は準備中です。' };
   })();
 
-  if (!result.ok) return fail(result.error);
+  if (!result.ok) {
+    void captureError('social_oauth', new Error(result.error), { platform });
+    return fail(result.error);
+  }
 
   await prisma.socialAccount.upsert({
     where: { userId_platform: { userId: state.uid, platform } },

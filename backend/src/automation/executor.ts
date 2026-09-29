@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import prisma from '../prisma';
 import type { AutomationStep, StepLogEntry } from './types';
 import { validateWorkflowSteps, isRuntimeFieldBlocked, isCaptchaFrame, MAX_STEPS } from './safety';
+import { captureError } from '../lib/errors';
 
 const STEP_TIMEOUT_MS = 15000;
 const RUN_TIMEOUT_MS = 120000;
@@ -92,6 +93,7 @@ export async function runWorkflow(workflowId: string): Promise<void> {
   } catch (e: any) {
     log.push({ index: -1, action: 'navigate', ok: false, detail: String(e?.message || e).slice(0, 500) });
     finalStatus = 'failed';
+    void captureError('automation_workflow', e, { workflowId });
   } finally {
     await browser.close();
   }

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { messagingApi, WebhookEvent } from '@line/bot-sdk';
 import prisma from '../prisma';
 import { fallbackReply, generateLineReply } from '../ai/lineReply';
+import { captureError } from '../lib/errors';
 
 const router = Router();
 
@@ -40,6 +41,7 @@ async function notifyOwner(tenantId: string, message: string) {
     }
   } catch (e: any) {
     console.error('push notification failed', e?.message);
+    void captureError('push_notification', e, { tenantId });
   }
 }
 
@@ -78,6 +80,7 @@ router.post('/:tenantId', async (req: any, res) => {
         });
       } catch (e: any) {
         console.error('LINE auto-reply failed', tenantId, e?.message);
+        void captureError('line_auto_reply', e, { tenantId });
       }
       // 通知は応答を遅らせないよう待たない
       void notifyOwner(tenantId, event.message.text);

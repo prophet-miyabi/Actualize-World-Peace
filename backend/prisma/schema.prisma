@@ -165,7 +165,44 @@ model LandingPage {
   // inputs は店主の回答（編集用）で、公開ページには出さない
   sections Json?
 
-  photos Photo[]
+  photos   Photo[]
+  variants LpVariant[]
+}
+
+// A/Bテスト用のヒーローコピーのバリエーション。最初の1件を作成した時点で、
+// それまでのheroTitleをisControl=trueの行として複製し、以後は登録した行の中から
+// 均等な確率で1つを選んで表示する（backend/src/routes/lp.ts の pickVariant）。
+// 表示（impressions）・LINE友だち追加への遷移（conversions）を数え、
+// 成長分析担当エージェントが十分な件数が集まった時点で優劣を判定する（backend/src/agents/growth.ts）
+model LpVariant {
+  id          String      @id @default(cuid())
+  lpId        String
+  lp          LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  label       String
+  heroTitle   String
+  isControl   Boolean     @default(false)
+  enabled     Boolean     @default(true)
+  impressions Int         @default(0)
+  conversions Int         @default(0)
+  createdAt   DateTime    @default(now())
+
+  @@index([lpId])
+}
+
+// 監視担当エージェントが診断する、想定外のエラーの記録（backend/src/lib/errors.ts で記録、
+// backend/src/agents/monitoring.ts でClaudeが原因分析・修正案の提示を行う）。
+// 修正コードの自動適用や本番へのロールバックは行わない（human on the loopの原則）。
+model SystemError {
+  id        String   @id @default(cuid())
+  source    String
+  message   String
+  stack     String?
+  context   Json?
+  diagnosis String?
+  status    String   @default("open") // open / diagnosed / resolved
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
 }
 
 // 店主がアップロードした実物の写真とロゴ。Geminiで補正した版（enhanced）はClaudeの審査に通った場合だけ使う
