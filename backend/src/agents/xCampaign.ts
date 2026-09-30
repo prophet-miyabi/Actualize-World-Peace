@@ -30,6 +30,11 @@ export type XCampaignInput = {
   socialProof: string | null; // 実績・お客様の声（登録されている場合のみ使用してよい）
   scarcityOffer: string | null; // 期間限定オファー等（登録されている場合のみ使用してよい）
   lpUrl: string;
+  // 任意項目。ターゲット像・悩み・今週の目標を明示すると、PASの法則（悩み→深掘り→解決）の精度が上がる。
+  // 省略時はbusinessName/heroTitle/strengthsだけから推測する
+  targetPersona?: string;
+  painPoint?: string;
+  weeklyGoal?: string;
 };
 
 export type XCampaignPlan = z.infer<typeof CampaignSchema>;
@@ -63,10 +68,13 @@ async function requestCampaignPlan(input: XCampaignInput, reviewerFeedback: stri
     `事業名/サービス名: ${input.businessName}`,
     `キャッチコピー: ${input.heroTitle}`,
     `強み: ${input.strengths.filter(Boolean).join(' / ') || '（登録なし）'}`,
+    input.targetPersona ? `ターゲット像: ${input.targetPersona}` : null,
+    input.painPoint ? `ターゲットの悩み: ${input.painPoint}` : null,
+    input.weeklyGoal ? `今週の注力目標: ${input.weeklyGoal}` : null,
     `実績・お客様の声: ${input.socialProof || '（登録なし。捏造禁止）'}`,
     `限定オファー・キャンペーン: ${input.scarcityOffer || '（登録なし。捏造禁止）'}`,
     `LPのURL: ${input.lpUrl}`
-  ].join('\n');
+  ].filter((line): line is string => Boolean(line)).join('\n');
 
   const client = new Anthropic();
   const response = await client.beta.messages.parse({

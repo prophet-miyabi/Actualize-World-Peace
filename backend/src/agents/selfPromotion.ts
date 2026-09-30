@@ -8,7 +8,9 @@ import { captureError } from '../lib/errors';
 // 同じ安全策（事実ベースの生成・コンプライアンス審査）を使うが、紹介する事業はAWP自身であり、
 // 投稿には必ずAWPのサービスLPへの導線（SITE_URL）を添える。
 // 実行対象は管理者（＝AWP運営者自身が連携したSNSアカウント）に限る。
-const SELF_PROMOTION_FACTS: MarketingInput = {
+// selfPromotion.ts / scripts/run-self-promotion.ts の両方から参照する、唯一のAWP紹介内容
+// （二重管理で内容がずれないよう、ここでexportして使い回す）
+export const SELF_PROMOTION_FACTS: MarketingInput = {
   businessName: 'AWP',
   heroTitle: 'あなたのビジネスも、あなた自身も。AIと一緒に世界へ公開しよう。',
   strengths: [
@@ -17,6 +19,14 @@ const SELF_PROMOTION_FACTS: MarketingInput = {
     'SNS投稿の下書き作成からコンプライアンス審査までAIエージェントが自動化'
   ],
   sections: []
+};
+
+// X向けキャンペーン（xCampaign.ts）はPASの法則を使うため、ターゲット像・悩みを別途持たせる。
+// いずれも事実に基づくポジショニング（実績の主張ではなくターゲット定義）であり、捏造禁止ルールの対象外
+export const SELF_PROMOTION_X_PROFILE = {
+  targetPersona: '本業や自分の活動で忙しい、個人事業主・クリエイター・中小企業のマーケティング担当者',
+  painPoint: 'SNS運用に割く時間がなく、かといって外注する予算もない。機械的なだけの投稿では反応にも売上にもつながらない',
+  weeklyGoal: '無料お試し（アカウント作成）を増やすこと'
 };
 
 // X/Facebookは投稿文中のURLがそのままリンクとして機能する。Instagram/TikTokはキャプション内リンクが
@@ -58,7 +68,8 @@ export async function runSelfPromotionAgents(): Promise<void> {
             userId: admin.id, role,
             input: {
               businessName: SELF_PROMOTION_FACTS.businessName, heroTitle: SELF_PROMOTION_FACTS.heroTitle,
-              strengths: SELF_PROMOTION_FACTS.strengths, socialProof: null, scarcityOffer: null, lpUrl: siteUrl
+              strengths: SELF_PROMOTION_FACTS.strengths, socialProof: null, scarcityOffer: null, lpUrl: siteUrl,
+              ...SELF_PROMOTION_X_PROFILE
             },
             autoPublishEnabled: admin.autoPublishEnabled,
             hasConnectedAccount: true
