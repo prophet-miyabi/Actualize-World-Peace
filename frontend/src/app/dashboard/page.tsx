@@ -205,6 +205,7 @@ function DashboardInner() {
             <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
             <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
+            <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
           </div>
         ) : data.lp ? (
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-800 text-sm">

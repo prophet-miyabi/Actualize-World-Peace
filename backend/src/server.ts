@@ -11,6 +11,7 @@ import siteAssetRoutes from './routes/siteAssets';
 import agentRoutes from './routes/agents';
 import automationRoutes from './routes/automation';
 import monitoringRoutes from './routes/monitoring';
+import photoRoutes from './routes/photos';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -28,7 +29,9 @@ app.use(
 // Stripeは生のBufferのみで良い（SDKがそこから直接検証・パースする）
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
-app.use(express.json());
+// 既定は100kbだが、写真アップロード（backend/src/routes/photos.ts）はbase64化した画像を
+// JSONで受け取るため、8MBの画像＋base64の膨張分（約1.33倍）に余裕を持たせて引き上げる
+app.use(express.json({ limit: '12mb' }));
 
 // 公開先（Render / Docker）が「起動しているか」を確認するためのエンドポイント
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -41,6 +44,7 @@ app.use('/api/site-assets', siteAssetRoutes);
 app.use('/api/agent-tasks', agentRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/photos', photoRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
