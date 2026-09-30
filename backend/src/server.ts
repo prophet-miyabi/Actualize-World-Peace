@@ -12,6 +12,7 @@ import agentRoutes from './routes/agents';
 import automationRoutes from './routes/automation';
 import monitoringRoutes from './routes/monitoring';
 import photoRoutes from './routes/photos';
+import reportRoutes from './routes/reports';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -45,6 +46,7 @@ app.use('/api/agent-tasks', agentRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/photos', photoRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

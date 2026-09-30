@@ -9,7 +9,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "promo:dry-run": "ts-node scripts/run-self-promotion.ts --dry-run",
-    "promo:generate": "ts-node scripts/run-self-promotion.ts"
+    "promo:generate": "ts-node scripts/run-self-promotion.ts",
+    "report:generate": "ts-node scripts/generate-status-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

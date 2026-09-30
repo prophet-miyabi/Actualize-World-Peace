@@ -31,5 +31,8 @@ Thumbs.db
 backend/prisma/*.db
 mobile/
 
+# 進捗報告エージェントが生成するレポート（実行のたびに再生成されるため）
+backend/reports/
+
 # TypeScriptの増分ビルドキャッシュ
 *.tsbuildinfo
