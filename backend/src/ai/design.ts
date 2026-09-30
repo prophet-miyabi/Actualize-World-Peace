@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
+import { fetchWithRetry } from './cloudflareFetch';
 
 // ---------------------------------------------------------------------------
 // デザインは「AIが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAIが選ぶ方式。
@@ -310,7 +311,7 @@ async function imageFromWorkersAI(prompt: string): Promise<{ data: Buffer; mimeT
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) throw new Error('CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN が未設定です');
 
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
     {
       method: 'POST',

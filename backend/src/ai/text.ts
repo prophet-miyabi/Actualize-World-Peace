@@ -3,12 +3,14 @@
 // 従量課金のClaudeよりもこちらを使うことで、無料枠（1日10,000 Neurons）の中で運用できる。
 // 日本語の品質を優先し、多言語対応が明記されているQwen3を使う
 // （Llama 3.1 8Bは公式サポート言語に日本語が含まれず、出力が崩れたため不採用）。
+import { fetchWithRetry } from './cloudflareFetch';
+
 export async function generateText(system: string, user: string): Promise<string> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) throw new Error('CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN が未設定です');
 
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/qwen/qwen3-30b-a3b-fp8`,
     {
       method: 'POST',
