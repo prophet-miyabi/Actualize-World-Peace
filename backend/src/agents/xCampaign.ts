@@ -34,7 +34,31 @@ export type XCampaignInput = {
 
 export type XCampaignPlan = z.infer<typeof CampaignSchema>;
 
-export async function planWeeklyXCampaign(input: XCampaignInput): Promise<XCampaignPlan | null> {
+const LP_URL_WEIGHT = 23; // Xの仕様上、URLは実際の文字数に関わらず23字として数える
+const MAX_POST_LENGTH = 140;
+const MAX_ATTEMPTS = 3; // レビュー担当が文字数超過を指摘し、書き直しを求める回数の上限
+
+// URL部分を23字相当として数えた、投稿の実質的な文字数
+function effectiveLength(text: string, lpUrl: string): number {
+  if (!lpUrl || !text.includes(lpUrl)) return text.length;
+  return text.split(lpUrl).join('#'.repeat(LP_URL_WEIGHT)).length;
+}
+
+function findOverLengthPosts(posts: { type: string; text: string }[], lpUrl: string): { type: string; length: number }[] {
+  return posts
+    .map((p) => ({ type: p.type, length: effectiveLength(p.text, lpUrl) }))
+    .filter((p) => p.length > MAX_POST_LENGTH);
+}
+
+// 何度書き直しても収まらなかった場合の最終手段。URLは残したまま、本文だけを安全に削る
+function truncateToEffectiveLength(text: string, lpUrl: string, maxLen: number): string {
+  if (!lpUrl || !text.includes(lpUrl)) return text.slice(0, maxLen);
+  const withoutUrl = text.split(lpUrl).join('').trimEnd();
+  const budget = Math.max(maxLen - LP_URL_WEIGHT - 1, 0);
+  return `${withoutUrl.slice(0, budget).trimEnd()}\n${lpUrl}`;
+}
+
+async function requestCampaignPlan(input: XCampaignInput, reviewerFeedback: string): Promise<XCampaignPlan | null> {
   const facts = [
     `事業名/サービス名: ${input.businessName}`,
     `キャッチコピー: ${input.heroTitle}`,
@@ -57,18 +81,52 @@ export async function planWeeklyXCampaign(input: XCampaignInput): Promise<XCampa
       '行動原則:\n' +
       '1. 黄金比率: 3投稿すべてを宣伝にしない。教育（気づき）・共感・直接訴求をこの順で1本ずつ配置する。\n' +
       '2. PASの法則: Pain（悩み）に触れ、Agitation（深掘り）し、Solution（LP）を提示する構成を基本とする。\n' +
-      '3. 各投稿は140字以内（Xの仕様上、URLは実際の文字数に関わらず23字として数える）。\n' +
+      '3. 各投稿は140字以内（Xの仕様上、URLは実際の文字数に関わらず23字として数える）。これは' +
+      'レビュー担当が機械的に文字数を計算して厳格にチェックするため、必ず守ること。\n' +
       '厳守事項（最重要）: 【事実】に書かれていない実績・数字・受賞歴・限定オファー・キャンペーン・日付・' +
       '緊急性の演出は絶対に作らないこと。実績やオファーが「登録なし」の場合、投稿3（直接訴求）でも' +
       '架空の限定性・緊急性を作らず、強みやLPへの明確な行動喚起で構成すること。',
-    messages: [{ role: 'user', content: `【事実】\n${facts}\n\n上記の事実だけを使って、週間キャンペーンを立案してください。` }],
+    messages: [{
+      role: 'user',
+      content: `【事実】\n${facts}\n\n上記の事実だけを使って、週間キャンペーンを立案してください。` +
+        (reviewerFeedback ? `\n\n【レビュー担当からの差し戻し】\n${reviewerFeedback}` : '')
+    }],
     output_config: { effort: 'medium', format: betaZodOutputFormat(CampaignSchema) }
   });
 
   if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') return null;
-  const out = response.parsed_output;
-  if (!out) return null;
-  return { ...out, posts: out.posts.map((p) => ({ ...p, text: p.text.slice(0, 280) })) };
+  return response.parsed_output ?? null;
+}
+
+// レビュー担当：文字数を機械的に計算し、140字（URL23字換算）を超える投稿があれば
+// Copywriter役に差し戻して書き直させる（CrewAIのReviewer Agentと同じ役割を、構造化出力の
+// リトライループとして実装）。それでも収まらない場合のみ、最終手段として安全に末尾を削る。
+export async function planWeeklyXCampaign(input: XCampaignInput): Promise<XCampaignPlan | null> {
+  let lastPlan: XCampaignPlan | null = null;
+  let feedback = '';
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const plan = await requestCampaignPlan(input, feedback);
+    if (!plan) break;
+    lastPlan = plan;
+
+    const overLength = findOverLengthPosts(plan.posts, input.lpUrl);
+    if (overLength.length === 0) return plan;
+
+    feedback = `直前の案は以下の投稿が140字（URLは23字換算）を超えていました: ${
+      overLength.map((p) => `${p.type}（実質${p.length}字）`).join('、')
+    }。内容を変えずに、必ず140字以内に収まるよう簡潔に書き直してください。`;
+  }
+
+  if (!lastPlan) return null;
+  return {
+    ...lastPlan,
+    posts: lastPlan.posts.map((p) =>
+      effectiveLength(p.text, input.lpUrl) > MAX_POST_LENGTH
+        ? { ...p, text: truncateToEffectiveLength(p.text, input.lpUrl, MAX_POST_LENGTH) }
+        : p
+    )
+  };
 }
 
 const POST_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // 3投稿を週内に分散させる間隔
