@@ -2,11 +2,18 @@
 # 使い方: Renderダッシュボードで「New +」→「Blueprint」→ このGitHubリポジトリを選択するだけで、
 # 下記のサービスとデータベースが自動的に作成される。
 # APIキー等の秘密情報（sync: false のもの）は、作成後にRenderダッシュボード側で入力すること。
-
+#
+# 全サービスを有料の最小プランにしている（月額合計 約$20）。理由:
+#   - 無料のWebサービスは15分アクセスがないと停止する。AWPはエージェントの定期実行・
+#     SNS投稿スケジューラなど「常時動き続けること」が前提の設計のため、バックエンドは必須で有料化
+#   - 無料のPostgreSQLは作成から30日で失効し、その後14日で完全に削除される
+#     （顧客データが消えるリスクがあるため必須で有料化）
+#   - フロントエンドは無料でも機能面の問題はない（初回アクセス時に多少の待ち時間が出るだけ）が、
+#     訪問者の体験を優先し、こちらも常時起動の有料プランにしている
 databases:
   - name: awp-db
     databaseName: awp
-    plan: free
+    plan: 0.1c-256mb  # $6/月・失効しない（無料プランは30日で失効・14日後に削除される）
 
 services:
   # バックエンド（Express API・スケジューラ・AIエージェントループ・ブラウザ自動化）
@@ -17,7 +24,7 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: free
+    plan: 0.5c-512mb  # $7/月・常時起動（無料プランは15分アクセスがないと停止し、バックグラウンド処理が止まる）
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -78,7 +85,7 @@ services:
   - type: web
     name: awp-frontend
     runtime: node
-    plan: free
+    plan: 0.5c-512mb  # $7/月・常時起動（無料プランでも機能上は問題ないが、訪問者の待ち時間をなくすため）
     rootDir: frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
