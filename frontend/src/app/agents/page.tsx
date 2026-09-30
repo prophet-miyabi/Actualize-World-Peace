@@ -20,7 +20,11 @@ const ROLE_LABEL: Record<string, string> = {
   marketing_instagram: 'Instagramマーケティング担当',
   marketing_facebook: 'Facebookマーケティング担当',
   marketing_tiktok: 'TikTokマーケティング担当',
-  growth: '成長分析担当'
+  growth: '成長分析担当',
+  self_promotion_x: 'AWP自己PR担当（X）',
+  self_promotion_instagram: 'AWP自己PR担当（Instagram）',
+  self_promotion_facebook: 'AWP自己PR担当（Facebook）',
+  self_promotion_tiktok: 'AWP自己PR担当（TikTok）'
 };
 const roleLabel = (role: string) => ROLE_LABEL[role] || role;
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { runAgentsForUser } from '../agents/loop';
+import { runSelfPromotionAgents } from '../agents/selfPromotion';
 
 const router = Router();
 
@@ -32,8 +33,14 @@ router.put('/settings', authenticate, async (req: AuthRequest, res) => {
 // 複数プラットフォーム分のAI呼び出しを直列で行うため数十秒かかることがあり、
 // 待たせたままにするとプロキシ側のタイムアウトで失敗して見えてしまう。
 // そのため即座に202を返し、裏側で実行する（結果は一覧の再読み込みで確認する）
-router.post('/run-now', authenticate, (req: AuthRequest, res) => {
-  runAgentsForUser(req.user!.id).catch((e) => console.error('run-now failed', req.user!.id, e?.message));
+router.post('/run-now', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  runAgentsForUser(userId).catch((e) => console.error('run-now failed', userId, e?.message));
+  // 管理者（＝AWP運営者）の場合は、自己PR用のSNS下書き作成もあわせて実行する
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
+  if (user?.isAdmin) {
+    runSelfPromotionAgents().catch((e) => console.error('self promotion run-now failed', e?.message));
+  }
   res.status(202).json({ ok: true, status: 'running' });
 });
 

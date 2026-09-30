@@ -3,6 +3,7 @@ import { draftForPlatform, SNS_PLATFORMS } from './marketing';
 import { checkLpHealth } from './growth';
 import { reviewSocialDraft } from './compliance';
 import { diagnoseOpenErrors } from './monitoring';
+import { runSelfPromotionAgents } from './selfPromotion';
 import { captureError } from '../lib/errors';
 
 // 役割ごとのエージェント（プラットフォーム別のマーケティング担当・成長分析担当・コンプライアンス担当）を
@@ -100,6 +101,8 @@ async function tick() {
   }
   // 監視担当：ユーザー単位ではなくシステム全体で、未診断のエラーをまとめて分析する
   await diagnoseOpenErrors().catch((e) => console.error('monitoring agent tick failed', e?.message));
+  // 自己PR担当：AWP自身の集客のためのSNS投稿（管理者が連携したアカウント向け）
+  await runSelfPromotionAgents().catch((e) => console.error('self promotion agent tick failed', e?.message));
 }
 
 let started = false;
