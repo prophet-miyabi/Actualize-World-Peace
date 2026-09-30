@@ -5,14 +5,18 @@ import api from '@/lib/api';
 
 type Task = {
   id: string;
-  role: string; // marketing_x / marketing_instagram / marketing_facebook / marketing_tiktok / growth
-  kind: 'sns_post_draft' | 'lp_health_check';
+  role: string; // marketing_x / marketing_instagram / marketing_facebook / marketing_tiktok / growth / self_promotion_*
+  kind: 'sns_post_draft' | 'lp_health_check' | 'x_weekly_campaign';
   output: any;
   status: 'pending_review' | 'approved' | 'rejected';
   reviewPassed: boolean | null;
   reviewNote: string | null;
   autoApproved: boolean;
   createdAt: string;
+};
+
+const CAMPAIGN_POST_LABEL: Record<string, string> = {
+  educational: '① 気づき・ノウハウ提供', empathy: '② 共感・信頼構築', offer: '③ 直接訴求'
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -154,16 +158,35 @@ export default function Agents() {
                       </p>
                     )}
                   </>
+                ) : t.kind === 'x_weekly_campaign' ? (
+                  <>
+                    <p className="text-xs text-gray-500 mt-2">今週のX集客戦略</p>
+                    <p className="mt-1 text-sm leading-relaxed">{t.output.scenario}</p>
+                    <div className="mt-3 space-y-2">
+                      {t.output.posts.map((p: { type: string; text: string }, i: number) => (
+                        <div key={i} className="bg-gray-50 rounded-lg p-3">
+                          <span className="text-xs font-bold text-gray-500">{CAMPAIGN_POST_LABEL[p.type] || p.type}</span>
+                          <p className="mt-1 whitespace-pre-wrap text-sm">{p.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">次回への提案: {t.output.nextStepSuggestion}</p>
+                    {t.reviewNote && (
+                      <p className={`text-xs mt-2 ${t.reviewPassed ? 'text-gray-500' : 'text-red-600'}`}>
+                        コンプライアンス担当の所見: {t.reviewNote}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <ul className="mt-2 list-disc list-inside text-sm text-gray-700 space-y-1">
                     {t.output.issues.map((issue: string, i: number) => <li key={i}>{issue}</li>)}
                   </ul>
                 )}
-                {t.kind === 'sns_post_draft' && (
+                {(t.kind === 'sns_post_draft' || t.kind === 'x_weekly_campaign') && (
                   <div className="flex gap-3 mt-4">
                     <button onClick={() => act(t.id, 'approve')} disabled={busyId === t.id}
                       className="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold text-sm disabled:opacity-50">
-                      承認して投稿予約する
+                      {t.kind === 'x_weekly_campaign' ? '承認して3投稿を週内に予約する' : '承認して投稿予約する'}
                     </button>
                     <button onClick={() => act(t.id, 'reject')} disabled={busyId === t.id}
                       className="px-5 py-2 rounded-lg border text-gray-600 font-bold text-sm disabled:opacity-50">
@@ -192,7 +215,9 @@ export default function Agents() {
                     <span className="text-xs font-bold text-gray-500">{roleLabel(t.role)}</span>
                     {t.autoApproved && <span className="text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 ml-2">AI自動承認</span>}
                     <p className="text-gray-700 mt-1 line-clamp-1">
-                      {t.kind === 'sns_post_draft' ? t.output.text : t.output.issues?.join(' / ')}
+                      {t.kind === 'sns_post_draft' ? t.output.text
+                        : t.kind === 'x_weekly_campaign' ? t.output.scenario
+                        : t.output.issues?.join(' / ')}
                     </p>
                   </div>
                   <span className={`text-xs font-bold whitespace-nowrap ${t.status === 'approved' ? 'text-green-600' : 'text-gray-400'}`}>

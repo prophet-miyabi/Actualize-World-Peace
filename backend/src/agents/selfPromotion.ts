@@ -1,6 +1,7 @@
 import prisma from '../prisma';
 import { draftForPlatform, SNS_PLATFORMS, type SnsPlatform, type MarketingInput } from './marketing';
 import { reviewSocialDraft } from './compliance';
+import { runXCampaignTask } from './xCampaign';
 import { captureError } from '../lib/errors';
 
 // AWP自身の集客のためのSNS投稿を作る自己PR担当。他事業者向け（marketing.ts）と同じ仕組み・
@@ -28,6 +29,8 @@ async function draftSelfPromotionPost(platform: SnsPlatform, siteUrl: string): P
 }
 
 const COOLDOWN_MS = 24 * 60 * 60 * 1000; // プラットフォームごとに24時間に1本まで（無料枠の節約、他事業者向けと同じ方針）
+// Xだけは3投稿1組の週間キャンペーンのため、週1回のペースにする
+const X_CAMPAIGN_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function runSelfPromotionAgents(): Promise<void> {
   const siteUrl = process.env.SITE_URL;
@@ -42,12 +45,27 @@ export async function runSelfPromotionAgents(): Promise<void> {
       const account = await prisma.socialAccount.findUnique({ where: { userId_platform: { userId: admin.id, platform } } });
       if (!account) continue;
 
+      const cooldownMs = platform === 'x' ? X_CAMPAIGN_COOLDOWN_MS : COOLDOWN_MS;
       const recent = await prisma.agentTask.findFirst({
-        where: { userId: admin.id, role, createdAt: { gte: new Date(Date.now() - COOLDOWN_MS) } }
+        where: { userId: admin.id, role, createdAt: { gte: new Date(Date.now() - cooldownMs) } }
       });
       if (recent) continue;
 
       try {
+        // Xだけは単発の下書きではなく、「気づき→共感→直接訴求」の週間キャンペーンを立案する
+        if (platform === 'x') {
+          await runXCampaignTask({
+            userId: admin.id, role,
+            input: {
+              businessName: SELF_PROMOTION_FACTS.businessName, heroTitle: SELF_PROMOTION_FACTS.heroTitle,
+              strengths: SELF_PROMOTION_FACTS.strengths, socialProof: null, scarcityOffer: null, lpUrl: siteUrl
+            },
+            autoPublishEnabled: admin.autoPublishEnabled,
+            hasConnectedAccount: true
+          });
+          continue;
+        }
+
         const text = await draftSelfPromotionPost(platform, siteUrl);
 
         let reviewPassed: boolean | null = null;

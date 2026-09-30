@@ -4,6 +4,7 @@ import { checkLpHealth } from './growth';
 import { reviewSocialDraft } from './compliance';
 import { diagnoseOpenErrors } from './monitoring';
 import { runSelfPromotionAgents } from './selfPromotion';
+import { runXCampaignTask } from './xCampaign';
 import { captureError } from '../lib/errors';
 
 // 役割ごとのエージェント（プラットフォーム別のマーケティング担当・成長分析担当・コンプライアンス担当）を
@@ -12,6 +13,8 @@ import { captureError } from '../lib/errors';
 // 人間の承認なしで自動的に予約する。無効な場合は今まで通り承認待ちに積む（backend/src/routes/agents.ts）。
 const INTERVAL_MS = 6 * 60 * 60 * 1000; // 6時間ごと
 const MARKETING_COOLDOWN_MS = 24 * 60 * 60 * 1000; // プラットフォームごとに、SNS下書きは24時間に1本まで（無料枠の節約）
+// Xだけは3投稿1組の週間キャンペーン（backend/src/agents/xCampaign.ts）のため、週1回のペースにする
+const X_CAMPAIGN_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function runAgentsForUser(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -44,12 +47,31 @@ export async function runAgentsForUser(userId: string) {
 
   for (const platform of SNS_PLATFORMS) {
     const role = `marketing_${platform}`;
+    const cooldownMs = platform === 'x' ? X_CAMPAIGN_COOLDOWN_MS : MARKETING_COOLDOWN_MS;
     const recent = await prisma.agentTask.findFirst({
-      where: { userId, role, createdAt: { gte: new Date(Date.now() - MARKETING_COOLDOWN_MS) } }
+      where: { userId, role, createdAt: { gte: new Date(Date.now() - cooldownMs) } }
     });
     if (recent) continue;
 
     try {
+      // Xだけは単発の下書きではなく、「気づき→共感→直接訴求」の週間キャンペーンを立案する
+      if (platform === 'x') {
+        const account = await prisma.socialAccount.findUnique({ where: { userId_platform: { userId, platform } } });
+        const lpUrl = lp.customDomainVerified && lp.customDomain
+          ? `https://${lp.customDomain}`
+          : `${(process.env.SITE_URL || '').replace(/\/$/, '')}/${lp.slug}`;
+        await runXCampaignTask({
+          userId, role, lpId: lp.id,
+          input: {
+            businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths,
+            socialProof: lp.socialProof, scarcityOffer: lp.scarcityOffer, lpUrl
+          },
+          autoPublishEnabled: user.autoPublishEnabled,
+          hasConnectedAccount: !!account
+        });
+        continue;
+      }
+
       const text = await draftForPlatform(platform, input);
 
       // コンプライアンス担当が、公開前に必ず審査する（自動承認をオンにしていない場合も、

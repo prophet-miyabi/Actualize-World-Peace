@@ -59,6 +59,17 @@ router.post('/:id/approve', authenticate, async (req: AuthRequest, res) => {
     await prisma.scheduledPost.create({
       data: { userId, text: out.text, platforms: [out.platform], scheduledAt: new Date() }
     });
+  } else if (task.kind === 'x_weekly_campaign') {
+    // 3投稿1組のキャンペーン。週内に分散させて予約する（agents/xCampaign.tsの自動承認時と同じ間隔）
+    const out = task.output as { posts: { type: string; text: string }[] };
+    const account = await prisma.socialAccount.findUnique({ where: { userId_platform: { userId, platform: 'x' } } });
+    if (!account) return res.status(400).json({ error: 'Xが連携されていません。先にSNS連携を行ってください。' });
+    const intervalMs = 3 * 24 * 60 * 60 * 1000;
+    await Promise.all(out.posts.map((post, i) =>
+      prisma.scheduledPost.create({
+        data: { userId, text: post.text, platforms: ['x'], scheduledAt: new Date(Date.now() + i * intervalMs) }
+      })
+    ));
   }
 
   await prisma.agentTask.update({ where: { id: task.id }, data: { status: 'approved', reviewedAt: new Date() } });
