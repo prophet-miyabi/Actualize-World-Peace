@@ -93,3 +93,7 @@ services:
         sync: false
       - key: MAIN_HOSTS
         sync: false
+      # 事業者ごとのサブドメイン（{slug}.MAIN_DOMAIN）を使わないうちは空欄のままでよい。
+      # 設定手順は frontend/.env.example のMAIN_DOMAINのコメントを参照
+      - key: MAIN_DOMAIN
+        sync: false

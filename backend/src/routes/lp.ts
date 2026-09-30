@@ -247,7 +247,16 @@ export async function setupLineWebhook(tenantId: string, channelAccessToken: str
 }
 
 // アプリの画面やAPIと同じ名前のURLは、LPが表示できなくなるので使わせない
-const RESERVED_SLUGS = ['login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design', 'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social', 'agents', 'automation', 'growth', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt'];
+const RESERVED_SLUGS = [
+  'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
+  'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
+  'agents', 'automation', 'growth', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
+  // インフラ用途で使われがちな名前を横取りされないよう予約しておく
+  'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
+  'mx', 'cdn', 'static', 'assets', 'media', 'support', 'help', 'status', 'blog', 'docs', 'dev', 'staging',
+  'test', 'webmail', 'autodiscover', 'autoconfig', 'vpn', 'remote', 'git', 'ci', 'console'
+];
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
 // 無料お試し中はLP/HPの作成・編集・AI生成はできるが、実際の公開（LINE連携の有効化・公開URLの提供）はこれがtrueになってから
