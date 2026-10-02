@@ -25,6 +25,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: 0.5c-512mb  # $7/月・常時起動（無料プランは15分アクセスがないと停止し、バックグラウンド処理が止まる）
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
