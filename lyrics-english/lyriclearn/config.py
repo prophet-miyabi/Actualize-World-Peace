@@ -13,6 +13,9 @@ class Selectors:
     # 現在再生中の行にだけ当てはまる selector
     active: str = ".active, [active], [aria-current='true'], [class*='current']"
     video: str = "video"
+    # 自動セットアップ用: タブ名・和訳トグルのラベルに一致する正規表現
+    lyrics_tab_re: str = "歌詞|Lyrics"
+    translate_btn_re: str = "翻訳|和訳|Translat"
 
 
 @dataclass

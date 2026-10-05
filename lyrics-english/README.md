@@ -32,3 +32,27 @@ lyriclearn all "https://music.youtube.com/watch?v=XXXX" [--llm] [--bg-key 0x2121
 - YouTube Music の DOM は非公開で変わります。`config.py` の `Selectors` は推測の初期値なので、`inspect` の結果に合わせて調整が必要です(実アカウントでの動作は未検証)。
 - 曲の途中で広告/再生位置の飛びがあると同期精度が落ちます(Premium なら通常問題なし)。
 - 単語の意味は `--llm` 指定時のみ付与。無い場合は例文と和訳だけのカードになります。
+
+## Discord エージェント(対話ループ)
+
+```
+export ANTHROPIC_API_KEY=... DISCORD_BOT_TOKEN=...
+export DISCORD_ALLOWED_USER_IDS=あなたのDiscordユーザーID   # 必須。ログイン済みブラウザを操作するため
+lyriclearn-bot                                             # ログイン済みの自分のPCで常駐
+```
+DM かメンションで話しかけます(`DISCORD_CHANNEL_ID` を設定すればそのチャンネルのみ)。
+
+```
+あなた: YOASOBI アイドル で作って
+Bot   : 候補 1〜5 ... どれにしますか? → 1
+Bot   : ジョブ開始。(進捗: ダウンロード→録画→編集→教材)
+        …完了通知が自動で届き、Claude が単語を紹介 → 動画/Anki/HTML を添付
+あなた: 映像が0.3秒早い → Bot: retune(sync_nudge) で再編集して再送
+あなた: 次はこの曲 → ループ
+```
+- エージェントのツール: `search_songs` / `start_lyrics_job` / `job_status` / `list_jobs` / `show_vocab` / `retune` / `send_files`
+- ジョブ完了・失敗は `[system]` 通知としてエージェントに自動で渡り、返信と成果物が投稿されます(これがループの駆動役)。
+- YouTube Music の起動 → 歌詞タブ・和訳の自動表示 → 録画 → 編集は `record(manual_setup=False)` の `auto_setup` が担当。
+  歌詞行が検出できなければ失敗として Discord に報告されます。
+- モデルは `LYRICLEARN_MODEL`(既定 `claude-opus-5-5`)。Discord の25MB上限を超える動画は自動で再エンコードして送ります。
+- ブラウザは1つなので、ジョブは直列に処理されます。

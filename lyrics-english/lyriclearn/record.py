@@ -3,6 +3,7 @@
 初回は `login` でブラウザを開き、サブスク加入済みアカウントでログインしておく(プロファイルは保存される)。
 """
 import json
+import re
 import shutil
 import time
 from pathlib import Path
@@ -64,8 +65,27 @@ def inspect_dom(url: str, profile: Path, cfg: Config):
         ctx.close()
 
 
+def auto_setup(page, cfg: Config, log=print):
+    """歌詞タブを開き、和訳トグルがあれば押す。成功判定は「歌詞行がDOMに出たか」。"""
+    sel = cfg.selectors
+    tab = page.get_by_role("tab", name=re.compile(sel.lyrics_tab_re)).first
+    try:
+        tab.click(timeout=10000)
+    except Exception:
+        log("歌詞タブをクリックできませんでした(既に開いている可能性があります)")
+    try:
+        page.get_by_role("button", name=re.compile(sel.translate_btn_re)).first.click(timeout=3000)
+    except Exception:
+        log("和訳トグルが見つかりません(既に表示済み、または selector 要調整)")
+    try:
+        page.wait_for_selector(sel.line, state="attached", timeout=10000)
+    except Exception as e:
+        raise RuntimeError("歌詞行を検出できません。`lyriclearn inspect` で selector を調整するか、"
+                           "手動セットアップ(--manual)を使ってください") from e
+
+
 def record(url: str, out_dir: Path, profile: Path, cfg: Config, headless: bool = False,
-           manual_setup: bool = True, max_seconds: float | None = None) -> dict:
+           manual_setup: bool = True, max_seconds: float | None = None, log=print) -> dict:
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -80,7 +100,9 @@ def record(url: str, out_dir: Path, profile: Path, cfg: Config, headless: bool =
         t0 = time.monotonic()  # 録画は page 作成時から始まる
         page.goto(url)
         page.wait_for_selector(sel["video"], state="attached", timeout=30000)
-        if manual_setup:
+        if not manual_setup:
+            auto_setup(page, cfg, log)
+        else:
             input("歌詞タブを開き和訳を表示、録画したい画面にしたら Enter(その後 0:00 から再生し直します) > ")
         page.evaluate("(s) => { const v = document.querySelector(s); v.currentTime = 0; v.play(); }", sel["video"])
         while True:
