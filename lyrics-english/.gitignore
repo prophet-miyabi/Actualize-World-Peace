@@ -1,0 +1,4 @@
+work/
+.profile/
+__pycache__/
+*.egg-info/

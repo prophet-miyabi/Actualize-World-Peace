@@ -1,0 +1,20 @@
+[project]
+name = "lyriclearn"
+version = "0.1.0"
+description = "YouTube Music の歌詞(和訳つき)画面から英語学習教材を自動生成する個人用ツール"
+requires-python = ">=3.10"
+dependencies = ["yt-dlp", "playwright"]
+
+[project.optional-dependencies]
+nlp = ["wordfreq"]
+llm = ["anthropic"]
+dev = ["pytest"]
+
+[project.scripts]
+lyriclearn = "lyriclearn.cli:main"
+
+[tool.setuptools]
+packages = ["lyriclearn"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
