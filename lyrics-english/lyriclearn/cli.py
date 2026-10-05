@@ -62,11 +62,14 @@ def main(argv=None):
     if a.cmd == "login":
         from .record import login
         return login(a.profile, cfg)
-    d = _work(a.url, a.work)
-    steps = ["download", "record", "compose", "study"] if a.cmd == "all" else [a.cmd]
-    if "inspect" in steps:
+    if a.cmd == "inspect":
         from .record import inspect_dom
         return inspect_dom(a.url, a.profile, cfg)
+    try:
+        d = _work(a.url, a.work)
+    except ValueError as e:
+        raise SystemExit(f"{e}\n例: https://music.youtube.com/watch?v=dQw4w9WgXcQ のように、実際の曲のURLを指定してください")
+    steps = ["download", "record", "compose", "study"] if a.cmd == "all" else [a.cmd]
     if "download" in steps:
         print("audio:", download_audio(a.url, d))
     if "record" in steps:
