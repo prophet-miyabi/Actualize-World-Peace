@@ -13,6 +13,7 @@ from pathlib import Path
 
 import discord
 
+from . import devops
 from .agent import Agent
 from .compose import probe_duration
 from .jobs import JobManager
@@ -89,8 +90,34 @@ class Bot(discord.Client):
         if not self.channel_id and not (isinstance(m.channel, discord.DMChannel) or self.user in m.mentions):
             return
         text = m.content.replace(f"<@{self.user.id}>", "").strip()
+        if text.startswith("!"):
+            return await self._command(m.channel, text)
         if text:
             await self._turn(m.channel.id, text)
+
+    HELP = ("`!status` 端末の状態 / `!update` GitHub の最新コードを取り込んで再起動 / "
+            "`!adb` adb 接続確認 / `!restart` 再起動")
+
+    async def _command(self, ch, text: str):
+        """端末の保守コマンド。許可ユーザーのみ(on_message で確認済み)。コードは git pull でしか入らない。"""
+        cmd = text.split()[0].lower()
+        busy = [j.id for j in self.jobs.jobs.values() if j.state == "running"]
+        try:
+            if cmd == "!status":
+                return await ch.send("```\n" + devops.status(self.jobs) + "\n```")
+            if cmd == "!adb":
+                return await ch.send("```\n" + await asyncio.to_thread(devops.adb_status) + "\n```")
+            if cmd in ("!update", "!restart"):
+                if busy and "force" not in text:
+                    return await ch.send(f"ジョブ実行中({', '.join(busy)})のため中断。終わってからか `{cmd} force` で")
+                msg = ("```\n" + await asyncio.to_thread(devops.update) + "\n```") if cmd == "!update" else ""
+                await ch.send((msg[:1700] + "\n再起動して反映します…").strip())
+                await asyncio.sleep(1)
+                devops.restart()
+                return
+            await ch.send(self.HELP)
+        except Exception as e:
+            await ch.send(f"失敗: {type(e).__name__}: {str(e)[:1500]}")
 
 
 def main():

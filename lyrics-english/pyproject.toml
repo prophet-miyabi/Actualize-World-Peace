@@ -3,10 +3,11 @@ name = "lyriclearn"
 version = "0.1.0"
 description = "YouTube Music の歌詞(和訳つき)画面から英語学習教材を自動生成する個人用ツール"
 requires-python = ">=3.10"
-dependencies = ["yt-dlp", "playwright", "anthropic", "discord.py"]
+dependencies = ["yt-dlp", "anthropic", "discord.py"]
 
 [project.optional-dependencies]
 nlp = ["wordfreq"]
+web = ["playwright"]   # PC(ブラウザ録画)版のみ。Termux では不要
 llm = []
 dev = ["pytest"]
 

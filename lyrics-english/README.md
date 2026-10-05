@@ -56,3 +56,8 @@ Bot   : ジョブ開始。(進捗: ダウンロード→録画→編集→教材
   歌詞行が検出できなければ失敗として Discord に報告されます。
 - モデルは `LYRICLEARN_MODEL`(既定 `claude-opus-5-5`)。Discord の25MB上限を超える動画は自動で再エンコードして送ります。
 - ブラウザは1つなので、ジョブは直列に処理されます。
+
+## Pixel(Android / Termux)版
+和訳つき歌詞は YouTube Music **アプリ**にあるため、Termux + adb でアプリを操作して録画・読み取りする
+Android バックエンドがあります(Termux では自動で選択)。手順は [docs/pixel.md](docs/pixel.md)。
+Discord の `!update` で GitHub の最新コードを端末に取り込めます。

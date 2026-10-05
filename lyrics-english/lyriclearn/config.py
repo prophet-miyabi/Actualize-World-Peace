@@ -34,3 +34,14 @@ class Config:
     # LYRICLEARN_BROWSER=chrome|msedge|chromium で変更可(chromium=同梱版)
     browser: str = os.environ.get("LYRICLEARN_BROWSER", "msedge" if sys.platform == "win32" else "chromium")
     selectors: Selectors = field(default_factory=Selectors)
+    # --- Android(Termux + adb)バックエンド ---
+    backend: str = os.environ.get("LYRICLEARN_BACKEND") or ("android" if "com.termux" in os.environ.get("PREFIX", "") else "web")
+    adb_serial: str | None = os.environ.get("LYRICLEARN_ADB_SERIAL")
+    music_pkg: str = "com.google.android.apps.youtube.music"
+    segment_sec: int = 170                 # screenrecord は1本3分まで。170秒ごとに繋ぐ
+    focus_y: float = float(os.environ.get("LYRICLEARN_FOCUS_Y", "0.35"))  # 再生中の行が来る縦位置(画面高さの比)
+    ui_skip: str = "歌詞|Lyrics|次の曲|Up next|関連|Related|翻訳|Translat"  # 歌詞ではないUI文字列
+
+    def __post_init__(self):
+        if self.backend == "android":   # 縦長画面のまま出力する
+            self.out_w, self.out_h = 720, 1280

@@ -24,7 +24,7 @@ def demo(d: Path):
     meta = {"offset": 2.0, "crop": {"x": 160, "y": 90, "w": 960, "h": 540},
             "lines": [{"start": i * 3.0, "end": i * 3.0 + 2.5, "text": t, "translation": j} for i, (t, j) in enumerate(lines)]}
     (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    print("video:", compose(d / "recording.webm", d / "audio.mp3", meta, d / "lyrics_video.mp4", Config()))
+    print("video:", compose(d / meta.get("recording", "recording.webm"), d / "audio.mp3", meta, d / "lyrics_video.mp4", Config()))
     print("materials:", write_materials(meta, d / "audio.mp3", d / "study"))
     print("出力先:", d.resolve())
 
@@ -36,6 +36,8 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("login", help="YouTube Music にログイン(初回のみ)")
+    sub.add_parser("adb-setup", help="[Android] ワイヤレスデバッグのペアリングと接続")
+    sub.add_parser("adb-inspect", help="[Android] 歌詞画面を出した状態で、読み取れるテキストと対応を表示")
     sp = sub.add_parser("search", help="曲名で検索して YouTube Music の URL 候補を表示")
     sp.add_argument("query", nargs="+")
     sub.add_parser("demo", help="ログイン不要の動作確認(合成の録画/音声で compose→study を実行)")
@@ -59,6 +61,12 @@ def main(argv=None):
     if getattr(a, "bg_color", None):
         cfg.bg_color = a.bg_color
 
+    if a.cmd == "adb-setup":
+        from .android import setup
+        return setup(cfg)
+    if a.cmd == "adb-inspect":
+        from .android import inspect
+        return inspect(cfg)
     if a.cmd == "search":
         from .agent import search_songs
         for r in search_songs(" ".join(a.query)):
@@ -80,12 +88,17 @@ def main(argv=None):
     if "download" in steps:
         print("audio:", download_audio(a.url, d))
     if "record" in steps:
-        from .record import record
-        m = record(a.url, d, a.profile, cfg, headless=a.headless, manual_setup=not a.auto)
+        if cfg.backend == "android":
+            from .android import record as arecord
+            from .compose import probe_duration
+            m = arecord(a.url, d, cfg, duration=probe_duration(d / "audio.mp3"))
+        else:
+            from .record import record
+            m = record(a.url, d, a.profile, cfg, headless=a.headless, manual_setup=not a.auto)
         print(f"recorded: {len(m['lines'])} lines, offset={m['offset']:.2f}s")
     meta = json.loads((d / "meta.json").read_text()) if (d / "meta.json").exists() else None
     if "compose" in steps:
-        print("video:", compose(d / "recording.webm", d / "audio.mp3", meta, d / "lyrics_video.mp4", cfg))
+        print("video:", compose(d / meta.get("recording", "recording.webm"), d / "audio.mp3", meta, d / "lyrics_video.mp4", cfg))
     if "study" in steps:
         gl = llm_glosses(meta["lines"], extract_words(meta["lines"])) if a.llm else None
         print("materials:", write_materials(meta, d / "audio.mp3", d / "study", gl))

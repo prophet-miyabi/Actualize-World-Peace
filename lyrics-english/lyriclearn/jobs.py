@@ -52,9 +52,14 @@ class JobManager:
             job.stage = "download"; self._say(job, "音源をダウンロード中…")
             download_audio(job.url, job.dir)
             job.stage = "record"; self._say(job, "YouTube Music を開いて歌詞画面を録画中(曲の長さぶん待ちます)…")
-            from .record import record
-            meta = record(job.url, job.dir, self.profile, cfg, headless=headless, manual_setup=False,
-                          log=lambda t: self._say(job, t))
+            log = lambda t: self._say(job, t)
+            if cfg.backend == "android":
+                from .android import record
+                from .compose import probe_duration
+                meta = record(job.url, job.dir, cfg, duration=probe_duration(job.dir / "audio.mp3"), log=log)
+            else:
+                from .record import record
+                meta = record(job.url, job.dir, self.profile, cfg, headless=headless, manual_setup=False, log=log)
             self._say(job, f"録画完了: {len(meta['lines'])}行を取得")
             job.result = self._finish(job, meta, cfg, llm)
             job.state = "done"
@@ -67,7 +72,7 @@ class JobManager:
 
     def _finish(self, job: Job, meta: dict, cfg: Config, llm: bool) -> dict:
         job.stage = "compose"; self._say(job, "動画を編集中(切り抜き+音源同期)…")
-        compose(job.dir / "recording.webm", job.dir / "audio.mp3", meta, job.dir / "lyrics_video.mp4", cfg)
+        compose(job.dir / meta.get("recording", "recording.webm"), job.dir / "audio.mp3", meta, job.dir / "lyrics_video.mp4", cfg)
         job.stage = "study"; self._say(job, "教材を作成中…")
         gl = llm_glosses(meta["lines"], extract_words(meta["lines"])) if llm else None
         stats = write_materials(meta, job.dir / "audio.mp3", job.dir / "study", gl)

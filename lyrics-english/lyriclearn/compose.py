@@ -39,3 +39,26 @@ def compose(recording: Path, audio: Path, meta: dict, out: Path, cfg: Config) ->
            "-movflags", "+faststart", str(out)]
     subprocess.run(cmd, check=True, capture_output=True)
     return out
+
+
+def stitch_segments(segments: list[tuple[Path, float]], out: Path) -> Path:
+    """screenrecord の分割ファイルを、実時刻どおりの1本に繋ぐ。
+
+    segments: [(ファイル, 最初のセグメント開始からの開始秒), ...]。区間の隙間は直前の最終フレームで埋め、
+    動画の時間軸が実時間とずれないようにする。
+    """
+    if not segments:
+        raise RuntimeError("録画ファイルを取得できませんでした")
+    cmd, parts = ["ffmpeg", "-y"], []
+    for i, (f, start) in enumerate(segments):
+        cmd += ["-i", str(f)]
+        nxt = segments[i + 1][1] if i + 1 < len(segments) else None
+        gap = max(nxt - start - probe_duration(f), 0) if nxt is not None else 0
+        pad = f",tpad=stop_mode=clone:stop_duration={gap:.3f}" if gap > 0 else ""
+        parts.append(f"[{i}:v]fps=30,setpts=PTS-STARTPTS{pad}[v{i}]")
+    chain = "".join(f"[v{i}]" for i in range(len(segments)))
+    flt = ";".join(parts) + f";{chain}concat=n={len(segments)}:v=1:a=0[v]"
+    cmd += ["-filter_complex", flt, "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-pix_fmt", "yuv420p", str(out)]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return out
