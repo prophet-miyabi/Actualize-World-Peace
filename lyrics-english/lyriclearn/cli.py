@@ -12,6 +12,23 @@ def _work(url: str, root: Path) -> Path:
     return root / video_id(url)
 
 
+def demo(d: Path):
+    """ffmpeg の合成映像/音声と固定の歌詞で、編集と教材作成まで通す。ffmpeg と環境の確認用。"""
+    import subprocess
+    d.mkdir(parents=True, exist_ok=True)
+    ff = lambda *x: subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *x], check=True)
+    ff("-f", "lavfi", "-i", "testsrc=s=1280x720:d=14:r=15", "-c:v", "libvpx", str(d / "recording.webm"))
+    ff("-f", "lavfi", "-i", "sine=f=440:d=10", str(d / "audio.mp3"))
+    lines = [("We never give up on the dream", "夢を決して諦めない"), ("Hold on to the light tonight", "今夜は光にしがみついて"),
+             ("Running through the endless night", "終わらない夜を駆け抜ける")]
+    meta = {"offset": 2.0, "crop": {"x": 160, "y": 90, "w": 960, "h": 540},
+            "lines": [{"start": i * 3.0, "end": i * 3.0 + 2.5, "text": t, "translation": j} for i, (t, j) in enumerate(lines)]}
+    (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    print("video:", compose(d / "recording.webm", d / "audio.mp3", meta, d / "lyrics_video.mp4", Config()))
+    print("materials:", write_materials(meta, d / "audio.mp3", d / "study"))
+    print("出力先:", d.resolve())
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="lyriclearn")
     ap.add_argument("--work", type=Path, default=Path("work"), help="作業ディレクトリ")
@@ -19,6 +36,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("login", help="YouTube Music にログイン(初回のみ)")
+    sub.add_parser("demo", help="ログイン不要の動作確認(合成の録画/音声で compose→study を実行)")
     for name, h in [("inspect", "歌詞DOMの候補を表示(selector調整用)"), ("download", "音源MP3を取得"),
                     ("record", "歌詞画面を録画し歌詞/同期情報を保存"), ("compose", "切り抜き+音源合成で歌詞動画を作る"),
                     ("study", "教材(Anki/HTML/音声クリップ)を作る"), ("all", "download→record→compose→study")]:
@@ -39,6 +57,8 @@ def main(argv=None):
     if getattr(a, "bg_color", None):
         cfg.bg_color = a.bg_color
 
+    if a.cmd == "demo":
+        return demo(a.work / "demo")
     if a.cmd == "login":
         from .record import login
         return login(a.profile, cfg)
