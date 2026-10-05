@@ -49,7 +49,8 @@ def login(profile: Path, cfg: Config):
         ctx = _context(pw, profile, cfg, headless=False, video_dir=None)
         page = ctx.new_page()
         page.goto("https://music.youtube.com")
-        input("ブラウザで YouTube Music にログインしたら Enter を押してください > ")
+        while input("ブラウザで YouTube Music にログインできたら ok と入力して Enter > ").strip().lower() != "ok":
+            pass  # 誤って押した Enter や貼り付けの改行では終了しない
         ctx.close()
 
 
