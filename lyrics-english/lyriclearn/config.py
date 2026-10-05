@@ -34,6 +34,11 @@ class Config:
     # LYRICLEARN_BROWSER=chrome|msedge|chromium で変更可(chromium=同梱版)
     browser: str = os.environ.get("LYRICLEARN_BROWSER", "msedge" if sys.platform == "win32" else "chromium")
     selectors: Selectors = field(default_factory=Selectors)
+    # 背景画像(ジャケット/アーティスト写真)。指定すると元の背景を抜いてこの画像を敷く
+    bg_image: str | None = None
+    bg_blur: float = 24.0            # 背景のぼかし強度
+    key_similarity: float = 0.22     # 元背景の抜きやすさ(大きいほど広く抜く)
+    inset_cover: bool = True         # 縦長のとき、上部に鮮明なジャケットを挿入
     # --- Android(Termux + adb)バックエンド ---
     backend: str = os.environ.get("LYRICLEARN_BACKEND") or ("android" if "com.termux" in os.environ.get("PREFIX", "") else "web")
     adb_serial: str | None = os.environ.get("LYRICLEARN_ADB_SERIAL")
