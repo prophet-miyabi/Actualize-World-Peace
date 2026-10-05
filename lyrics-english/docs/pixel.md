@@ -55,3 +55,14 @@ python -m lyriclearn.discord_bot
 
 **コードの配信経路は GitHub → `!update` のみ**です。Discord の添付ファイルをコードとして書き込む機能や、
 任意のシェル実行は付けていません(アカウントが乗っ取られても、端末でコードを実行させないため)。
+
+## GrapheneOS の場合
+GrapheneOS の Pixel でも動きます(adb の `screenrecord` / `uiautomator` はシェル権限で動くため、Google サービスに依存しません)。次の3点だけ注意してください。
+
+1. **YouTube Music アプリを入れてログインする。** Play ストアがないため、Aurora Store か、GrapheneOS の「Sandboxed Google Play」(アプリストアから導入)で入れ、
+   **Premium 加入のアカウント**でログインします。入れたら `python -m lyriclearn adb-check` で確認できます。
+2. **Termux は F-Droid 版**を入れる(Play 版は古く非推奨)。
+3. **Termux の電池設定:** 設定 > アプリ > Termux > 電池 > **制限なし**。ボットを動かしたまま画面を消すと止まりやすいため。
+   録画中は端末が画面をつけたままにする設定(`svc power stayon`)を自動で使います。
+
+ワイヤレスデバッグは Wi-Fi 接続が必要です(モバイル回線のみだと使えません)。

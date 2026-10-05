@@ -37,6 +37,7 @@ def main(argv=None):
 
     sub.add_parser("login", help="YouTube Music にログイン(初回のみ)")
     sub.add_parser("adb-setup", help="[Android] ワイヤレスデバッグのペアリングと接続")
+    sub.add_parser("adb-check", help="[Android] 録画の前提(adb/YouTube Musicアプリ/screenrecord)を点検")
     sub.add_parser("adb-inspect", help="[Android] 歌詞画面を出した状態で、読み取れるテキストと対応を表示")
     sp = sub.add_parser("search", help="曲名で検索して YouTube Music の URL 候補を表示")
     sp.add_argument("query", nargs="+")
@@ -64,6 +65,12 @@ def main(argv=None):
     if a.cmd == "adb-setup":
         from .android import setup
         return setup(cfg)
+    if a.cmd == "adb-check":
+        from .android import preflight
+        res = preflight(cfg)
+        for ok, msg in res:
+            print(("OK  " if ok else "NG  ") + msg)
+        raise SystemExit(0 if all(ok for ok, _ in res) else 1)
     if a.cmd == "adb-inspect":
         from .android import inspect
         return inspect(cfg)

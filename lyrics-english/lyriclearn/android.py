@@ -275,3 +275,29 @@ def setup(cfg: Config):
     conn = input("ワイヤレスデバッグ画面のメインの IP:ポート (ペア用とは別のポート) > ").strip()
     print(subprocess.run(["adb", "connect", conn], capture_output=True, text=True).stdout)
     print(subprocess.run(["adb", "devices"], capture_output=True, text=True).stdout)
+
+
+def preflight(cfg: Config, adb: Adb | None = None) -> list[tuple[bool, str]]:
+    """録画の前提を点検する。(OK?, 説明) の一覧を返す。GrapheneOS など Google サービスのない端末の確認にも使う。"""
+    adb = adb or Adb(cfg.adb_serial)
+    out: list[tuple[bool, str]] = []
+
+    def check(ok: bool, msg: str):
+        out.append((ok, msg))
+        return ok
+    try:
+        adb.check_connected()
+        check(True, "adb 接続")
+    except Exception as e:
+        check(False, f"adb 接続: {e}")
+        return out
+    pkgs = adb.shell(f"pm list packages {cfg.music_pkg}", check=False)
+    check(cfg.music_pkg in pkgs, "YouTube Music アプリ " + ("あり" if cfg.music_pkg in pkgs else
+          "なし → Aurora Store 等で入れ、Premium アカウントでログインしてください"))
+    check("screenrecord" in adb.shell("ls /system/bin/screenrecord", check=False), "screenrecord コマンド")
+    try:
+        w, h = adb.screen_size()
+        check(True, f"画面サイズ {w}x{h}")
+    except Exception:
+        check(False, "画面サイズを取得できません")
+    return out
