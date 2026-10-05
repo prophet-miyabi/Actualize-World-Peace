@@ -33,7 +33,10 @@ POLL_JS = """
 def _context(pw, profile: Path, cfg: Config, headless: bool, video_dir: Path | None):
     kw = dict(user_data_dir=str(profile), headless=headless,
               viewport={"width": cfg.viewport_w, "height": cfg.viewport_h},
-              args=["--autoplay-policy=no-user-gesture-required"])
+              args=["--autoplay-policy=no-user-gesture-required", "--disable-blink-features=AutomationControlled"],
+              ignore_default_args=["--enable-automation"])
+    if cfg.browser != "chromium":
+        kw["channel"] = cfg.browser
     if video_dir:
         kw.update(record_video_dir=str(video_dir), record_video_size={"width": cfg.viewport_w, "height": cfg.viewport_h})
     return pw.chromium.launch_persistent_context(**kw)

@@ -1,4 +1,6 @@
 """調整が必要になりやすい設定値。YouTube Music の DOM は変わるので selector はここに集約する。"""
+import os
+import sys
 from dataclasses import dataclass, field
 
 
@@ -28,4 +30,7 @@ class Config:
     bg_key: str | None = None        # 元画面の背景色(例 "0x212121")。指定すると透過して bg_color に置換
     poll_interval: float = 0.2       # 歌詞DOMを読む間隔(秒)
     sync_nudge: float = 0.0          # 録画開始と再生位置のズレ補正(秒)。+で映像を遅らせる
+    # 同梱 Chromium は Google ログインで弾かれるため、Windows では本物の Edge を使う。
+    # LYRICLEARN_BROWSER=chrome|msedge|chromium で変更可(chromium=同梱版)
+    browser: str = os.environ.get("LYRICLEARN_BROWSER", "msedge" if sys.platform == "win32" else "chromium")
     selectors: Selectors = field(default_factory=Selectors)
