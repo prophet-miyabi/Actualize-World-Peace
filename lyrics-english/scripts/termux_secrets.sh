@@ -3,8 +3,16 @@
 set -e
 F="$HOME/.lyriclearn.env"
 read -r -s -p "DISCORD_BOT_TOKEN (Reset Token で再発行した新しいもの): " T; echo
-read -r -p "DISCORD_ALLOWED_USER_IDS (あなたの Discord ユーザーID): " U
-read -r -s -p "ANTHROPIC_API_KEY: " K; echo
+while true; do
+  read -r -p "DISCORD_ALLOWED_USER_IDS (あなたの Discord ユーザーID。数字のみ。メールアドレスではない): " U
+  [[ "$U" =~ ^[0-9]{15,22}(,[0-9]{15,22})*$ ]] && break
+  echo "  → 数字(17〜19桁)で入力してください。Discord: 設定 > 詳細設定 > 開発者モード をオン → 自分のアイコンを右クリック > ユーザーIDをコピー"
+done
+while true; do
+  read -r -s -p "ANTHROPIC_API_KEY (sk-ant- で始まる): " K; echo
+  [[ "$K" == sk-ant-* ]] && break
+  echo "  → sk-ant- で始まるキーを入力してください"
+done
 umask 077
 cat > "$F" <<EOT
 export DISCORD_BOT_TOKEN='$T'
