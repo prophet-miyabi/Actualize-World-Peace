@@ -36,6 +36,8 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("login", help="YouTube Music にログイン(初回のみ)")
+    sp = sub.add_parser("search", help="曲名で検索して YouTube Music の URL 候補を表示")
+    sp.add_argument("query", nargs="+")
     sub.add_parser("demo", help="ログイン不要の動作確認(合成の録画/音声で compose→study を実行)")
     for name, h in [("inspect", "歌詞DOMの候補を表示(selector調整用)"), ("download", "音源MP3を取得"),
                     ("record", "歌詞画面を録画し歌詞/同期情報を保存"), ("compose", "切り抜き+音源合成で歌詞動画を作る"),
@@ -57,6 +59,11 @@ def main(argv=None):
     if getattr(a, "bg_color", None):
         cfg.bg_color = a.bg_color
 
+    if a.cmd == "search":
+        from .agent import search_songs
+        for r in search_songs(" ".join(a.query)):
+            print(f"{r['n']}. {r['title']} / {r['channel']} ({r['duration']}s)\n   {r['url']}")
+        return
     if a.cmd == "demo":
         return demo(a.work / "demo")
     if a.cmd == "login":
