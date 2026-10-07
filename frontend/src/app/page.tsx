@@ -261,8 +261,8 @@ export default function Home() {
           </p>
           <p className="text-gray-600 leading-loose tracking-wide">
             自由に組み立てた仕組みが、<br />
-            古い歯車と静かに入れ替わるとき、<br />
-            世界は少しだけ、やさしく回り出す。
+            古い歯車と入れ替わるとき、<br />
+            世界は新たなカタチへと回り始める。
           </p>
         </div>
       </section>
