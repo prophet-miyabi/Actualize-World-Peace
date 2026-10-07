@@ -9,7 +9,7 @@ import Logo from '@/components/Logo';
 
 const TITLE = 'AWP | スマホひとつで、ホームページとLINE公式アカウントを';
 const DESCRIPTION =
-  '事業内容を一言入力するだけで、AIがホームページの文章とデザインを作成。個人事業から、社内新規事業・フランチャイズの多店舗展開まで、複数ページを1つのアカウントで管理できます。月額2,980円（税込）。';
+  '事業内容を一言入力するだけで、AIがホームページの文章とデザインを作成。個人事業から、社内新規事業・フランチャイズの多店舗展開まで、複数ページを1つのアカウントで管理できます。作成・公開は無料です。';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -91,16 +91,16 @@ const FEATURES = [
 const STEPS = [
   { title: 'アカウントを作成', body: 'メールアドレスとパスワードで登録します（無料）。' },
   { title: '事業内容を入力して無料で試作', body: '一言の説明から、AIが文章とデザインを作成します。仕上がりはダッシュボードでいつでも確認・作り直しできます。' },
-  { title: '気に入ったら公開', body: '有料プランにお申し込みいただくと、独自URLで公開され、LINE連携も有効になります。' },
-  { title: 'LINEと連携', body: 'LINE Developersで取得した情報を入力すると自動応答まで設定されます。まだお持ちでない方には作り方をご案内します。' }
+  { title: 'そのまま無料で公開', body: 'AWPのURL（/ページ名）ですぐに公開されます。独自ドメインでの公開もできます。' },
+  { title: '外部ツールを追加', body: '予約・ネットショップ・問い合わせフォームなどのツールを、あなた名義のアカウントで導入して、ページに追加できます。' }
 ];
 
 const FAQ = [
-  { q: '無料で使えますか？', a: 'アカウントの作成と、LP・HPの試作（AIによる文章・デザイン作成、作り直し）は無料です。実際に公開する（独自URLでアクセスできるようにする）には、有料プラン（月額2,980円・税込）への申し込みが必要です。' },
-  { q: '契約期間の縛りはありますか？', a: 'ありません。ダッシュボードからいつでも解約でき、解約後は次回以降の請求は発生しません。支払い済みの料金の返金はしておりません。' },
+  { q: '無料で使えますか？', a: 'はい。アカウントの作成、LP・HPの作成（AIによる文章・デザイン作成）、公開、独自ドメインの接続まで無料です。AIによる文章・デザインの作成には1日あたりの回数制限があります。AIによるSNS運用などの上位機能は準備中です。' },
+  { q: 'あとで料金がかかることはありますか？', a: '現在、有料プランは準備中のため、AWPの利用料金はかかりません。外部ツールを導入した場合は、そのツールの料金を各提供元にお支払いいただきます（ツールごとに無料・有料が異なります）。' },
   { q: 'LINE公式アカウントは必要ですか？', a: 'LINE連携を使うには、LINE公式アカウントとLINE Developersでの設定が必要です。LINE公式アカウントの利用料金は、LINEヤフー社の料金体系に従います。' },
   { q: 'AIが作った文章は編集できますか？', a: 'できます。AIが作成した内容は下書きとして表示され、公開前に自由に書き換えられます。' },
-  { q: '支払い方法は何がありますか？', a: 'クレジットカードに対応しています（決済はStripeを利用しており、カード情報が当サービスに保存されることはありません）。' },
+  { q: 'AWPをやめたら、作ったページはどうなりますか？', a: 'ダッシュボードの「データの書き出し」から、ページの内容・写真・お問い合わせ履歴をいつでもファイルで保存できます。外部ツールはあなた名義のアカウントなので、AWPをやめてもそのまま使い続けられます。' },
   { q: '作れるページの数は？', a: '1つのアカウントで、複数のページを作成・公開できます。店舗ごと・事業ごとにページを追加していけるので、フランチャイズの多店舗展開や、社内の新規事業立ち上げにもご利用いただけます。' }
 ];
 
@@ -150,7 +150,7 @@ export default function Home() {
                 </a>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-4">月額2,980円（税込）・契約期間の縛りなし</p>
+            <p className="text-sm text-gray-500 mt-4">作成・公開まで無料・クレジットカードの登録不要</p>
           </div>
 
           {/* 画面イメージ（スマホの枠の中に、作成されるページの雰囲気を表示） */}
@@ -240,22 +240,22 @@ export default function Home() {
           <p className="text-blue-700 font-bold text-sm tracking-widest mb-3">PRICING</p>
           <h2 className="text-2xl sm:text-3xl font-black mb-10">料金</h2>
           <div className="rounded-3xl border-2 border-blue-600 p-8 shadow-xl">
-            <p className="font-bold">スタンダードプラン</p>
-            <p className="text-5xl font-black my-4">¥2,980<span className="text-base font-normal text-gray-500">/月（税込）</span></p>
+            <p className="font-bold">フリープラン</p>
+            <p className="text-5xl font-black my-4">¥0</p>
             <ul className="text-left text-sm text-gray-700 space-y-3 my-8">
               {[
-                '複数ページの作成・公開（試作は無料。公開のみ本プランが必要）',
-                'AIによる文章・デザインの作成と作り直し',
+                '複数ページの作成・公開（AWPのURLで公開）',
+                'AIによる文章・デザインの作成と作り直し（1日あたりの回数制限あり）',
                 '機能の追加（メニュー・よくある質問など6種類）',
-                'LINE公式アカウント連携・自動応答（お持ちの方は追加料金なし）',
-                'お問い合わせの管理（スマホアプリでの通知は公開準備中）',
-                '独自ドメインでの公開（ドメインの取得費用は別途）'
+                '予約・ネットショップなどの外部ツールの追加（ツールの料金は各提供元に別途）',
+                '独自ドメインでの公開（ドメインの取得費用は別途）',
+                'データの書き出し（いつでも持ち出せます）'
               ].map((t) => (
                 <li key={t} className="flex gap-2"><span className="text-blue-600 font-bold">✓</span>{t}</li>
               ))}
             </ul>
             <Cta className="w-full py-4 text-center" />
-            <p className="text-xs text-gray-500 mt-4">アカウントの作成とページの試作は無料です。公開には本プランへのお申し込みが必要です。いつでも解約できます。</p>
+            <p className="text-xs text-gray-500 mt-4">LINE自動応答・SNSの自動投稿・AIエージェントによる運用などの上位機能は準備中です。</p>
           </div>
         </div>
       </section>
@@ -281,7 +281,7 @@ export default function Home() {
       {/* 最後のひと押し */}
       <section className="px-5 py-24 text-center text-white" style={{ background: 'linear-gradient(135deg, #1d4ed8, #0f172a)' }}>
         <h2 className="text-2xl sm:text-4xl font-black mb-5">あなたのお店のページを、今日から。</h2>
-        <p className="opacity-85 mb-10">アカウントの作成は無料。プランは月額2,980円（税込）です。</p>
+        <p className="opacity-85 mb-10">アカウントの作成から、ページの公開まで無料です。</p>
         <Link href={SIGNUP} className="inline-block bg-white text-blue-700 font-bold rounded-full px-10 py-4 text-lg shadow-lg hover:bg-blue-50">
           アカウントを作成する
         </Link>

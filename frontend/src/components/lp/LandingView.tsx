@@ -30,6 +30,8 @@ export type Lp = {
   sections: { feature: string; content: any }[];
   // A/Bテストで選ばれたバリエーションのID。テスト未実施ならnull（バックエンドがすでにheroTitleへ反映済み）
   variantId?: string | null;
+  // ユーザーが追加した外部ツール（予約・ネットショップ・フォーム等）。URLはサーバー側で許可済みのhttpsホストのみ
+  tools?: { label: string; url: string; display: string }[];
 };
 
 const FONT_FAMILY: Record<Design['font'], { body: string; heading: string; headingWeight: number }> = {
@@ -315,6 +317,42 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
   }
 }
 
+// 外部ツール（予約・ネットショップ・問い合わせフォーム等）への入口。
+// 埋め込みは第三者のページをiframeで表示する。sandboxの allow-same-origin は「そのツール自身の生成元」として
+// 動かすためのもので、srcがAWPとは別のドメイン（サーバー側で許可ホストを検証済み）なのでAWP側の情報には触れられない
+export function ToolsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
+  const tools = lp.tools ?? [];
+  if (tools.length === 0) return null;
+  const buttons = tools.filter((t) => t.display !== 'embed');
+  const embeds = tools.filter((t) => t.display === 'embed');
+  return (
+    <SectionWrap tokens={tokens} id="tools">
+      <HeadingBlock tokens={tokens}>オンライン窓口</HeadingBlock>
+      {buttons.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center gap-4">
+          {buttons.map((t) => (
+            <a key={t.url} href={t.url} target="_blank" rel="noopener noreferrer" style={tokens.ctaStyle}
+              className="text-center font-bold px-8 py-4 shadow-md transition-transform hover:-translate-y-0.5">
+              {t.label}
+            </a>
+          ))}
+        </div>
+      )}
+      {embeds.map((t) => (
+        <div key={t.url} className="mt-10">
+          <p style={tokens.headingStyle} className="text-lg mb-3">{t.label}</p>
+          <iframe src={t.url} title={t.label} loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+            className="w-full h-[70vh] min-h-[480px]" style={{ border: 0, borderRadius: tokens.r.box, background: tokens.p.surface }} />
+          <a href={t.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-sm underline" style={{ color: tokens.muted }}>
+            うまく表示されない場合はこちら
+          </a>
+        </div>
+      ))}
+    </SectionWrap>
+  );
+}
+
 export function LineCtaSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const { p, headingStyle, ctaStyle } = tokens;
   return (
@@ -371,6 +409,7 @@ export default function LandingView({ lp, imageUrl }: { lp: Lp; imageUrl: string
       <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
       <StrengthsSection lp={lp} tokens={tokens} />
       {lp.sections.map((s, i) => <FeatureSection key={s.feature} section={s} index={i} tokens={tokens} />)}
+      <ToolsSection lp={lp} tokens={tokens} />
       <LineCtaSection lp={lp} tokens={tokens} />
       <SiteFooter lp={lp} tokens={tokens} />
     </div>

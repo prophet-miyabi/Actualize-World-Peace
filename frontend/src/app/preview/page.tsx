@@ -3,7 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import LandingView, { buildTokens, HeroSection, StrengthsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
+import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
 
 // 支払い前の無料お試し中でも、本人だけが自分のLP/HPの仕上がりを確認できるプレビュー画面
 // （公開URLではなく、ログインした本人のデータをそのまま描画する）
@@ -54,6 +54,7 @@ function DashboardPreviewInner() {
           <SiteNav lp={lp} tokens={tokens} current="" />
           <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
           <StrengthsSection lp={lp} tokens={tokens} />
+          <ToolsSection lp={lp} tokens={tokens} />
           <LineCtaSection lp={lp} tokens={tokens} />
           <SiteFooter lp={lp} tokens={tokens} />
         </div>

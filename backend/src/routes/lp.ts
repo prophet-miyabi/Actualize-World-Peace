@@ -9,7 +9,6 @@ import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
 import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
 import { authenticate, AuthRequest } from '../middlewares/auth';
-import { requireActiveSubscription } from '../middlewares/subscription';
 import { submitLpToIndexNow } from '../seo/indexnow';
 
 const router = Router();
@@ -118,7 +117,7 @@ router.get('/domain', authenticate, async (req: AuthRequest, res) => {
 // 取得したドメインを登録（DNS確認前なので未接続状態で保存）
 // 顧客に「どのサブドメインにするか」を考えさせないよう、常に www. 付きで公開する
 // （CNAMEはドメイン直下には設定できないため、www が最も確実）
-router.put('/domain', authenticate, requireActiveSubscription, async (req: AuthRequest, res) => {
+router.put('/domain', authenticate, async (req: AuthRequest, res) => {
   const input = normalizeDomain(req.body.domain);
   const domain = input.startsWith('www.') ? input : `www.${input}`;
   if (!DOMAIN_RE.test(domain)) {
@@ -181,9 +180,9 @@ router.get('/tls-ask', async (req, res) => {
 router.get('/by-domain/:host', async (req, res) => {
   const lp = await prisma.landingPage.findFirst({
     where: { customDomain: normalizeDomain(req.params.host), customDomainVerified: true },
-    select: { slug: true, user: { select: { isAdmin: true, subscriptionStatus: true } } }
+    select: { slug: true }
   });
-  if (!lp || !isPaidUser(lp.user)) return res.status(404).json({ error: 'Not found' });
+  if (!lp) return res.status(404).json({ error: 'Not found' });
   res.json({ slug: lp.slug });
 });
 
@@ -250,7 +249,7 @@ export async function setupLineWebhook(tenantId: string, channelAccessToken: str
 const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
@@ -259,7 +258,7 @@ const RESERVED_SLUGS = [
 ];
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
-// 無料お試し中はLP/HPの作成・編集・AI生成はできるが、実際の公開（LINE連携の有効化・公開URLの提供）はこれがtrueになってから
+// ページの公開は無料。LINE自動応答はAIの利用料がかかるため、有効化はこれがtrueの場合のみ
 function isPaidUser(user: { isAdmin: boolean; subscriptionStatus: string | null } | null): boolean {
   return !!user && (user.isAdmin || user.subscriptionStatus === 'active');
 }
@@ -273,7 +272,7 @@ async function resolveLp(userId: string, lpId: unknown) {
   return prisma.landingPage.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
-// LPとLINE設定を同時に作成する（無料お試し中でも作成できる。公開は有料プラン加入後）
+// LPとLINE設定を同時に作成する（作成・公開は無料。LINE自動応答の有効化は有料プラン加入後）
 router.post('/wizard', authenticate, async (req: AuthRequest, res) => {
   const { businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, channelId, channelSecret, channelAccessToken, description } = req.body;
   const userId = req.user!.id;
@@ -462,7 +461,7 @@ router.get('/list', authenticate, async (req: AuthRequest, res) => {
 });
 
 // 内容を更新したときなどに、本人の意思で検索エンジン（Bing・Yandex等）へ再通知する
-router.post('/notify-search-engines', authenticate, requireActiveSubscription, async (req: AuthRequest, res) => {
+router.post('/notify-search-engines', authenticate, async (req: AuthRequest, res) => {
   const lp = await resolveLp(req.user!.id, req.body?.lpId);
   if (!lp) return res.status(404).json({ error: '先にページを作成してください。' });
   const result = await submitLpToIndexNow(lp.slug);
@@ -470,24 +469,20 @@ router.post('/notify-search-engines', authenticate, requireActiveSubscription, a
   res.json({ ok: true });
 });
 
-// SEO: サイトマップ生成用に、実際に公開されている（有料プラン加入中の）ページのURLだけを返す
+// SEO: サイトマップ生成用に、公開されているページのURLを返す（作成したページは無料で公開される）
 router.get('/public-slugs', async (req, res) => {
-  const lps = await prisma.landingPage.findMany({
-    select: { slug: true, createdAt: true, designUpdatedAt: true, user: { select: { isAdmin: true, subscriptionStatus: true } } }
-  });
-  const pages = lps
-    .filter((lp) => isPaidUser(lp.user))
-    .map((lp) => ({ slug: lp.slug, updatedAt: (lp.designUpdatedAt ?? lp.createdAt).toISOString() }));
+  const lps = await prisma.landingPage.findMany({ select: { slug: true, createdAt: true, designUpdatedAt: true } });
+  const pages = lps.map((lp) => ({ slug: lp.slug, updatedAt: (lp.designUpdatedAt ?? lp.createdAt).toISOString() }));
   res.json({ pages });
 });
 
-// メイン画像（公開用）。有料プラン加入者のページのみ配信する。PVは数えない
+// メイン画像（公開用）。PVは数えない
 router.get('/:slug/image', async (req, res) => {
   const lp = await prisma.landingPage.findUnique({
     where: { slug: req.params.slug },
-    select: { heroImage: true, heroImageType: true, user: { select: { isAdmin: true, subscriptionStatus: true } } }
+    select: { heroImage: true, heroImageType: true }
   });
-  if (!lp?.heroImage || !isPaidUser(lp.user)) return res.status(404).end();
+  if (!lp?.heroImage) return res.status(404).end();
   res.set('Content-Type', lp.heroImageType || 'image/jpeg');
   // URLに版数（?v=）を付けて配信するため、長期キャッシュしてよい
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
@@ -554,17 +549,19 @@ router.post('/:slug/convert', async (req, res) => {
   res.json({ ok: true });
 });
 
-// 特定のLPデータを取得（公開用）。有料プランに加入している間だけ実際に公開される
-// （無料お試し中や解約後は、本人がダッシュボードでプレビューを見ることはできても、このURLは404になる）
+// 特定のLPデータを取得（公開用）。作成したページはAWPのドメイン上で誰でも無料で公開される
 router.get('/:slug', async (req, res) => {
   const lp = await prisma.landingPage.findUnique({
     where: { slug: req.params.slug },
-    include: { user: { select: { isAdmin: true, subscriptionStatus: true } }, variants: { where: { enabled: true } } }
+    include: {
+      variants: { where: { enabled: true } },
+      tools: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: { label: true, url: true, display: true } }
+    }
   });
-  if (!lp || !isPaidUser(lp.user)) return res.status(404).json({ error: 'Not found' });
+  if (!lp) return res.status(404).json({ error: 'Not found' });
   // PV増加
   await prisma.landingPage.update({ where: { id: lp.id }, data: { pageViews: { increment: 1 } } });
-  const { user, variants, ...lpData } = lp;
+  const { variants, ...lpData } = lp;
   const variant = pickVariant(variants);
   if (variant) {
     void prisma.lpVariant.update({ where: { id: variant.id }, data: { impressions: { increment: 1 } } }).catch(() => {});
@@ -582,8 +579,11 @@ router.get('/dashboard/stats', authenticate, async (req: AuthRequest, res) => {
   const lp = await resolveLp(userId, req.query.lpId);
   const lineConfig = await prisma.lineConfig.findUnique({ where: { userId }, select: { channelId: true } });
   const inquiries = await prisma.inquiry.findMany({ where: { tenantId: userId }, orderBy: { createdAt: 'desc' } });
+  const tools = lp
+    ? await prisma.lpTool.findMany({ where: { lpId: lp.id }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: { label: true, url: true, display: true } })
+    : [];
   res.json({
-    lp: lp ? { ...publicLp(lp), designStatus: isGenerating(lp) ? 'generating' : 'ready' } : null,
+    lp: lp ? { ...publicLp(lp), tools, designStatus: isGenerating(lp) ? 'generating' : 'ready' } : null,
     hasLineConfig: !!lineConfig?.channelId,
     inquiries
   });

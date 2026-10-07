@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { buildTokens, FeatureSection, LineCtaSection, SiteFooter, SiteNav, FEATURE_LABELS, type Lp } from '@/components/lp/LandingView';
+import { buildTokens, FeatureSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, FEATURE_LABELS, type Lp } from '@/components/lp/LandingView';
 
 const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
 
@@ -61,6 +61,7 @@ export default async function LandingFeaturePage({ params }: Params) {
         <h1 style={tokens.headingStyle} className="text-2xl sm:text-3xl">{FEATURE_LABELS[page] || page}</h1>
       </header>
       <FeatureSection section={section} index={0} tokens={tokens} />
+      <ToolsSection lp={lp} tokens={tokens} />
       <LineCtaSection lp={lp} tokens={tokens} />
       <SiteFooter lp={lp} tokens={tokens} />
     </div>

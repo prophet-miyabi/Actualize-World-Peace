@@ -27,7 +27,9 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'LP/HPビルダー', name: '追加機能セクション（メニュー・FAQ・アクセス等）', status: 'done' },
   { category: 'LP/HPビルダー', name: '写真・ロゴのアップロード管理', status: 'partial', note: '管理画面での管理のみ。公開LPへの表示（ギャラリー等）は未実装' },
   { category: 'LP/HPビルダー', name: '見出しのA/Bテスト', status: 'done' },
-  { category: 'LP/HPビルダー', name: '独自ドメイン接続', status: 'done' },
+  { category: 'LP/HPビルダー', name: 'AWPドメイン上での無料公開', status: 'done' },
+  { category: 'LP/HPビルダー', name: '独自ドメイン接続', status: 'partial', note: '無料で設定可能。Render上での顧客ドメインの自動登録（証明書発行）は未実装' },
+  { category: 'LP/HPビルダー', name: 'データの書き出し（AWPからの独立性）', status: 'done' },
   { category: 'LP/HPビルダー', name: 'ワイルドカードサブドメイン（{事業者}.本ドメイン）', status: 'blocked', note: 'コードは実装済み。AWP自身のドメイン取得・DNS設定が必要' },
 
   // ---- 集客チャネル ----
@@ -46,13 +48,15 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'AIエージェント', name: '進捗報告エージェント', status: 'done', note: '本レポートを作成する仕組み自体。エージェントループへの自動組み込みは未着手（次のステップ）' },
 
   // ---- 課金・法務 ----
+  { category: '収益', name: '外部ツールのカタログ・アフィリエイト導線・クリック計測', status: 'done' },
+  { category: '収益', name: 'ASP提携とアフィリエイトリンクの登録', status: 'blocked', note: '運営者のASP登録・各プログラムとの提携が必要' },
   { category: '課金・法務', name: 'Stripe決済（コード実装）', status: 'done' },
-  { category: '課金・法務', name: 'Stripe本番（Live）設定', status: 'blocked', note: '実際のStripeダッシュボードでの商品作成・キー取得が必要' },
+  { category: '課金・法務', name: 'Stripe本番（Live）設定', status: 'blocked', note: '有料プランの扱いを保留中' },
   { category: '課金・法務', name: '特定商取引法・プライバシーポリシーの実在情報記載', status: 'blocked', note: '運営者の実在情報が必要（捏造不可）' },
 
   // ---- インフラ・デプロイ ----
-  { category: 'インフラ・デプロイ', name: 'Render本番デプロイ', status: 'partial', note: 'DB稼働・フロントエンドは成功。バックエンドのデプロイを調整中' },
-  { category: 'インフラ・デプロイ', name: '本番用の環境変数整備（DEV_LOGIN無効化等）', status: 'not_started' },
+  { category: 'インフラ・デプロイ', name: 'Render本番デプロイ', status: 'done', note: '3サービスとも有料プランで常時稼働' },
+  { category: 'インフラ・デプロイ', name: '本番用の環境変数整備（DEV_LOGIN無効化等）', status: 'done' },
 
   // ---- 将来構想 ----
   { category: '将来構想', name: '個人向けセルフパブリッシング（ブログ・リール等）', status: 'not_started', note: '既存SNS・検索エンジン連携強化を優先実施中' }

@@ -137,6 +137,23 @@ function DashboardInner() {
   const isActive = subStatus === 'active';
   const qs = lpId ? `?lp=${encodeURIComponent(lpId)}` : '';
 
+  const [exporting, setExporting] = useState(false);
+  // AWPに依存せず運営を続けられるよう、自分のデータをいつでも持ち出せるようにする
+  const exportData = async () => {
+    setExporting(true);
+    try {
+      const { data: body } = await api.get('/export', { responseType: 'blob' });
+      const href = URL.createObjectURL(body);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `awp-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(href);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const openPortal = async () => {
     setPortalLoading(true);
     try {
@@ -187,29 +204,25 @@ function DashboardInner() {
             無料でLP・HPを試作する
           </Link>
         )}
-        {data.lp && !isActive && (
-          <Link href="/billing" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
-            このページを公開する
-          </Link>
-        )}
       </div>
 
       <div className="mb-8">
-        {isActive ? (
+        {data.lp ? (
           <div className="flex items-center gap-3 text-sm flex-wrap">
-            <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">加入中</span>
-            <button onClick={openPortal} disabled={portalLoading} className="text-blue-600 underline">
-              {portalLoading ? '読み込み中...' : '支払い方法・解約の管理'}
-            </button>
-            <Link href="/social" className="text-blue-600 underline">SNS連携・予約投稿</Link>
-            <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
-            <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
+            <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">公開中（無料）</span>
+            <Link href={`/tools${qs}`} className="text-blue-600 underline">外部ツールを追加</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
-          </div>
-        ) : data.lp ? (
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-800 text-sm">
-            試作は無料でご確認いただけます。気に入ったら「このページを公開する」からお申し込みください（公開URL・LINE連携はお申し込み後に有効になります）。
+            {isActive && (
+              <>
+                <Link href="/social" className="text-blue-600 underline">SNS連携・予約投稿</Link>
+                <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
+                <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
+                <button onClick={openPortal} disabled={portalLoading} className="text-blue-600 underline">
+                  {portalLoading ? '読み込み中...' : '支払い方法・解約の管理'}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-yellow-700 text-sm">
@@ -218,6 +231,7 @@ function DashboardInner() {
         )}
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-2">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
+        {isAdmin && <Link href="/admin/tools" className="text-blue-600 underline text-sm block mt-1">外部ツールのカタログ管理 →</Link>}
       </div>
 
       {data.lp ? (
@@ -227,16 +241,17 @@ function DashboardInner() {
             <p className="text-4xl font-bold mt-2">{data.lp.pageViews}</p>
           </div>
           <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <p className="text-gray-500 text-sm">{isActive ? '公開URL' : 'プレビュー'}</p>
-            {isActive ? (
-              <a href={`/${data.lp.slug}`} target="_blank" className="text-blue-600 font-bold mt-2 block underline">
-                /{data.lp.slug}
-              </a>
-            ) : (
-              <Link href={`/preview${qs}`} className="text-blue-600 font-bold mt-2 block underline">
-                仕上がりを見る →
-              </Link>
-            )}
+            <p className="text-gray-500 text-sm">公開URL</p>
+            <a href={`/${data.lp.slug}`} target="_blank" className="text-blue-600 font-bold mt-2 block underline break-all">
+              /{data.lp.slug}
+            </a>
+          </div>
+          <div className="bg-white p-6 rounded-xl border shadow-sm">
+            <p className="text-gray-500 text-sm">データの書き出し</p>
+            <p className="text-xs text-gray-500 mt-1">ページ内容・写真・お問い合わせ履歴をファイルで保存できます。</p>
+            <button onClick={exportData} disabled={exporting} className="text-blue-600 font-bold mt-2 underline disabled:text-gray-400">
+              {exporting ? '書き出し中...' : '書き出す →'}
+            </button>
           </div>
         </div>
       ) : (
@@ -294,7 +309,7 @@ function DashboardInner() {
         </Link>
       )}
 
-      {data.lp && isActive && (
+      {data.lp && (
         <div className="bg-white rounded-xl border shadow-sm p-6 mb-8">
           <div className="flex items-center justify-between gap-4">
             <div>

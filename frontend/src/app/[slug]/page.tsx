@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import LandingView, { buildTokens, HeroSection, StrengthsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
+import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
 
 // SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
 // 検索エンジン・SNSのクローラーには中身が空のページに見えてしまうため）
@@ -89,6 +89,7 @@ export default async function LandingPage({ params }: Params) {
           <SiteNav lp={lp} tokens={tokens} current="" />
           <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
           <StrengthsSection lp={lp} tokens={tokens} />
+          <ToolsSection lp={lp} tokens={tokens} />
           <LineCtaSection lp={lp} tokens={tokens} />
           <SiteFooter lp={lp} tokens={tokens} />
         </div>

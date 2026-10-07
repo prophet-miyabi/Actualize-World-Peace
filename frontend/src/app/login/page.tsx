@@ -47,7 +47,7 @@ export default function Login() {
         <h2 className="text-2xl font-bold mb-2 text-center">{isLogin ? 'ログイン' : 'アカウントを作成'}</h2>
         {!isLogin && (
           <p className="text-sm text-gray-500 text-center mb-6">
-            アカウントの作成は無料です。作成後、すぐにLP・HPを無料で試作できます。公開する時だけ有料プラン（月額2,980円・税込）にお申し込みください。
+            アカウントの作成は無料です。作成後すぐに、LP・HPを無料で作成・公開できます。
           </p>
         )}
         {isLogin && <div className="mb-6" />}

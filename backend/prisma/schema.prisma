@@ -167,6 +167,55 @@ model LandingPage {
 
   photos   Photo[]
   variants LpVariant[]
+  tools    LpTool[]
+}
+
+// ---- 外部ツール（収益の柱: 運営者のアフィリエイトリンク経由でユーザーが導入する） ----
+// 運営者（管理者）が管理画面で登録するツールのカタログ。affiliateUrl はASPで発行された成果測定リンク。
+// allowedHosts は、ユーザーが自分のサイトに貼れるURLのホスト（例: airrsv.net）。これ以外のURLは貼らせない
+// （任意のURLやHTMLを許すと、AWPドメイン上で第三者のスクリプトが動き、他ユーザーの情報を盗めてしまうため）
+model ToolCatalogItem {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  category     String
+  description  String
+  officialUrl  String
+  affiliateUrl String?
+  allowedHosts String[]
+  // button = ボタンでツールの画面へ移動 / embed = ページ内に埋め込み表示（iframe）も許可
+  embeddable   Boolean  @default(false)
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ユーザーが自分のサイトに追加したツール。保存するのは公開用のURLだけで、
+// ツールのログイン情報や顧客データはAWPに保存しない（ユーザー本人のツールのアカウント側に残る）
+model LpTool {
+  id        String      @id @default(cuid())
+  lpId      String
+  lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  toolKey   String
+  label     String
+  url       String
+  display   String      @default("button") // button / embed
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([lpId])
+}
+
+// アフィリエイトリンクのクリック計測（どのツールが選ばれているかを把握し、カタログ改善に使う）。
+// 個人を特定する情報は保存しない
+model AffiliateClick {
+  id        String   @id @default(cuid())
+  toolKey   String
+  source    String?
+  createdAt DateTime @default(now())
+
+  @@index([toolKey])
 }
 
 // A/Bテスト用のヒーローコピーのバリエーション。最初の1件を作成した時点で、
