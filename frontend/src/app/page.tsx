@@ -231,12 +231,12 @@ export default function Home() {
             <p className="text-5xl font-black my-4">¥0</p>
             <ul className="text-left text-sm text-gray-700 space-y-3 my-8">
               {[
-                '複数ページの作成・公開（AWPのURLで公開）',
-                'AIによる文章・デザインの作成と作り直し（1日あたりの回数制限あり）',
-                '機能の追加（メニュー・よくある質問など6種類）',
-                '予約・ネットショップなどの提携ツールの追加（ツールの料金は各提供元に別途）',
-                '独自ドメインでの公開（ドメインの取得費用は別途）',
-                'データの書き出し（いつでも持ち出せます）'
+                '複数ページの作成・公開',
+                'AIによる文章・デザインの作成と作り直し',
+                '機能の追加',
+                '予約・ネットショップなどの提携ツールの追加',
+                '独自ドメインでの公開',
+                'データの書き出し'
               ].map((t) => (
                 <li key={t} className="flex gap-2"><span className="text-blue-600 font-bold">✓</span>{t}</li>
               ))}
