@@ -3,7 +3,7 @@ import { Outfit } from 'next/font/google';
 import { BRAND_GRADIENT, PHI, goldenRosette } from '@/lib/brand';
 
 // ブランドロゴ（AWP）。AI画像生成は文字や形が崩れやすいため、SVGで描いて常にくっきり表示する。
-// マークは、黄金らせん（らせん＋収束点）6つを円周上に60°ずつ並べた円環（lib/brand.ts）。
+// マークは、日本を中心にした地球（白い線）を、黄金らせん6つが60°ずつ囲む円環（lib/brand.ts）。
 // 黄金比: マークの高さ : 文字の大きさ = φ : 1、マークと文字の間隔 = マーク × 1/φ²、角丸 = マーク × 1/φ³
 const brandFont = Outfit({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' });
 
@@ -22,7 +22,8 @@ export function LogoMark({ size = 36 }: { size?: number }) {
         </linearGradient>
       </defs>
       <rect width={VIEW} height={VIEW} rx={VIEW / PHI ** 3} fill={`url(#${gid})`} />
-      <circle cx={rosette.center} cy={rosette.center} r={rosette.ringR} stroke="#ffffff" strokeOpacity={0.35} strokeWidth={rosette.ringStrokeWidth} fill="none" />
+      <circle cx={rosette.center} cy={rosette.center} r={rosette.globe.r} stroke="#ffffff" strokeWidth={rosette.globe.outlineWidth} fill="none" />
+      <path d={rosette.globe.landPath} stroke="#ffffff" strokeWidth={rosette.globe.landWidth} strokeLinejoin="round" fill="none" />
       {rosette.spirals.map((sp, i) => (
         <g key={i}>
           <path d={sp.path} stroke="#ffffff" strokeWidth={rosette.strokeWidth} strokeLinecap="round" fill="none" />
