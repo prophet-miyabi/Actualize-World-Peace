@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "prisma migrate deploy && node dist/server.js",
+    "start": "node start.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "promo:dry-run": "ts-node scripts/run-self-promotion.ts --dry-run",
