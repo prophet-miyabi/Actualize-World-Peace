@@ -92,15 +92,6 @@ const STEPS = [
   { title: '提携ツールを追加', body: '予約・ネットショップ・問い合わせフォームなどのツールを、あなた名義のアカウントで導入して、ページに追加できます。' }
 ];
 
-const FAQ = [
-  { q: '無料で使えますか？', a: 'はい。アカウントの作成、LP・HPの作成（AIによる文章・デザイン作成）、公開、独自ドメインの接続まで無料です。AIによる文章・デザインの作成には1日あたりの回数制限があります。AIによるSNS運用などの上位機能は準備中です。' },
-  { q: 'あとで料金がかかることはありますか？', a: '現在、有料プランは準備中のため、AWPの利用料金はかかりません。提携ツールを導入した場合は、そのツールの料金を各提供元にお支払いいただきます（ツールごとに無料・有料が異なります）。' },
-  { q: 'LINE公式アカウントは必要ですか？', a: 'なくても大丈夫です。お持ちの方は友だち追加URLを登録すると、ページにLINEボタンが表示されます。' },
-  { q: 'AIが作った文章は編集できますか？', a: 'できます。AIが作成した内容は下書きとして表示され、公開前に自由に書き換えられます。' },
-  { q: 'AWPをやめたら、作ったページはどうなりますか？', a: 'ダッシュボードの「データの書き出し」から、ページの内容・写真・お問い合わせ履歴をいつでもファイルで保存できます。提携ツールはあなた名義のアカウントなので、AWPをやめてもそのまま使い続けられます。' },
-  { q: '作れるページの数は？', a: '1つのアカウントで、いくつでもページを作れます。本業と副業、活動ごと、お店ごとにページを分けて運用できます。' }
-];
-
 function Cta({ className = '' }: { className?: string }) {
   return (
     <Link href={SIGNUP} className={`inline-block bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold rounded-full shadow-lg shadow-violet-200 hover:brightness-110 transition ${className}`}>
@@ -119,7 +110,6 @@ export default function Home() {
           <nav className="flex items-center gap-5 text-sm">
             <a href="#features" className="hidden sm:inline text-gray-600 hover:text-gray-900">機能</a>
             <a href="#pricing" className="hidden sm:inline text-gray-600 hover:text-gray-900">料金</a>
-            <a href="#faq" className="hidden sm:inline text-gray-600 hover:text-gray-900">よくある質問</a>
             <Link href="/login" className="text-gray-700 font-bold">ログイン</Link>
             <Link href={SIGNUP} className="bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white font-bold px-4 py-2 rounded-full hover:brightness-110">はじめる</Link>
           </nav>
@@ -257,23 +247,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* よくある質問 */}
-      <section id="faq" className="px-5 py-20 bg-gray-50 scroll-mt-16">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-10">よくある質問</h2>
-          <div className="space-y-3">
-            {FAQ.map((f) => (
-              <details key={f.q} className="group bg-white rounded-2xl border p-6">
-                <summary className="font-bold cursor-pointer list-none flex justify-between gap-4">
-                  <span><span className="text-blue-600 mr-2">Q.</span>{f.q}</span>
-                  <span aria-hidden className="text-blue-600 transition-transform group-open:rotate-45">＋</span>
-                </summary>
-                <p className="mt-4 text-gray-600 leading-relaxed">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ミッション: AWP = Actualize World Peace */}
       <section className="px-5 py-20 text-center bg-gradient-to-br from-fuchsia-50 via-white to-sky-50">
