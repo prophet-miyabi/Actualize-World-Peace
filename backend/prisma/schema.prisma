@@ -14,6 +14,13 @@ model User {
   name      String
   createdAt DateTime @default(now())
 
+  // SMS認証済みの携帯番号（E.164形式: +8190...）。1つの番号で作れるアカウントは1つ（捨てアカウント対策）。
+  // パスワード再設定のコード送信先にもなる
+  phone           String?   @unique
+  phoneVerifiedAt DateTime?
+  // ログイン用トークンの世代。パスワード再設定で1つ進め、それより前に発行したトークンをすべて無効にする
+  tokenVersion    Int       @default(0)
+
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
   subscriptionStatus   String? // active / past_due / canceled / null(未加入)

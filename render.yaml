@@ -51,6 +51,13 @@ services:
         sync: false
       - key: CLOUDFLARE_API_TOKEN
         sync: false
+      # SMS認証（Twilio Verify）。3つそろうと有効になる。SMS_DEV_MODE は本番では絶対に設定しない
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PRICE_ID

@@ -12,7 +12,8 @@ export default function Privacy() {
 
       <h2 className="text-lg font-bold mt-8 mb-2">1. 取得する情報</h2>
       <ul className="list-disc pl-6 space-y-1">
-        <li>アカウント情報：メールアドレス、店舗名・事業者名、パスワード（暗号化して保存）</li>
+        <li>アカウント情報：メールアドレス、お名前（ニックネーム・活動名・店舗名など）、パスワード（暗号化して保存）</li>
+        <li>携帯電話番号：アカウント作成時の本人確認と、パスワード再設定の確認コード送信に使います。公開ページ等に表示することはありません</li>
         <li>ランディングページの掲載内容、独自ドメイン名</li>
         <li>LINE公式アカウントの連携情報（チャネルID、チャネルシークレット、アクセストークン）</li>
         <li>LINE公式アカウントに寄せられたお問い合わせの内容と送信者の識別子</li>
@@ -26,13 +27,14 @@ export default function Privacy() {
         <li>本サービスの提供（ページの公開、LINEの自動応答、お問い合わせの表示・通知）</li>
         <li>利用料金の請求</li>
         <li>お問い合わせへの対応、重要なお知らせの連絡</li>
-        <li>不正利用の防止、本サービスの改善</li>
+        <li>不正利用の防止（SMSによる本人確認、1つの電話番号で作成できるアカウントを1つに制限）、本サービスの改善</li>
       </ul>
 
       <h2 className="text-lg font-bold mt-8 mb-2">3. 外部サービスへの提供</h2>
       <p className="mb-2">本サービスの提供に必要な範囲で、以下の事業者に情報を送信します。</p>
       <ul className="list-disc pl-6 space-y-1">
         <li>Stripe, Inc.（決済処理）</li>
+        <li>Twilio Inc.（SMSによる確認コードの送信のため、携帯電話番号）</li>
         <li>LY Corporation（LINE公式アカウントとの連携）</li>
         <li>Anthropic, PBC（AIによる文章・デザイン作成機能を利用した場合、入力された事業内容）</li>
         <li>Google LLC（Geminiによる画像生成機能を利用した場合、画像の指示文）</li>

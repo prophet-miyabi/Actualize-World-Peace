@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../prisma';
 
 export interface AuthRequest extends Request { user?: { id: string } }
 
@@ -13,14 +14,22 @@ export const JWT_SECRET = (() => {
   return s;
 })();
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
+// tv = tokenVersion。パスワード再設定で世代が進むと、それより古いトークンは使えなくなる
+export function issueToken(user: { id: string; tokenVersion: number }) {
+  return jwt.sign({ id: user.id, tv: user.tokenVersion }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  let decoded: { id: string; tv?: number };
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
+    decoded = jwt.verify(token, JWT_SECRET) as { id: string; tv?: number };
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
   }
+  const user = await prisma.user.findUnique({ where: { id: decoded.id }, select: { tokenVersion: true } });
+  if (!user || (decoded.tv ?? 0) !== user.tokenVersion) return res.status(401).json({ error: 'Invalid token' });
+  req.user = { id: decoded.id };
+  next();
 };
