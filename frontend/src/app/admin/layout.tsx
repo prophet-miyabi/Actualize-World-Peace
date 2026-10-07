@@ -9,7 +9,7 @@ import Logo from '@/components/Logo';
 // PCは左のサイドバー、スマホは上部の横スクロールメニュー
 const SECTIONS: { label: string | null; items: { href: string; label: string; danger?: boolean }[] }[] = [
   { label: null, items: [{ href: '/admin', label: 'ダッシュボード' }, { href: '/admin/ops', label: 'AIオペレーター' }] },
-  { label: '対応', items: [{ href: '/admin/harness', label: 'Harness 申し込み・料金' }, { href: '/admin/monitoring', label: 'エラー監視' }] },
+  { label: '対応', items: [{ href: '/admin/harness', label: 'Harness 申し込み・料金' }, { href: '/admin/reports', label: '通報' }, { href: '/admin/monitoring', label: 'エラー監視' }] },
   { label: '収益', items: [{ href: '/admin/tools', label: '提携ツール' }] },
   { label: 'サイト', items: [{ href: '/admin/assets', label: '外装画像' }] },
   { label: '設定', items: [{ href: '/admin/emergency', label: '緊急コントロール', danger: true }] }

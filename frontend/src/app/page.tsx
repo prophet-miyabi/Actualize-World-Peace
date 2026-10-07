@@ -274,8 +274,9 @@ export default function Home() {
       <footer className="px-5 py-10 text-sm text-gray-500">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-4 justify-between">
           <p>© {new Date().getFullYear()} AWP</p>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/legal" className="hover:underline">特定商取引法に基づく表記</Link>
+            <Link href="/terms" className="hover:underline">利用規約</Link>
             <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
             <Link href="/login" className="hover:underline">ログイン</Link>
           </div>

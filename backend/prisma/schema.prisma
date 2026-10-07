@@ -21,6 +21,19 @@ model User {
   // ログイン用トークンの世代。パスワード再設定で1つ進め、それより前に発行したトークンをすべて無効にする
   tokenVersion    Int       @default(0)
 
+  // ---- プロフィール（SNS） ----
+  // ユーザー名は公開URL（/ユーザー名）になる。ページのURL（LandingPage.slug）と同じ名前空間なので、相互に重複させない
+  username String?  @unique
+  bio      String?
+  category String?  // business / creator / other
+  region   String?  // 地域検索用（都道府県など、本人が入力したもの）
+  links    Json?    // [{ label, url }] 本人のSNS・外部サイト
+  // 通報などで運営者が非公開にしたプロフィール
+  profileHidden Boolean @default(false)
+  following Follow[] @relation("following")
+  followers Follow[] @relation("followers")
+  pageLikes PageLike[]
+
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
   subscriptionStatus   String? // active / past_due / canceled / null(未加入)
@@ -180,6 +193,62 @@ model LandingPage {
   photos   Photo[]
   variants LpVariant[]
   tools    LpTool[]
+  likes    PageLike[]
+  events   PageEvent[]
+
+  // 通報などで運営者が非公開にしたページ（公開URL・発見・サイトマップのすべてから外れる）
+  hidden   Boolean  @default(false)
+}
+
+// ---- SNS（フォロー・いいね・閲覧/クリックの記録・通報） ----
+model Follow {
+  followerId  String
+  followingId String
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model PageLike {
+  userId    String
+  lpId      String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@id([userId, lpId])
+  @@index([lpId])
+}
+
+// 公開ページの閲覧・クリックの記録（人気・流入元の分析用）。訪問者を特定する情報は保存しない
+model PageEvent {
+  id        String      @id @default(cuid())
+  lpId      String
+  lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  type      String      // view / click
+  target    String?     // click の行き先の種類（tool / line / sns など）
+  source    String?     // 流入元のドメイン（例: instagram.com）。URLのパスやクエリは保存しない
+  createdAt DateTime    @default(now())
+
+  @@index([lpId, createdAt])
+}
+
+// 違法・有害なページやプロフィールの通報（運営者が確認して非公開にできる）
+model Report {
+  id         String   @id @default(cuid())
+  targetType String   // page / profile
+  targetId   String   // page = slug, profile = username
+  reason     String   // illegal / scam / adult / harassment / copyright / other
+  detail     String?
+  reporterId String?
+  status     String   @default("open") // open / resolved / dismissed
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
 }
 
 // ---- 提携ツール（収益の柱: 運営者のアフィリエイトリンク経由でユーザーが導入する） ----

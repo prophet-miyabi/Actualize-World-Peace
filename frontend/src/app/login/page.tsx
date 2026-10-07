@@ -147,7 +147,7 @@ export default function Login() {
             )}
             {!isLogin && (
               <p className="text-xs text-gray-400 mt-4 text-center">
-                作成すると<Link href="/privacy" className="underline">プライバシーポリシー</Link>に同意したものとみなされます。
+                作成すると<Link href="/terms" className="underline">利用規約</Link>と<Link href="/privacy" className="underline">プライバシーポリシー</Link>に同意したものとみなされます。
               </p>
             )}
             <button type="button" className="mt-5 w-full text-center text-sm font-bold text-violet-600" onClick={switchMode}>

@@ -182,7 +182,7 @@ router.get('/tls-ask', async (req, res) => {
 // 独自ドメインでアクセスされたときに、どのLPを表示するかを返す（フロントのmiddlewareが使う）
 router.get('/by-domain/:host', async (req, res) => {
   const lp = await prisma.landingPage.findFirst({
-    where: { customDomain: normalizeDomain(req.params.host), customDomainVerified: true },
+    where: { customDomain: normalizeDomain(req.params.host), customDomainVerified: true, hidden: false },
     select: { slug: true }
   });
   if (!lp) return res.status(404).json({ error: 'Not found' });
@@ -267,10 +267,10 @@ function normalizeLineAddUrl(raw: unknown): { ok: true; value: string | null } |
 const LINE_URL_ERROR = 'LINEの友だち追加URL（https://lin.ee/... の形式）を入力してください。';
 
 // アプリの画面やAPIと同じ名前のURLは、LPが表示できなくなるので使わせない
-const RESERVED_SLUGS = [
+export const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
@@ -302,6 +302,10 @@ router.post('/wizard', authenticate, async (req: AuthRequest, res) => {
   }
   if (RESERVED_SLUGS.includes(slug)) {
     return res.status(400).json({ error: 'このURLはシステムで使用しているため選べません。別のURLをお試しください。' });
+  }
+  // ページのURLとユーザー名（プロフィールのURL）は同じ名前空間なので、重複させない
+  if (await prisma.user.findUnique({ where: { username: slug }, select: { id: true } })) {
+    return res.status(400).json({ error: 'このURLは既に使われています。別のURLをお試しください。' });
   }
   const siteType = req.body.siteType === 'hp' ? 'hp' : 'lp';
   const templateKey = (PRESET_KEYS as string[]).includes(req.body.templateKey) ? req.body.templateKey : null;
@@ -488,7 +492,7 @@ router.get('/preview/image', authenticate, async (req: AuthRequest, res) => {
 router.get('/list', authenticate, async (req: AuthRequest, res) => {
   const pages = await prisma.landingPage.findMany({
     where: { userId: req.user!.id },
-    select: { id: true, slug: true, businessName: true, siteType: true, pageViews: true, createdAt: true },
+    select: { id: true, slug: true, businessName: true, siteType: true, pageViews: true, createdAt: true, hidden: true },
     orderBy: { createdAt: 'asc' }
   });
   res.json({ pages });
@@ -505,7 +509,7 @@ router.post('/notify-search-engines', authenticate, async (req: AuthRequest, res
 
 // SEO: サイトマップ生成用に、公開されているページのURLを返す（作成したページは無料で公開される）
 router.get('/public-slugs', async (req, res) => {
-  const lps = await prisma.landingPage.findMany({ select: { slug: true, createdAt: true, designUpdatedAt: true } });
+  const lps = await prisma.landingPage.findMany({ where: { hidden: false }, select: { slug: true, createdAt: true, designUpdatedAt: true } });
   const pages = lps.map((lp) => ({ slug: lp.slug, updatedAt: (lp.designUpdatedAt ?? lp.createdAt).toISOString() }));
   res.json({ pages });
 });
@@ -514,9 +518,9 @@ router.get('/public-slugs', async (req, res) => {
 router.get('/:slug/image', async (req, res) => {
   const lp = await prisma.landingPage.findUnique({
     where: { slug: req.params.slug },
-    select: { heroImage: true, heroImageType: true }
+    select: { heroImage: true, heroImageType: true, hidden: true }
   });
-  if (!lp?.heroImage) return res.status(404).end();
+  if (!lp?.heroImage || lp.hidden) return res.status(404).end();
   res.set('Content-Type', lp.heroImageType || 'image/jpeg');
   // URLに版数（?v=）を付けて配信するため、長期キャッシュしてよい
   res.set('Cache-Control', 'public, max-age=31536000, immutable');
@@ -589,13 +593,15 @@ router.get('/:slug', async (req, res) => {
     where: { slug: req.params.slug },
     include: {
       variants: { where: { enabled: true } },
-      tools: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: { label: true, url: true, display: true } }
+      tools: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: { label: true, url: true, display: true } },
+      user: { select: { username: true, name: true, profileHidden: true } },
+      _count: { select: { likes: true } }
     }
   });
-  if (!lp) return res.status(404).json({ error: 'Not found' });
+  if (!lp || lp.hidden) return res.status(404).json({ error: 'Not found' });
   // PV増加
   await prisma.landingPage.update({ where: { id: lp.id }, data: { pageViews: { increment: 1 } } });
-  const { variants, ...lpData } = lp;
+  const { variants, user, _count, userId: _ownerId, ...lpData } = lp;
   const variant = pickVariant(variants);
   if (variant) {
     void prisma.lpVariant.update({ where: { id: variant.id }, data: { impressions: { increment: 1 } } }).catch(() => {});
@@ -603,7 +609,10 @@ router.get('/:slug', async (req, res) => {
   res.json({
     ...publicLp(lpData),
     heroTitle: variant?.heroTitle || lpData.heroTitle,
-    variantId: variant?.id ?? null
+    variantId: variant?.id ?? null,
+    // 公開ページ下部のバー（作成者のプロフィール・いいね）用。非公開にされたプロフィールは出さない
+    owner: user.username && !user.profileHidden ? { username: user.username, name: user.name } : null,
+    likeCount: _count.likes
   });
 });
 

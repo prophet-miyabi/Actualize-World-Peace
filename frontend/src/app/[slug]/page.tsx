@@ -2,16 +2,32 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
+import PageEngagementBar from '@/components/community/PageEngagementBar';
+import ProfileView, { type Profile } from '@/components/community/ProfileView';
 
 // SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
 // 検索エンジン・SNSのクローラーには中身が空のページに見えてしまうため）
 const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
+const SITE_URL = process.env.SITE_URL || '';
 
-async function fetchLp(slug: string): Promise<Lp | null> {
+type PublicLp = Lp & { owner: { username: string; name: string } | null };
+
+async function fetchLp(slug: string): Promise<PublicLp | null> {
   try {
     const res = await fetch(`${API}/lp/${encodeURIComponent(slug)}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
+  } catch {
+    return null;
+  }
+}
+
+// ページのURLとプロフィールのURL（/ユーザー名）は同じ場所を共有する。ページがなければプロフィールを探す
+async function fetchProfile(username: string): Promise<Profile | null> {
+  try {
+    const res = await fetch(`${API}/community/profiles/${encodeURIComponent(username)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return (await res.json()).profile;
   } catch {
     return null;
   }
@@ -30,7 +46,19 @@ type Params = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const lp = await fetchLp(slug);
-  if (!lp) return { title: 'ページが見つかりません', robots: { index: false, follow: false } };
+  if (!lp) {
+    const profile = await fetchProfile(slug);
+    if (!profile) return { title: 'ページが見つかりません', robots: { index: false, follow: false } };
+    const origin = await currentOrigin();
+    const description = (profile.bio || `${profile.name}さんのプロフィール`).slice(0, 155);
+    return {
+      title: `${profile.name}（@${profile.username}） | AWP`,
+      description,
+      alternates: { canonical: `${origin}/${profile.username}` },
+      openGraph: { title: `${profile.name}（@${profile.username}）`, description, type: 'profile', url: `${origin}/${profile.username}`, locale: 'ja_JP' },
+      twitter: { card: 'summary', title: profile.name, description }
+    };
+  }
 
   const origin = await currentOrigin();
   const description = [lp.heroTitle, ...lp.strengths.filter(Boolean)].join(' / ').slice(0, 155);
@@ -61,7 +89,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function LandingPage({ params }: Params) {
   const { slug } = await params;
   const lp = await fetchLp(slug);
-  if (!lp) notFound();
+  if (!lp) {
+    const profile = await fetchProfile(slug);
+    if (!profile) notFound();
+    return <ProfileView profile={profile} />;
+  }
+  const siteUrl = SITE_URL || (await currentOrigin());
+  const engagement = <PageEngagementBar slug={lp.slug} owner={lp.owner} siteUrl={siteUrl} />;
 
   // 画像は版数付きURLで配信し、デザインを作り直したときだけ新しい画像を読み込む
   const imageUrl = lp.hasImage ? `/api/lp/${encodeURIComponent(lp.slug)}/image?v=${lp.imageVersion}` : null;
@@ -92,6 +126,7 @@ export default async function LandingPage({ params }: Params) {
           <ToolsSection lp={lp} tokens={tokens} />
           <LineCtaSection lp={lp} tokens={tokens} />
           <SiteFooter lp={lp} tokens={tokens} />
+          {engagement}
         </div>
       </>
     );
@@ -101,6 +136,7 @@ export default async function LandingPage({ params }: Params) {
     <>
       {jsonLdScript}
       <LandingView lp={lp} imageUrl={imageUrl} />
+      {engagement}
     </>
   );
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 
-type PageSummary = { id: string; slug: string; businessName: string; siteType: string; pageViews: number };
+type PageSummary = { id: string; slug: string; businessName: string; siteType: string; pageViews: number; hidden?: boolean };
 
 export default function Dashboard() {
   return (
@@ -236,6 +236,20 @@ function DashboardInner() {
         </div>
       )}
 
+      {/* SNSの入口: プロフィール（/ユーザー名）と、みんなのページを探す「発見」 */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <Link href="/profile" className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white p-4">
+          <span className="block text-lg" aria-hidden>🪪</span>
+          <span className="block font-bold text-sm mt-1">プロフィール</span>
+          <span className="block text-[11px] opacity-90">あなたの名刺ページをつくる</span>
+        </Link>
+        <Link href="/discover" className="rounded-2xl bg-white border border-gray-200 p-4">
+          <span className="block text-lg" aria-hidden>✨</span>
+          <span className="block font-bold text-sm mt-1">発見</span>
+          <span className="block text-[11px] text-gray-500">みんなのページを見る</span>
+        </Link>
+      </div>
+
       <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h2 className="text-2xl font-black">あなたのページ</h2>
         {!data.lp && (
@@ -248,7 +262,11 @@ function DashboardInner() {
       <div className="mb-8">
         {data.lp ? (
           <div className="flex items-center gap-3 text-sm flex-wrap">
-            <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">公開中（無料）</span>
+            {pages.find((p) => p.id === data.lp.id)?.hidden ? (
+              <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold">運営により非公開中（利用規約に関する確認のため）</span>
+            ) : (
+              <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">公開中（無料）</span>
+            )}
             <Link href={`/tools${qs}`} className="text-blue-600 underline">提携ツールを追加</Link>
             <Link href="/harness" className="text-blue-600 underline">LINE・X・Instagramを自動化</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
