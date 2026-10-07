@@ -129,6 +129,13 @@ export default function HarnessPage() {
         <Link href="/dashboard" className="text-sm text-gray-500">← ダッシュボードへ戻る</Link>
         <h1 className="text-2xl font-black mt-3 mb-1">LINE・X・Instagramを自動化</h1>
         <p className="text-sm text-gray-600 mb-4">必要なものを選んで申し込むだけ。<strong>導入は無料</strong>です。ボットや投稿の自動作成などの機能は、表示の料金で追加できます。</p>
+        <Link href="/harness/post" className="mb-4 flex items-center gap-3 rounded-2xl bg-white border-2 border-violet-200 p-4">
+          <span className="text-2xl" aria-hidden>🗓️</span>
+          <span className="min-w-0">
+            <span className="block font-bold text-sm">導入済みの方: AWPから予約投稿</span>
+            <span className="block text-[11px] text-gray-500">X Harness・IG Harnessとつないで、AIの下書き→確認→予約までここで完結</span>
+          </span>
+        </Link>
 
         {done && (
           <div className="rounded-2xl p-4 mb-4 text-white bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500">

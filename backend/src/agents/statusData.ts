@@ -72,7 +72,7 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: '収益', name: 'Harness（LINE/X/IG）導入支援：選んで申し込む画面・運営者の管理画面', status: 'done' },
   { category: '収益', name: 'Harness導入支援のメニュー料金設定', status: 'blocked', note: '運営者が管理画面で料金を入力するまでユーザーに表示されない' },
   { category: '収益', name: '決済（Harness申し込み・有料プラン）', status: 'not_started', note: '決済方法は後から追加する方針。Stripeのコード基盤は実装済み' },
-  { category: '収益', name: 'AIの投稿を顧客のX/IG Harnessへ自動予約する連携', status: 'not_started' },
+  { category: '収益', name: 'AIの投稿を顧客のX/IG Harnessへ予約する連携（/harness/post）', status: 'done', note: 'APIはHarnessのソースコードで確認。接続先は *.workers.dev のみ・APIキーは暗号化保存' },
 
   // ---- 法務 ----
   { category: '法務', name: '特定商取引法・プライバシーポリシーの運営者情報', status: 'blocked', note: '運営者の実在情報が必要（捏造不可）。有料サービス・ASP審査の前提' },

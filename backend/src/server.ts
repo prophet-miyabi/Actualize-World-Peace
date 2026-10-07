@@ -24,6 +24,7 @@ import chatbotRoutes from './routes/chatbot';
 import bookingRoutes from './routes/bookings';
 import productRoutes from './routes/products';
 import postRoutes from './routes/posts';
+import harnessLinkRoutes from './routes/harnessLink';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -69,6 +70,7 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/harness-link', harnessLinkRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

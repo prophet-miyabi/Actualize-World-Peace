@@ -35,6 +35,8 @@ model User {
   pageLikes PageLike[]
   builderSessions BuilderSession[]
   posts Post[]
+  harnessLinks HarnessLink[]
+  harnessPosts HarnessScheduledPost[]
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
@@ -621,4 +623,37 @@ model Post {
 
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+// ---- 利用者自身の X Harness / IG Harness との接続 ----
+// 利用者が自分のCloudflareに導入したHarnessのURLとAPIキー（暗号化して保存）。
+// AWPはここから、利用者が承認した投稿だけを予約する（投稿の実行は利用者のHarnessが行う）
+model HarnessLink {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         String   // x / instagram
+  baseUrl      String   // https://〇〇.workers.dev
+  apiKeyEnc    String   // AES-256-GCM で暗号化したAPIキー
+  accountId    String?  // Harness側のアカウントID
+  accountLabel String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, kind])
+}
+
+model HarnessScheduledPost {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String   // x / instagram
+  text        String
+  scheduledAt DateTime
+  remoteId    String?  // Harness側の予約ID
+  status      String   @default("scheduled") // scheduled / canceled / failed
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

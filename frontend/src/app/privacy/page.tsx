@@ -22,6 +22,7 @@ export default function Privacy() {
         <li>ランディングページの閲覧数と、閲覧元のドメイン名（例: instagram.com。閲覧した人を特定する情報は記録しません）</li>
         <li>プロフィール（ユーザー名・表示名・自己紹介・ジャンル・活動地域・リンク）：利用者が設定した場合、誰でも見られる形で公開されます</li>
         <li>フォロー・いいね・通報の記録</li>
+        <li>X Harness・IG Harnessと接続した場合：HarnessのURLとAPIキー（APIキーは暗号化して保存）。予約投稿の文章は、利用者自身のHarnessに送信します</li>
       </ul>
 
       <h2 className="text-lg font-bold mt-8 mb-2">2. 利用目的</h2>
