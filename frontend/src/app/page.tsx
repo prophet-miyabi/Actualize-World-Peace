@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteAssetImage from '@/components/SiteAssetImage';
+import SalonMockup from '@/components/SalonMockup';
 import Logo from '@/components/Logo';
 
 // AWP 自体のLP（ログイン画面の前に表示するサービス紹介）。
@@ -140,23 +141,9 @@ export default function Home() {
             <p className="text-sm text-gray-500 mt-4">作成・公開まで無料・クレジットカードの登録不要</p>
           </div>
 
-          {/* 画面イメージ（スマホの枠の中に、作成されるページの雰囲気を表示） */}
+          {/* 画面イメージ（スマホの枠の中に、作成されるページの完成度を表示） */}
           <div aria-hidden className="flex justify-center">
-            <div className="w-64 sm:w-72 rounded-[2.5rem] border-[10px] border-gray-900 bg-white shadow-2xl overflow-hidden">
-              <div className="h-40 flex flex-col justify-end p-5 text-white" style={{ background: 'linear-gradient(160deg, #9a6b2f, #3b2a1f)' }}>
-                <p className="text-[10px] tracking-widest opacity-80">Hair Salon Lumière</p>
-                <p className="text-lg font-bold leading-snug" style={{ fontFamily: 'var(--font-serif-jp)' }}>毎朝の髪が、<br />少しうれしくなる。</p>
-              </div>
-              <div className="p-5 space-y-3" style={{ background: '#fbf8f3' }}>
-                {['骨格に合わせた、扱いやすいカット', '髪へのやさしさにこだわった薬剤', '完全予約制で、ゆったりと'].map((t, i) => (
-                  <div key={t} className="flex gap-3 items-baseline text-[11px]" style={{ fontFamily: 'var(--font-serif-jp)' }}>
-                    <span className="font-bold" style={{ color: '#9a6b2f' }}>POINT {i + 1}</span>
-                    <span>{t}</span>
-                  </div>
-                ))}
-                <div className="rounded-full text-center text-white text-xs font-bold py-2.5 mt-4" style={{ background: '#06C755' }}>LINEで無料相談する</div>
-              </div>
-            </div>
+            <SalonMockup />
           </div>
         </div>
       </section>

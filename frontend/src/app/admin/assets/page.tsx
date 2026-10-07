@@ -7,10 +7,27 @@ type Asset = { key: string; prompt: string; mimeType: string; updatedAt: string 
 // アプリ自体の外装（マーケティングLPやウィザードの装飾画像）を、
 // 導入済みの画像生成AI（Cloudflare Workers AI / Gemini）でその場で作り、差し替えるための管理画面。
 // 管理者だけが使う（一般の顧客には表示・提供しない）。
-const PRESET_SLOTS = [
+// prompt があるスロットは、選ぶと推奨の指示文も入る（スマホ見本の美容院サイト用の写真など）
+const PRESET_SLOTS: { key: string; label: string; prompt?: string }[] = [
   { key: 'marketing_hero', label: 'トップページ ヒーロー画像' },
   { key: 'marketing_steps', label: 'トップページ 使い方セクション' },
-  { key: 'wizard_hero', label: 'ウィザード 上部の装飾画像' }
+  { key: 'wizard_hero', label: 'ウィザード 上部の装飾画像' },
+  {
+    key: 'mockup_salon_hero', label: 'スマホ見本 メイン写真',
+    prompt: 'editorial photograph of a calm high-end Japanese hair salon, soft natural window light, warm beige and light wood interior, a woman with glossy shoulder-length brown hair seen from behind, shallow depth of field, minimal, refined, film photography, vertical composition, no text, no letters, no signage'
+  },
+  {
+    key: 'mockup_salon_style_1', label: 'スマホ見本 スタイル1',
+    prompt: 'close-up editorial hair photography of glossy ash beige medium-length hair with soft waves, studio lighting, plain neutral background, no face, no text, no letters, no signage'
+  },
+  {
+    key: 'mockup_salon_style_2', label: 'スマホ見本 スタイル2',
+    prompt: 'close-up editorial hair photography of a milk tea brown bob haircut with natural shine, soft light, plain beige background, no face, no text, no letters, no signage'
+  },
+  {
+    key: 'mockup_salon_style_3', label: 'スマホ見本 スタイル3',
+    prompt: 'close-up editorial hair photography of sleek glossy dark brown long straight hair, soft light, minimal plain background, no face, no text, no letters, no signage'
+  }
 ];
 
 export default function AdminAssets() {
@@ -71,7 +88,7 @@ export default function AdminAssets() {
             <label className="text-sm font-bold text-gray-700 block mb-2">差し替え先</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {PRESET_SLOTS.map((s) => (
-                <button key={s.key} type="button" onClick={() => setKey(s.key)}
+                <button key={s.key} type="button" onClick={() => { setKey(s.key); if (s.prompt) setPrompt(s.prompt); }}
                   className={`text-xs px-3 py-1.5 rounded-full border ${key === s.key ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600'}`}>
                   {s.label}
                 </button>
