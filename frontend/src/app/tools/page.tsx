@@ -7,7 +7,7 @@ import api from '@/lib/api';
 type CatalogItem = { key: string; name: string; category: string; description: string; embeddable: boolean; allowedHosts: string[] };
 type MyTool = { id: string; toolKey: string; label: string; url: string; display: string };
 
-// 外部ツール（予約・ネットショップ・フォーム等）を自分のサイトに追加する画面。
+// 提携ツール（予約・ネットショップ・フォーム等）を自分のサイトに追加する画面。
 // ツールへの登録は運営者のアフィリエイトリンク経由（PR表記が必要）。アカウントはユーザー本人の名義で作られ、
 // 顧客データはツール側に保存される。AWPが保存するのは公開用のURLだけ。
 function ToolsInner() {
@@ -75,7 +75,7 @@ function ToolsInner() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <Link href="/dashboard" className="text-sm text-gray-500">← ダッシュボードへ戻る</Link>
-        <h1 className="text-2xl font-bold mt-3 mb-2">外部ツールを追加</h1>
+        <h1 className="text-2xl font-bold mt-3 mb-2">提携ツールを追加</h1>
         <p className="text-sm text-gray-600 mb-4">
           予約・ネットショップ・問い合わせフォームなどのツールを、あなたのサイトにボタンや埋め込みで追加できます。
         </p>

@@ -30,7 +30,7 @@ export type Lp = {
   sections: { feature: string; content: any }[];
   // A/Bテストで選ばれたバリエーションのID。テスト未実施ならnull（バックエンドがすでにheroTitleへ反映済み）
   variantId?: string | null;
-  // ユーザーが追加した外部ツール（予約・ネットショップ・フォーム等）。URLはサーバー側で許可済みのhttpsホストのみ
+  // ユーザーが追加した提携ツール（予約・ネットショップ・フォーム等）。URLはサーバー側で許可済みのhttpsホストのみ
   tools?: { label: string; url: string; display: string }[];
   // business = お店・ビジネス / creator = クリエイター活動。見出しやボタンの言葉づかいが変わる
   purpose?: string;
@@ -89,7 +89,7 @@ function HeadingBlock({ tokens, children }: { tokens: Tokens; children: ReactNod
     </h2>
   );
 }
-// ヒーローのボタン。LINEが登録されていればLINEの案内へ、なければ外部ツール（予約・ショップ等）へ。どちらもなければ出さない
+// ヒーローのボタン。LINEが登録されていればLINEの案内へ、なければ提携ツール（予約・ショップ等）へ。どちらもなければ出さない
 function CtaLink({ lp, tokens, large = false }: { lp: Lp; tokens: Tokens; large?: boolean }) {
   const tools = lp.tools ?? [];
   const target = lp.lineAddUrl
@@ -331,7 +331,7 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
   }
 }
 
-// 外部ツール（予約・ネットショップ・問い合わせフォーム等）への入口。
+// 提携ツール（予約・ネットショップ・問い合わせフォーム等）への入口。
 // 埋め込みは第三者のページをiframeで表示する。sandboxの allow-same-origin は「そのツール自身の生成元」として
 // 動かすためのもので、srcがAWPとは別のドメイン（サーバー側で許可ホストを検証済み）なのでAWP側の情報には触れられない
 export function ToolsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {

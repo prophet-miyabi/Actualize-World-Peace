@@ -20,7 +20,7 @@ type Item = {
 
 const EMPTY = { key: '', name: '', category: '', description: '', officialUrl: '', affiliateUrl: '', allowedHosts: '', embeddable: false, enabled: true, sortOrder: 0 };
 
-// 運営者専用: ユーザーに案内する外部ツールと、ASPで発行したアフィリエイトリンクを登録する。
+// 運営者専用: ユーザーに案内する提携ツールと、ASPで発行したアフィリエイトリンクを登録する。
 // 説明文はユーザーへの広告表示になるため、公式サイトで確認できる事実だけを書く（誇張・比較優良の表現はしない）。
 export default function AdminToolsPage() {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -75,7 +75,7 @@ export default function AdminToolsPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
         <Link href="/dashboard" className="text-sm text-gray-500">← ダッシュボードへ戻る</Link>
-        <h1 className="text-2xl font-bold mt-3 mb-2">外部ツールのカタログ（運営者用）</h1>
+        <h1 className="text-2xl font-bold mt-3 mb-2">提携ツールのカタログ（運営者用）</h1>
         <p className="text-sm text-gray-600 mb-6">
           ASP（A8.net など）で提携・発行したアフィリエイトリンクを登録します。説明文には、公式サイトで確認できる事実だけを書いてください。
         </p>

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 
-// 外部ツール: AWPの収益の柱。運営者が登録したツールを、ユーザーが運営者のアフィリエイトリンク経由で
+// 提携ツール: AWPの収益の柱。運営者が登録したツールを、ユーザーが運営者のアフィリエイトリンク経由で
 // 自分の名義のアカウントとして導入し、自分のサイトにボタン／埋め込みとして追加する。
 // ツールのアカウント・顧客データはユーザー本人のツール側に残り、AWPは公開用URLしか持たない
 // （ユーザーがAWPから独立して運営できるようにするため）。

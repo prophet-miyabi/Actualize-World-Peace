@@ -48,7 +48,7 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'AIエージェント', name: '進捗報告エージェント', status: 'done', note: '本レポートを作成する仕組み自体。エージェントループへの自動組み込みは未着手（次のステップ）' },
 
   // ---- 課金・法務 ----
-  { category: '収益', name: '外部ツールのカタログ・アフィリエイト導線・クリック計測', status: 'done' },
+  { category: '収益', name: '提携ツールのカタログ・アフィリエイト導線・クリック計測', status: 'done' },
   { category: '収益', name: 'ASP提携とアフィリエイトリンクの登録', status: 'blocked', note: '運営者のASP登録・各プログラムとの提携が必要' },
   { category: '課金・法務', name: 'Stripe決済（コード実装）', status: 'done' },
   { category: '課金・法務', name: 'Stripe本番（Live）設定', status: 'blocked', note: '有料プランの扱いを保留中' },
