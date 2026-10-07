@@ -12,15 +12,16 @@ const b64 = (buf: Uint8Array | null | undefined, type: string | null | undefined
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const [user, pages, inquiries, harnessOrders] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, createdAt: true } }),
+  const [user, pages, inquiries, harnessOrders, cashEntries] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, createdAt: true, username: true, bio: true, category: true, region: true, links: true } }),
     prisma.landingPage.findMany({
       where: { userId },
       include: { tools: true, photos: true, variants: true },
       orderBy: { createdAt: 'asc' }
     }),
     prisma.inquiry.findMany({ where: { tenantId: userId }, orderBy: { createdAt: 'asc' } }),
-    prisma.harnessOrder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
+    prisma.harnessOrder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
+    prisma.ledgerEntry.findMany({ where: { userId }, orderBy: { createdAt: 'asc' }, include: { tx: { select: { kind: true, memo: true } } } })
   ]);
 
   const data = {
@@ -54,6 +55,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       createdAt: p.createdAt
     })),
     inquiries: inquiries.map((i) => ({ senderName: i.senderName, message: i.message, source: i.source, createdAt: i.createdAt })),
+    cashHistory: cashEntries.map((e) => ({ amount: e.credit - e.debit, kind: e.tx.kind, memo: e.tx.memo, createdAt: e.createdAt })),
     harnessOrders: harnessOrders.map((o) => ({ items: o.items, totalYen: o.totalYen, note: o.note, status: o.status, paymentStatus: o.paymentStatus, createdAt: o.createdAt }))
   };
 

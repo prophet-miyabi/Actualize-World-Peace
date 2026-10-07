@@ -70,7 +70,13 @@ router.get('/go/:key', async (req, res) => {
   const item = await prisma.toolCatalogItem.findFirst({ where: { key: String(req.params.key), enabled: true } });
   if (!item) return res.status(404).send('Not found');
   const source = typeof req.query.src === 'string' ? req.query.src.slice(0, 40) : null;
-  await prisma.affiliateClick.create({ data: { toolKey: item.key, source } }).catch(() => {});
+  // 利用者のページのPR枠から押された場合は、そのページを記録する（分配先の確認用。収益化オンのページだけ）
+  let lpId: string | null = null;
+  if (typeof req.query.lp === 'string' && /^[a-z0-9-]{3,40}$/.test(req.query.lp) && item.revenueShareAllowed) {
+    const lp = await prisma.landingPage.findUnique({ where: { slug: req.query.lp }, select: { id: true, monetizationEnabled: true, hidden: true } });
+    if (lp?.monetizationEnabled && !lp.hidden) lpId = lp.id;
+  }
+  await prisma.affiliateClick.create({ data: { toolKey: item.key, source, lpId } }).catch(() => {});
   res.redirect(302, item.affiliateUrl || item.officialUrl);
 });
 
@@ -140,6 +146,7 @@ function parseCatalogBody(body: any): { data?: any; error?: string } {
       allowedHosts,
       embeddable: !!body?.embeddable,
       enabled: body?.enabled !== false,
+      revenueShareAllowed: !!body?.revenueShareAllowed,
       sortOrder: Number.isFinite(Number(body?.sortOrder)) ? Number(body.sortOrder) : 0
     }
   };

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 
 // ログイン後の画面だけに出す、スマホアプリ風の下部タブバー（PCでは非表示）。
 // 公開ページ（/{slug}）やトップページには出さない
-const APP_PREFIXES = ['/discover', '/profile', '/dashboard', '/features', '/tools', '/harness', '/preview', '/domain', '/growth', '/photos', '/social', '/agents', '/automation'];
+const APP_PREFIXES = ['/discover', '/profile', '/wallet', '/dashboard', '/features', '/tools', '/harness', '/preview', '/domain', '/growth', '/photos', '/social', '/agents', '/automation'];
 
 const Icon = ({ d }: { d: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6" aria-hidden>

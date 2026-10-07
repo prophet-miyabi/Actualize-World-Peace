@@ -84,5 +84,12 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'インフラ・デプロイ', name: 'Gemini APIキーの作り直し（画面に映ったため）', status: 'blocked', note: '運営者がGoogle AI Studioで再発行' },
 
   // ---- 将来構想 ----
-  { category: '将来構想', name: '個人向けセルフパブリッシング（ブログ・リール等）', status: 'not_started' }
+  { category: '将来構想', name: '個人向けセルフパブリッシング（ブログ・リール等）', status: 'not_started' },
+
+  { category: 'プラットフォーム', name: 'プロフィール（/ユーザー名）・フォロー・いいね・発見（新着/人気/フォロー中/検索）', status: 'done' },
+  { category: 'プラットフォーム', name: '通報と運営による非公開（/admin/reports）・利用規約', status: 'partial', note: '利用規約の【】（運営者情報・管轄裁判所）の記入と弁護士確認が必要' },
+  { category: 'プラットフォーム', name: '対話型AIページビルダー（事実の出どころ管理・未確定の事実は公開しない）', status: 'done' },
+  { category: 'プラットフォーム', name: '収益化（PR枠）・複式簿記の台帳・78/22分配・キャッシュでの支払い', status: 'done', note: '報酬は運営者がASPで確定を確認して記録する。分配は規約で認められた案件（分配OK）だけ' },
+  { category: 'プラットフォーム', name: 'キャッシュの出金（銀行振込）', status: 'blocked', note: 'Stripe Connect等の送金基盤・本人確認・税務（支払調書・インボイス）の確認が必要。弁護士・税理士への相談推奨' },
+  { category: 'プラットフォーム', name: '外部ツールへのキャッシュ利用・予約/EC/決済モジュール・ページ内チャットボット・おすすめ表示', status: 'not_started', note: '外部へのキャッシュ利用は資金決済法の確認が必要' }
 ];

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
+import { refundHarnessCash } from './wallet';
 
 // Harness（L Harness / X Harness / IG Harness）の導入支援。
 // ユーザーは「導入（無料）」と有料の追加機能を選んで申し込み、運営者が管理画面で対応する。
@@ -9,7 +10,7 @@ const router = Router();
 
 const HARNESSES = ['line', 'x', 'instagram'] as const;
 const ORDER_STATUSES = ['requested', 'in_progress', 'done', 'canceled'];
-const PAYMENT_STATUSES = ['unpaid', 'not_required', 'paid'];
+const PAYMENT_STATUSES = ['unpaid', 'not_required', 'paid', 'refunded'];
 const MAX_ITEMS_PER_ORDER = 10;
 
 async function requireAdmin(req: AuthRequest, res: any): Promise<boolean> {
@@ -62,8 +63,10 @@ router.post('/orders/:id/cancel', authenticate, async (req: AuthRequest, res) =>
   const order = await prisma.harnessOrder.findFirst({ where: { id: String(req.params.id), userId: req.user!.id } });
   if (!order) return res.status(404).json({ error: '見つかりません' });
   if (order.status !== 'requested') return res.status(400).json({ error: '対応が始まっているため、取り消しは運営者にご連絡ください。' });
-  const updated = await prisma.harnessOrder.update({ where: { id: order.id }, data: { status: 'canceled' } });
-  res.json({ order: updated });
+  await prisma.harnessOrder.update({ where: { id: order.id }, data: { status: 'canceled' } });
+  // キャッシュで支払い済みなら、キャッシュに戻す
+  await refundHarnessCash(order.id, req.user!.id);
+  res.json({ order: await prisma.harnessOrder.findUnique({ where: { id: order.id } }) });
 });
 
 // ---- 運営者（管理者）向け ----
@@ -173,8 +176,14 @@ router.put('/admin/orders/:id', authenticate, async (req: AuthRequest, res) => {
     if (!PAYMENT_STATUSES.includes(req.body.paymentStatus)) return res.status(400).json({ error: '支払い状況が正しくありません' });
     data.paymentStatus = req.body.paymentStatus;
   }
-  const order = await prisma.harnessOrder.update({ where: { id: String(req.params.id) }, data }).catch(() => null);
+  // 返金済みの状態は、実際の返金処理（下の取り消し時の逆仕訳）でだけ付ける
+  if (data.paymentStatus === 'refunded') return res.status(400).json({ error: '返金は申し込みを「取り消し」にすると自動で行われます' });
+  let order = await prisma.harnessOrder.update({ where: { id: String(req.params.id) }, data }).catch(() => null);
   if (!order) return res.status(404).json({ error: '見つかりません' });
+  if (order.status === 'canceled' && order.paymentStatus === 'paid') {
+    await refundHarnessCash(order.id, req.user!.id);
+    order = await prisma.harnessOrder.findUnique({ where: { id: order.id } });
+  }
   res.json({ order });
 });
 

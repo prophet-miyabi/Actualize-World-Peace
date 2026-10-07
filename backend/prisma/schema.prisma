@@ -200,6 +200,9 @@ model LandingPage {
   // 通報などで運営者が非公開にしたページ（公開URL・発見・サイトマップのすべてから外れる）
   hidden   Boolean  @default(false)
 
+  // 持ち主が「収益化（PR枠）」をオンにしたページ。PR表示付きで提携サービスの紹介枠を出す
+  monetizationEnabled Boolean @default(false)
+
   // 対話で作ったページの「事実の台帳」（AI作成ページビルダー）。項目ごとに出どころ（status）を持つ
   brief    Json?
 }
@@ -272,6 +275,9 @@ model ToolCatalogItem {
   embeddable   Boolean  @default(false)
   enabled      Boolean  @default(true)
   sortOrder    Int      @default(0)
+  // 利用者のページのPR枠に出して、報酬を利用者と分け合ってよいか。
+  // ASP・広告主の規約で「第三者サイトへの掲載・報酬の分配」が認められている案件だけ、運営者がtrueにする
+  revenueShareAllowed Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -361,10 +367,13 @@ model OpsProposal {
 model AffiliateClick {
   id        String   @id @default(cuid())
   toolKey   String
+  // 利用者のページのPR枠から押された場合、そのページ（収益の分配先を確認するため）
+  lpId      String?
   source    String?
   createdAt DateTime @default(now())
 
   @@index([toolKey])
+  @@index([lpId])
 }
 
 // A/Bテスト用のヒーローコピーのバリエーション。最初の1件を作成した時点で、
@@ -477,5 +486,61 @@ model BuilderSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
+}
+
+// ---- 収益の分配と台帳（複式簿記） ----
+// お金の動きはすべて取引（LedgerTransaction）として記録し、各取引の借方合計＝貸方合計になるようにする。
+// 勘定科目（account）:
+//   platform:receivable   … ASP・広告主から受け取る予定の報酬（資産）
+//   platform:revenue      … AWPの取り分（収益）
+//   platform:sales        … キャッシュで支払われたAWPの有料機能の売上（収益）
+//   user:<userId>:cash    … 利用者に分配したキャッシュ（AWPから見た負債。残高 = 貸方 - 借方）
+// 記録した取引は書き換えない。誤りは逆仕訳（reversal）で取り消す
+model LedgerTransaction {
+  id        String        @id @default(cuid())
+  kind      String        // revenue_share / harness_payment / reversal
+  memo      String
+  refType   String?       // revenue_event / harness_order
+  refId     String?
+  createdBy String?
+  createdAt DateTime      @default(now())
+  entries   LedgerEntry[]
+
+  @@index([refType, refId])
+}
+
+model LedgerEntry {
+  id        String            @id @default(cuid())
+  txId      String
+  tx        LedgerTransaction @relation(fields: [txId], references: [id], onDelete: Restrict)
+  account   String
+  userId    String?           // user:<id>:cash の場合の利用者ID（残高集計用）
+  debit     Int               @default(0)
+  credit    Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  @@index([account])
+  @@index([userId])
+}
+
+// ASP・広告主の管理画面で「確定」した報酬を、運営者が記録したもの。記録時に 78%（ページの持ち主）/ 22%（AWP）で分配する
+model RevenueEvent {
+  id          String   @id @default(cuid())
+  toolKey     String
+  lpId        String?
+  userId      String?  // 分配先（ページの持ち主）。ページなし（AWP自身の紹介）の場合はnull
+  grossYen    Int
+  ownerYen    Int
+  platformYen Int
+  occurredOn  DateTime
+  externalRef String?  // ASP側の成果ID（二重記録の防止）
+  note        String?
+  status      String   @default("recorded") // recorded / reversed
+  txId        String
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  @@unique([toolKey, externalRef])
   @@index([userId])
 }

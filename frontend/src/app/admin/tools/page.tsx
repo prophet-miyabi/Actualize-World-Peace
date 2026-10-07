@@ -14,11 +14,12 @@ type Item = {
   allowedHosts: string[];
   embeddable: boolean;
   enabled: boolean;
+  revenueShareAllowed: boolean;
   sortOrder: number;
   clicks: number;
 };
 
-const EMPTY = { key: '', name: '', category: '', description: '', officialUrl: '', affiliateUrl: '', allowedHosts: '', embeddable: false, enabled: true, sortOrder: 0 };
+const EMPTY = { key: '', name: '', category: '', description: '', officialUrl: '', affiliateUrl: '', allowedHosts: '', embeddable: false, enabled: true, revenueShareAllowed: false, sortOrder: 0 };
 
 // 運営者専用: ユーザーに案内する提携ツールと、ASPで発行したアフィリエイトリンクを登録する。
 // 説明文はユーザーへの広告表示になるため、公式サイトで確認できる事実だけを書く（誇張・比較優良の表現はしない）。
@@ -97,6 +98,13 @@ export default function AdminToolsPage() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.embeddable} onChange={(e) => set('embeddable', e.target.checked)} />ページ内への埋め込みを許可</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} />ユーザーに表示</label>
           </div>
+          <label className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <input type="checkbox" className="mt-1" checked={form.revenueShareAllowed} onChange={(e) => set('revenueShareAllowed', e.target.checked)} />
+            <span>
+              <span className="font-bold">報酬の分配OK（利用者のページのPR枠に出す）</span>
+              <span className="block text-xs text-gray-600 mt-0.5">ASP・広告主の規約で「第三者のサイトへの掲載」と「報酬の分配（還元）」が認められている案件だけチェックしてください。認められていない案件をチェックすると規約違反になるおそれがあります。</span>
+            </span>
+          </label>
           <div className="flex gap-2">
             <button disabled={saving} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50">{saving ? '保存中...' : editingId ? '更新する' : '登録する'}</button>
             {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({ ...EMPTY }); }} className="text-gray-600 px-4 py-2">キャンセル</button>}
@@ -112,7 +120,7 @@ export default function AdminToolsPage() {
               <li key={it.id} className="bg-white border rounded-xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold">{it.name} <span className="text-xs text-gray-500">（{it.category}）{it.enabled ? '' : '・非表示'}</span></p>
+                    <p className="font-bold">{it.name} <span className="text-xs text-gray-500">（{it.category}）{it.enabled ? '' : '・非表示'}{it.revenueShareAllowed ? '・分配OK' : ''}</span></p>
                     <p className="text-xs text-gray-500 truncate">クリック {it.clicks}回・{it.affiliateUrl ? 'アフィリエイトURLあり' : '⚠ アフィリエイトURL未登録'}・{it.allowedHosts.join(', ')}</p>
                   </div>
                   <div className="flex gap-3 shrink-0 text-sm">

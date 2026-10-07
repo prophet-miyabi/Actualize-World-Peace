@@ -607,8 +607,18 @@ router.get('/:slug', async (req, res) => {
   if (variant) {
     void prisma.lpVariant.update({ where: { id: variant.id }, data: { impressions: { increment: 1 } } }).catch(() => {});
   }
+  // 収益化（PR枠）: 持ち主がオンにしていて、分配が許可された提携サービスだけを、PR表示付きで紹介する
+  const promotions = lp.monetizationEnabled
+    ? (await prisma.toolCatalogItem.findMany({
+        where: { enabled: true, revenueShareAllowed: true, affiliateUrl: { not: null } },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        take: 3,
+        select: { key: true, name: true, description: true }
+      }))
+    : [];
   res.json({
     ...publicLp(lpData),
+    promotions,
     heroTitle: variant?.heroTitle || lpData.heroTitle,
     variantId: variant?.id ?? null,
     // 公開ページ下部のバー（作成者のプロフィール・いいね）用。非公開にされたプロフィールは出さない

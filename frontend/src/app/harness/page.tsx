@@ -10,7 +10,7 @@ type Order = {
   items: { name: string; priceYen: number; harness: Harness }[];
   totalYen: number;
   status: 'requested' | 'in_progress' | 'done' | 'canceled';
-  paymentStatus: 'unpaid' | 'not_required' | 'paid';
+  paymentStatus: 'unpaid' | 'not_required' | 'paid' | 'refunded';
   createdAt: string;
 };
 
@@ -48,7 +48,7 @@ const GUIDE: Record<Harness, {
 };
 const ORDER: Harness[] = ['line', 'x', 'instagram'];
 const STATUS_LABEL: Record<Order['status'], string> = { requested: '受付済み', in_progress: '対応中', done: '完了', canceled: '取り消し' };
-const PAYMENT_LABEL: Record<Order['paymentStatus'], string> = { unpaid: 'お支払い前', not_required: 'お支払い不要', paid: 'お支払い済み' };
+const PAYMENT_LABEL: Record<Order['paymentStatus'], string> = { unpaid: 'お支払い前', not_required: 'お支払い不要', paid: 'お支払い済み', refunded: '返金済み' };
 const yen = (n: number) => (n === 0 ? '無料' : `¥${n.toLocaleString('ja-JP')}`);
 
 export default function HarnessPage() {
@@ -60,12 +60,30 @@ export default function HarnessPage() {
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [openGuide, setOpenGuide] = useState<Harness | null>(null);
+  const [cash, setCash] = useState(0);
+  const [paying, setPaying] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [c, o] = await Promise.all([api.get('/harness/catalog'), api.get('/harness/orders/mine')]);
+    const [c, o, w] = await Promise.all([api.get('/harness/catalog'), api.get('/harness/orders/mine'), api.get('/wallet').catch(() => null)]);
     setAddons(c.data.addons);
     setOrders(o.data.orders);
+    setCash(w?.data.balance ?? 0);
   }, []);
+
+  // キャッシュ（ページの収益化で受け取った分）で支払う
+  const payWithCash = async (o: Order) => {
+    if (!window.confirm(`キャッシュ ${yen(o.totalYen)} で支払いますか？`)) return;
+    setPaying(o.id);
+    setError('');
+    try {
+      await api.post(`/wallet/pay/harness/${o.id}`);
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || '支払いできませんでした。');
+    } finally {
+      setPaying(null);
+    }
+  };
 
   useEffect(() => { load().catch(() => setError('読み込みに失敗しました。')); }, [load]);
 
@@ -203,6 +221,12 @@ export default function HarnessPage() {
                     <span className="font-bold text-sm">合計 {yen(o.totalYen)}</span>
                     {o.status === 'requested' && <button onClick={() => cancel(o.id)} className="text-xs text-red-600">取り消す</button>}
                   </div>
+                  {o.paymentStatus === 'unpaid' && o.status !== 'canceled' && cash >= o.totalYen && (
+                    <button onClick={() => payWithCash(o)} disabled={paying === o.id}
+                      className="mt-3 w-full rounded-full bg-gray-900 text-white text-sm font-bold py-2.5 disabled:opacity-40">
+                      キャッシュで支払う（残高 {yen(cash)}）
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

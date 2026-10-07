@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
 import PageEngagementBar from '@/components/community/PageEngagementBar';
+import PromotionBlock from '@/components/community/PromotionBlock';
 import ProfileView, { type Profile } from '@/components/community/ProfileView';
 
 // SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
@@ -10,7 +11,10 @@ import ProfileView, { type Profile } from '@/components/community/ProfileView';
 const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
 const SITE_URL = process.env.SITE_URL || '';
 
-type PublicLp = Lp & { owner: { username: string; name: string } | null };
+type PublicLp = Lp & {
+  owner: { username: string; name: string } | null;
+  promotions?: { key: string; name: string; description: string }[];
+};
 
 async function fetchLp(slug: string): Promise<PublicLp | null> {
   try {
@@ -95,7 +99,12 @@ export default async function LandingPage({ params }: Params) {
     return <ProfileView profile={profile} />;
   }
   const siteUrl = SITE_URL || (await currentOrigin());
-  const engagement = <PageEngagementBar slug={lp.slug} owner={lp.owner} siteUrl={siteUrl} />;
+  const engagement = (
+    <>
+      <PromotionBlock slug={lp.slug} items={lp.promotions ?? []} />
+      <PageEngagementBar slug={lp.slug} owner={lp.owner} siteUrl={siteUrl} />
+    </>
+  );
 
   // 画像は版数付きURLで配信し、デザインを作り直したときだけ新しい画像を読み込む
   const imageUrl = lp.hasImage ? `/api/lp/${encodeURIComponent(lp.slug)}/image?v=${lp.imageVersion}` : null;

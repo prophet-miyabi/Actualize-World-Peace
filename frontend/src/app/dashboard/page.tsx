@@ -257,6 +257,13 @@ function DashboardInner() {
           <span className="block font-bold text-sm mt-1">発見</span>
           <span className="block text-[11px] text-gray-500">みんなのページを見る</span>
         </Link>
+        <Link href="/wallet" className="col-span-2 rounded-2xl bg-white border border-gray-200 p-4 flex items-center gap-3">
+          <span className="text-lg" aria-hidden>💰</span>
+          <span className="min-w-0">
+            <span className="block font-bold text-sm">キャッシュと収益化</span>
+            <span className="block text-[11px] text-gray-500">ページにPR枠を出して、報酬の78%を受け取る</span>
+          </span>
+        </Link>
       </div>
 
       <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">

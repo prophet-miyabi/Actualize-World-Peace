@@ -19,6 +19,7 @@ import harnessRoutes from './routes/harness';
 import opsRoutes from './routes/ops';
 import communityRoutes from './routes/community';
 import builderRoutes from './routes/builder';
+import walletRoutes from './routes/wallet';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -59,6 +60,7 @@ app.use('/api/harness', harnessRoutes);
 app.use('/api/ops', opsRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/builder', builderRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
