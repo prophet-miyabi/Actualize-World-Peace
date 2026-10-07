@@ -236,6 +236,15 @@ function DashboardInner() {
         </div>
       )}
 
+      {/* 対話で作るページビルダー */}
+      <Link href="/builder" className="mb-3 flex items-center gap-3 rounded-2xl bg-white border-2 border-violet-200 p-4">
+        <span className="text-2xl" aria-hidden>💬</span>
+        <span className="min-w-0">
+          <span className="block font-bold text-sm">AIとおしゃべりしてページをつくる</span>
+          <span className="block text-[11px] text-gray-500">質問に答えるだけ。確定した情報だけがページに載るよ</span>
+        </span>
+      </Link>
+
       {/* SNSの入口: プロフィール（/ユーザー名）と、みんなのページを探す「発見」 */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <Link href="/profile" className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white p-4">

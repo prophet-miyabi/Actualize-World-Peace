@@ -33,6 +33,7 @@ model User {
   following Follow[] @relation("following")
   followers Follow[] @relation("followers")
   pageLikes PageLike[]
+  builderSessions BuilderSession[]
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
@@ -198,6 +199,9 @@ model LandingPage {
 
   // 通報などで運営者が非公開にしたページ（公開URL・発見・サイトマップのすべてから外れる）
   hidden   Boolean  @default(false)
+
+  // 対話で作ったページの「事実の台帳」（AI作成ページビルダー）。項目ごとに出どころ（status）を持つ
+  brief    Json?
 }
 
 // ---- SNS（フォロー・いいね・閲覧/クリックの記録・通報） ----
@@ -452,4 +456,26 @@ model Inquiry {
   createdAt DateTime @default(now())
 
   @@index([tenantId])
+}
+
+// ---- 対話で作るページビルダー ----
+// AIが聞き取りをしながら、事実を項目ごとに整理する。各項目の status:
+//   provided   = 本人が会話の中で伝えた
+//   confirmed  = 本人が確認画面で「確定」した
+//   assumed    = AIの推測（本人の確定が必要）
+//   default    = システムの既定値
+//   unconfirmed = まだわからない
+// 公開に使うのは confirmed と default だけ（本人が確定していない事実は公開しない）
+model BuilderSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Json     // [{ role: user|assistant, content }]
+  brief     Json     // { purpose, facts: [{ key, value, status }], copy: { heroTitle, strengths, status }, suggestedSlug }
+  status    String   @default("active") // active / published
+  lpId      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

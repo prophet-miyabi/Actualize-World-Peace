@@ -601,7 +601,8 @@ router.get('/:slug', async (req, res) => {
   if (!lp || lp.hidden) return res.status(404).json({ error: 'Not found' });
   // PV増加
   await prisma.landingPage.update({ where: { id: lp.id }, data: { pageViews: { increment: 1 } } });
-  const { variants, user, _count, userId: _ownerId, ...lpData } = lp;
+  // brief（事実の台帳）には未確定の情報も入るため、公開APIには出さない
+  const { variants, user, _count, userId: _ownerId, brief: _brief, ...lpData } = lp;
   const variant = pickVariant(variants);
   if (variant) {
     void prisma.lpVariant.update({ where: { id: variant.id }, data: { impressions: { increment: 1 } } }).catch(() => {});

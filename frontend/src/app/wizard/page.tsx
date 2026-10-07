@@ -123,6 +123,10 @@ export default function Wizard() {
                 <p className="text-sm text-gray-600 mt-1">音楽、イラスト、写真、動画、ハンドメイドなど。作品と世界観を届けるページに。</p>
               </button>
             </div>
+            <Link href="/builder" className="mt-6 block text-center rounded-3xl border-2 border-dashed border-violet-300 bg-violet-50 p-4">
+              <span className="block font-black text-violet-700">💬 AIとおしゃべりして作る</span>
+              <span className="block text-xs text-gray-600 mt-1">入力フォームが苦手なら、質問に答えるだけでもOK</span>
+            </Link>
           </div>
         )}
 
