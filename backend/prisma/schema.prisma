@@ -145,6 +145,10 @@ model LandingPage {
   // lp = 1ページで完結（申し込み・予約への行動に集中）
   // hp = 複数ページ（ホーム＋機能ごとに専用ページ＋ナビゲーション）
   siteType String @default("lp")
+  // business = お店・ビジネス / creator = クリエイター活動（音楽・イラスト・写真・動画など）。文言とAIの書き方が変わる
+  purpose String @default("business")
+  // 持ち主のLINE公式アカウントの友だち追加URL（https://lin.ee/... など）。未登録ならLINEボタンを出さない
+  lineAddUrl String?
   // ユーザーが完成例から選んだ土台デザイン（PRESET_METAのid）。未選択ならnull
   templateKey String?
 

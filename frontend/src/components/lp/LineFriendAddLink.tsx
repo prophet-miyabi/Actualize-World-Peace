@@ -5,8 +5,8 @@ import type { CSSProperties, ReactNode } from 'react';
 // LINE友だち追加ボタンのクリックを、選ばれたバリエーションの成果として記録してから遷移する。
 // sendBeaconはページ遷移中でも確実に送信されるため、クリックのハンドリングだけで完結できる。
 export function LineFriendAddLink({
-  slug, variantId, style, className, children
-}: { slug: string; variantId: string | null; style?: CSSProperties; className?: string; children: ReactNode }) {
+  href, slug, variantId, style, className, children
+}: { href: string; slug: string; variantId: string | null; style?: CSSProperties; className?: string; children: ReactNode }) {
   function handleClick() {
     if (!variantId) return;
     try {
@@ -17,7 +17,7 @@ export function LineFriendAddLink({
     }
   }
   return (
-    <a href="https://line.me/R/" target="_blank" rel="noopener noreferrer" onClick={handleClick} style={style} className={className}>
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={handleClick} style={style} className={className}>
       {children}
     </a>
   );

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Logo from '@/components/Logo';
 
-// 導線: LP（/）→ 新規登録（/login?mode=register）→ 無料でLP/HPを試作（/wizard）→ 気に入ったら決済（/billing）→ 公開
+// 導線: LP（/）→ 新規登録（/login?mode=register）→ ウィザード（/wizard）で作成 → そのまま無料で公開
 //       既存ユーザーは LP の「ログイン」→ ダッシュボード
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -27,7 +27,7 @@ export default function Login() {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const { data } = await api.post(endpoint, form);
       localStorage.setItem('token', data.token);
-      // 新規登録の直後は、支払い不要で試作できるウィザードへ。ログインはダッシュボードへ
+      // 新規登録の直後はウィザードへ。ログインはダッシュボードへ
       router.push(isLogin ? '/dashboard' : '/wizard');
     } catch (err: any) {
       const status = err?.response?.status;
@@ -41,37 +41,37 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-gray-50">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 bg-gradient-to-b from-fuchsia-50 via-white to-sky-50">
       <Link href="/" className="mb-6"><Logo /></Link>
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-2 text-center">{isLogin ? 'ログイン' : 'アカウントを作成'}</h2>
+      <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-md">
+        <h2 className="text-2xl font-black mb-2 text-center">{isLogin ? 'おかえりなさい！' : 'さあ、はじめよう！'}</h2>
         {!isLogin && (
           <p className="text-sm text-gray-500 text-center mb-6">
-            アカウントの作成は無料です。作成後すぐに、LP・HPを無料で作成・公開できます。
+            アカウントの作成も、ページの公開も無料。3分くらいで、あなたのページができあがります。
           </p>
         )}
-        {isLogin && <div className="mb-6" />}
+        {isLogin && <p className="text-sm text-gray-500 text-center mb-6">メールアドレスとパスワードでログイン</p>}
         {!isLogin && (
-          <input type="text" placeholder="店舗名・事業者名" className="w-full mb-4 p-3 border rounded-lg" autoComplete="organization"
+          <input type="text" placeholder="お名前（ニックネーム・活動名・お店の名前でもOK）" className="w-full mb-4 p-4 border rounded-2xl text-base" autoComplete="nickname"
             value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         )}
-        <input type="email" placeholder="メールアドレス" className="w-full mb-4 p-3 border rounded-lg" autoComplete="email"
+        <input type="email" placeholder="メールアドレス" className="w-full mb-4 p-4 border rounded-2xl text-base" autoComplete="email"
           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-        <input type="password" placeholder={isLogin ? 'パスワード' : 'パスワード（8文字以上）'} className="w-full mb-4 p-3 border rounded-lg"
+        <input type="password" placeholder={isLogin ? 'パスワード' : 'パスワード（8文字以上）'} className="w-full mb-4 p-4 border rounded-2xl text-base"
           autoComplete={isLogin ? 'current-password' : 'new-password'} minLength={isLogin ? undefined : 8}
           value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold disabled:opacity-50">
-          {loading ? '処理中…' : isLogin ? 'ログイン' : '無料でアカウントを作成'}
+        <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-violet-200 disabled:opacity-50">
+          {loading ? 'ちょっと待ってね…' : isLogin ? 'ログイン' : '無料ではじめる'}
         </button>
         {!isLogin && (
           <p className="text-xs text-gray-400 mt-4 text-center">
             作成すると<Link href="/privacy" className="underline">プライバシーポリシー</Link>に同意したものとみなされます。
           </p>
         )}
-        <button type="button" className="mt-5 w-full text-center text-sm text-blue-600"
+        <button type="button" className="mt-5 w-full text-center text-sm font-bold text-violet-600"
           onClick={() => { setIsLogin(!isLogin); setError(''); }}>
-          {isLogin ? 'はじめての方はこちら（アカウントを作成）' : 'すでにアカウントをお持ちの方（ログイン）'}
+          {isLogin ? 'はじめての方はこちら（無料）' : 'アカウントをお持ちの方はログイン'}
         </button>
       </form>
       <Link href="/" className="text-sm text-gray-500 mt-6">← サービスの紹介へ戻る</Link>

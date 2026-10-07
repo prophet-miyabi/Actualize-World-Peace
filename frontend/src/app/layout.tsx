@@ -1,6 +1,8 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import type { Metadata, Viewport } from 'next';
 import { M_PLUS_Rounded_1c, Noto_Sans_JP, Noto_Serif_JP } from 'next/font/google';
+import AppTabBar from '@/components/AppTabBar';
 
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
@@ -8,7 +10,14 @@ const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'AWP', template: '%s' },
-  robots: { index: true, follow: true }
+  robots: { index: true, follow: true },
+  // iPhoneで「ホーム画面に追加」したとき、アプリのように全画面で開く
+  appleWebApp: { capable: true, title: 'AWP', statusBarStyle: 'default' }
+};
+
+export const viewport: Viewport = {
+  themeColor: '#7c3aed',
+  viewportFit: 'cover'
 };
 
 // LPの書体（AIが選ぶ modern / elegant / friendly / bold に対応）。
@@ -20,7 +29,12 @@ const rounded = M_PLUS_Rounded_1c({ subsets: ['latin'], weight: ['400', '700', '
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja" className={`${sans.variable} ${serif.variable} ${rounded.variable}`}>
-      <body className="bg-gray-50 text-gray-900">{children}</body>
+      <body className="bg-gray-50 text-gray-900">
+        {children}
+        <Suspense fallback={null}>
+          <AppTabBar />
+        </Suspense>
+      </body>
     </html>
   );
 }

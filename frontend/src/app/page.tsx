@@ -7,9 +7,9 @@ import Logo from '@/components/Logo';
 // 表示内容はすべて事実に基づくこと: 根拠のない利用者数・口コミ・所要時間は載せない。
 // 料金は必ず明記する（「無料」と誤解される表示は景品表示法の有利誤認にあたるおそれがある）。
 
-const TITLE = 'AWP | スマホひとつで、ホームページとLINE公式アカウントを';
+const TITLE = 'AWP | やりたいことを、スマホひとつで世界へ';
 const DESCRIPTION =
-  '事業内容を一言入力するだけで、AIがホームページの文章とデザインを作成。個人事業から、社内新規事業・フランチャイズの多店舗展開まで、複数ページを1つのアカウントで管理できます。作成・公開は無料です。';
+  'お店も、作品も、あなた自身も。一言入力するだけで、AIがホームページの文章とデザインを作成。そのまま無料で公開して、予約やネットショップなどのツールもかんたんに追加できます。AWPは Actualize World Peace の略です。';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -34,63 +34,60 @@ const SIGNUP = '/login?mode=register';
 const DEMO_SLUG = process.env.NEXT_PUBLIC_DEMO_SLUG;
 
 const PROBLEMS = [
-  { title: 'ホームページを作る時間がない', body: '文章を考え、写真を選び、デザインを整える。本業や新規事業の立ち上げの合間に進めるのは大変です。' },
-  { title: '制作を頼むと費用がかさむ', body: '制作会社への依頼は、初期費用や更新のたびの費用が負担になりがちです。店舗数・事業数が増えるほど積み重なります。' },
-  { title: '拠点・事業ごとにページを増やしにくい', body: 'フランチャイズの新規加盟店や、社内の新規事業立ち上げのたびに、同じ制作の手間がかかってしまいます。' }
+  { title: '発信したいのに、自分のページがない', body: 'SNSだけだと、作品やサービスの情報はどんどん流れていきます。ちゃんとまとまった「自分の場所」がほしい。' },
+  { title: '作るのはむずかしそう、高そう', body: '文章を考えて、デザインを整えて……。制作を頼むと、費用もかかってしまいます。' },
+  { title: '予約や販売の仕組みまで手が回らない', body: 'お申し込みやショップを用意したいけれど、どのツールをどうつなげばいいかわからない。' }
 ];
 
-// 需要が高いと考えられる順に並べる（購入判断への直結度・対応できる事業の幅で判断）：
-// 1. AIによる作成（サービスの核）→ 2. LINE連携（サービス名を構成する柱）→
-// 3. 複数ページ管理（フランチャイズ・新規事業向けの新しい強み）→ 4. 機能追加 → 5. 独自ドメイン →
-// 6. スマホ通知（アプリ公開準備中のため下位）→ 7. 品質チェック（差別化要素としては弱い）
+// 新しく始める人が「これならできそう」と思える順に並べる：作成 → 公開 → 収益化の入口 → 育てる → 安心
 const FEATURES = [
   {
-    title: 'AIがページの文章とデザインを作成',
-    body: '事業内容を一言入力すると、キャッチコピーと強みの文章を作成。配色・書体・レイアウトも、業種の雰囲気に合わせてAIが整えます。',
-    tag: 'Claude × Gemini',
+    title: 'AIが文章とデザインをつくる',
+    body: '一言入力するだけで、キャッチコピーと魅力の文章をAIが作成。配色・書体・レイアウトも、あなたの雰囲気に合わせて整えます。',
+    tag: 'AI',
     assetKey: 'feature_ai_design'
   },
   {
-    title: 'LINE公式アカウントと連携',
-    body: 'ページから友だち追加されたお客様のお問い合わせに、自動で返信。受け付けた内容は一覧で確認できます。',
-    tag: 'LINE',
-    assetKey: 'feature_line'
+    title: 'つくったら、そのまま無料で公開',
+    body: 'AWPのURLですぐに公開できます。自分のドメインで公開したくなったら、画面の案内にそって切り替えられます。',
+    tag: '無料公開',
+    assetKey: 'feature_domain'
   },
   {
-    title: '複数の店舗・事業をまとめて管理',
-    body: '拠点や新規事業が増えても、同じアカウントからページを追加していけます。ダッシュボードでページを切り替えるだけです。',
-    tag: 'マルチページ',
-    assetKey: 'feature_multipage'
+    title: '予約・ショップ・フォームをかんたん追加',
+    body: 'ツールを選んで、あなたのページのURLを貼るだけ。お客様やファンの情報は、あなた名義のツールのアカウントに保存されます。',
+    tag: '外部ツール',
+    assetKey: 'feature_tools'
   },
   {
-    title: '必要な機能を、質問に答えて追加',
-    body: 'メニュー・料金表、よくある質問、アクセス、キャンペーンなど。質問に答えるだけで、ページに追加されます。料金や日付は入力した内容がそのまま使われます。',
+    title: '質問に答えて、機能をプラス',
+    body: 'メニュー・料金表、よくある質問、アクセス、キャンペーンなど。質問に答えるだけで、ページに追加されます。',
     tag: '6種類',
     assetKey: 'feature_addons'
   },
   {
-    title: '独自ドメインにも対応',
-    body: 'まずは共有のURLですぐに公開。ご自身のドメインで運用したくなったら、画面の案内に沿って切り替えられます。',
-    tag: 'ドメイン',
-    assetKey: 'feature_domain'
+    title: 'LINEで、お客様やファンとつながる',
+    body: 'LINE公式アカウントの友だち追加URLを登録すると、ページにLINEボタンが表示されます。',
+    tag: 'LINE',
+    assetKey: 'feature_line'
   },
   {
-    title: '新着のお問い合わせをスマホに通知',
-    body: 'スマートフォンアプリで、新しいお問い合わせをすぐに受け取れるようになります（アプリは公開準備中です）。',
-    tag: 'アプリ',
-    assetKey: 'feature_notifications'
+    title: 'ページはいくつでも',
+    body: '本業と副業、作品ごと、お店ごと。1つのアカウントで、ページを増やしていけます。',
+    tag: 'マルチページ',
+    assetKey: 'feature_multipage'
   },
   {
-    title: '読みやすさを自動でチェック',
-    body: '文字と背景の色の組み合わせを自動で確認し、読みにくい配色は補正してから公開します。',
-    tag: '品質',
+    title: 'データはいつでも持ち出せる',
+    body: 'ページの内容や写真、お問い合わせの履歴は、いつでもファイルで書き出せます。',
+    tag: '安心',
     assetKey: 'feature_quality'
   }
 ];
 
 const STEPS = [
-  { title: 'アカウントを作成', body: 'メールアドレスとパスワードで登録します（無料）。' },
-  { title: '事業内容を入力して無料で試作', body: '一言の説明から、AIが文章とデザインを作成します。仕上がりはダッシュボードでいつでも確認・作り直しできます。' },
+  { title: 'アカウントをつくる', body: 'メールアドレスとパスワードだけで、無料で登録できます。' },
+  { title: 'なにをはじめるか選ぶ', body: 'お店・ビジネスか、クリエイター活動か。選んで一言入力すれば、AIが文章とデザインをつくります。' },
   { title: 'そのまま無料で公開', body: 'AWPのURL（/ページ名）ですぐに公開されます。独自ドメインでの公開もできます。' },
   { title: '外部ツールを追加', body: '予約・ネットショップ・問い合わせフォームなどのツールを、あなた名義のアカウントで導入して、ページに追加できます。' }
 ];
@@ -98,16 +95,16 @@ const STEPS = [
 const FAQ = [
   { q: '無料で使えますか？', a: 'はい。アカウントの作成、LP・HPの作成（AIによる文章・デザイン作成）、公開、独自ドメインの接続まで無料です。AIによる文章・デザインの作成には1日あたりの回数制限があります。AIによるSNS運用などの上位機能は準備中です。' },
   { q: 'あとで料金がかかることはありますか？', a: '現在、有料プランは準備中のため、AWPの利用料金はかかりません。外部ツールを導入した場合は、そのツールの料金を各提供元にお支払いいただきます（ツールごとに無料・有料が異なります）。' },
-  { q: 'LINE公式アカウントは必要ですか？', a: 'LINE連携を使うには、LINE公式アカウントとLINE Developersでの設定が必要です。LINE公式アカウントの利用料金は、LINEヤフー社の料金体系に従います。' },
+  { q: 'LINE公式アカウントは必要ですか？', a: 'なくても大丈夫です。お持ちの方は友だち追加URLを登録すると、ページにLINEボタンが表示されます。' },
   { q: 'AIが作った文章は編集できますか？', a: 'できます。AIが作成した内容は下書きとして表示され、公開前に自由に書き換えられます。' },
   { q: 'AWPをやめたら、作ったページはどうなりますか？', a: 'ダッシュボードの「データの書き出し」から、ページの内容・写真・お問い合わせ履歴をいつでもファイルで保存できます。外部ツールはあなた名義のアカウントなので、AWPをやめてもそのまま使い続けられます。' },
-  { q: '作れるページの数は？', a: '1つのアカウントで、複数のページを作成・公開できます。店舗ごと・事業ごとにページを追加していけるので、フランチャイズの多店舗展開や、社内の新規事業立ち上げにもご利用いただけます。' }
+  { q: '作れるページの数は？', a: '1つのアカウントで、いくつでもページを作れます。本業と副業、活動ごと、お店ごとにページを分けて運用できます。' }
 ];
 
 function Cta({ className = '' }: { className?: string }) {
   return (
-    <Link href={SIGNUP} className={`inline-block bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition ${className}`}>
-      アカウントを作成する
+    <Link href={SIGNUP} className={`inline-block bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold rounded-full shadow-lg shadow-violet-200 hover:brightness-110 transition ${className}`}>
+      無料ではじめる
     </Link>
   );
 }
@@ -124,23 +121,23 @@ export default function Home() {
             <a href="#pricing" className="hidden sm:inline text-gray-600 hover:text-gray-900">料金</a>
             <a href="#faq" className="hidden sm:inline text-gray-600 hover:text-gray-900">よくある質問</a>
             <Link href="/login" className="text-gray-700 font-bold">ログイン</Link>
-            <Link href={SIGNUP} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-full hover:bg-blue-700">始める</Link>
+            <Link href={SIGNUP} className="bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white font-bold px-4 py-2 rounded-full hover:brightness-110">はじめる</Link>
           </nav>
         </div>
       </header>
 
       {/* ヒーロー */}
-      <section className="relative px-5 pt-16 pb-20 sm:pt-24 overflow-hidden" style={{ background: 'radial-gradient(ellipse at top, #dbeafe, transparent 65%)' }}>
+      <section className="relative px-5 pt-16 pb-20 sm:pt-24 overflow-hidden" style={{ background: 'radial-gradient(ellipse at top left, #fce7f3, transparent 55%), radial-gradient(ellipse at top right, #e0e7ff, transparent 60%)' }}>
         <SiteAssetImage assetKey="marketing_hero" className="hidden md:block absolute inset-0 w-full h-full object-cover object-right" />
         <div className="absolute inset-0 hidden md:block" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 32%, rgba(255,255,255,0.35) 58%, rgba(255,255,255,0.15) 100%)' }} />
         <div className="relative max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <p className="text-blue-700 font-bold text-sm tracking-widest mb-4">個人事業から、社内新規事業・フランチャイズ展開まで</p>
+            <p className="inline-block text-violet-700 bg-violet-100 font-bold text-sm rounded-full px-4 py-1 mb-5">ビジネスにも、クリエイター活動にも。</p>
             <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-6">
-              ホームページと<br />LINE公式アカウントを、<br />スマホひとつで。
+              やりたいことを、<br />スマホひとつで<br /><span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">世界へ。</span>
             </h1>
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              事業内容を一言入力するだけで、AIがページの文章とデザインを作成。LINEのお問い合わせへの自動返信まで、まとめて始められます。店舗・事業が増えても、1つのアカウントでページを追加していけます。
+              お店も、作品も、あなた自身も。一言入力するだけで、AIがホームページの文章とデザインをつくります。そのまま無料で公開して、予約やネットショップもかんたんに追加できます。
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Cta className="px-8 py-4 text-lg" />
@@ -177,7 +174,7 @@ export default function Home() {
       {/* お悩み */}
       <section className="px-5 py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-12">こんなお悩みはありませんか？</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-center mb-12">こんなモヤモヤ、ありませんか？</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {PROBLEMS.map((p) => (
               <div key={p.title} className="bg-white rounded-2xl p-7 border">
@@ -194,7 +191,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <p className="text-blue-700 font-bold text-center text-sm tracking-widest mb-3">FEATURES</p>
           <h2 className="text-2xl sm:text-3xl font-black text-center mb-4">AWPでできること</h2>
-          <p className="text-gray-600 text-center mb-12">2つのAIが役割を分担し、ページ作りとお問い合わせ対応を支えます。</p>
+          <p className="text-gray-600 text-center mb-12">むずかしいところは、AIにおまかせ。</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-2xl border hover:shadow-md transition overflow-hidden">
@@ -215,7 +212,7 @@ export default function Home() {
       {/* 始め方 */}
       <section className="px-5 py-20 bg-gray-50">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-12">ご利用の流れ</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-center mb-12">はじめかた</h2>
           <ol>
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-5">
@@ -278,12 +275,27 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ミッション: AWP = Actualize World Peace */}
+      <section className="px-5 py-20 text-center bg-gradient-to-br from-fuchsia-50 via-white to-sky-50">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-violet-700 font-bold text-sm tracking-widest mb-3">OUR MISSION</p>
+          <h2 className="text-2xl sm:text-4xl font-black mb-6">
+            AWP = <span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">Actualize World Peace</span>
+          </h2>
+          <p className="text-gray-700 leading-loose">
+            ひとりひとりが、自分の「やりたい」をかたちにして、それで生きていける。<br className="hidden sm:inline" />
+            そんな人が増えるほど、世界はきっと平和に近づく。<br className="hidden sm:inline" />
+            AWPは、その一歩をスマホひとつで踏み出せる場所をつくります。
+          </p>
+        </div>
+      </section>
+
       {/* 最後のひと押し */}
-      <section className="px-5 py-24 text-center text-white" style={{ background: 'linear-gradient(135deg, #1d4ed8, #0f172a)' }}>
-        <h2 className="text-2xl sm:text-4xl font-black mb-5">あなたのお店のページを、今日から。</h2>
+      <section className="px-5 py-24 text-center text-white" style={{ background: 'linear-gradient(135deg, #d946ef, #7c3aed 50%, #0ea5e9)' }}>
+        <h2 className="text-2xl sm:text-4xl font-black mb-5">あなたのページを、今日から。</h2>
         <p className="opacity-85 mb-10">アカウントの作成から、ページの公開まで無料です。</p>
         <Link href={SIGNUP} className="inline-block bg-white text-blue-700 font-bold rounded-full px-10 py-4 text-lg shadow-lg hover:bg-blue-50">
-          アカウントを作成する
+          無料ではじめる
         </Link>
       </section>
 

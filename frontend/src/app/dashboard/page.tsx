@@ -35,6 +35,11 @@ function DashboardInner() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState('');
+  const [lineUrl, setLineUrl] = useState('');
+  const [lineUrlSaving, setLineUrlSaving] = useState(false);
+  const [lineUrlMsg, setLineUrlMsg] = useState('');
+  const [shareMsg, setShareMsg] = useState('');
+  const justCreated = searchParams.get('created') === '1';
 
   const withLp = (params: Record<string, string> = {}) => (lpId ? { ...params, lpId } : params);
 
@@ -70,7 +75,11 @@ function DashboardInner() {
   }, []);
 
   useEffect(() => {
-    api.get('/lp/dashboard/stats', { params: withLp() }).then((res) => { setData(res.data); setHasLineConfig(!!res.data.hasLineConfig); }).catch(() => {});
+    api.get('/lp/dashboard/stats', { params: withLp() }).then((res) => {
+      setData(res.data);
+      setHasLineConfig(!!res.data.hasLineConfig);
+      setLineUrl(res.data.lp?.lineAddUrl || '');
+    }).catch(() => {});
     api.get('/lp/domain', { params: withLp() }).then((res) => setDomain(res.data)).catch(() => {});
     api.get('/lp/design', { params: withLp() }).then((res) => setDesign(res.data)).catch(() => {});
     setLineSaved(false);
@@ -81,6 +90,36 @@ function DashboardInner() {
     const params = new URLSearchParams(window.location.search);
     if (id) params.set('lp', id); else params.delete('lp');
     router.push(`/dashboard?${params.toString()}`);
+  };
+
+  const saveLineUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLineUrlSaving(true);
+    setLineUrlMsg('');
+    try {
+      const { data: res } = await api.put('/lp/contact', { ...withLp(), lineAddUrl: lineUrl.trim() });
+      setLineUrl(res.lineAddUrl || '');
+      setLineUrlMsg(res.lineAddUrl ? '保存しました！ページにLINEボタンが出ています。' : 'LINEボタンを外しました。');
+    } catch (err: any) {
+      setLineUrlMsg(err?.response?.data?.error || '保存できませんでした。');
+    } finally {
+      setLineUrlSaving(false);
+    }
+  };
+
+  // 公開したページをすぐ広められるよう、スマホの共有メニュー（LINE・SNSなど）を開く。非対応ならURLをコピー
+  const sharePage = async (slug: string, name: string) => {
+    const url = `${window.location.origin}/${slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: name, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareMsg('URLをコピーしました！');
+    } catch {
+      // 共有をキャンセルした場合は何もしない
+    }
   };
 
   const saveLine = async (e: React.FormEvent) => {
@@ -198,10 +237,10 @@ function DashboardInner() {
       )}
 
       <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
-        <h2 className="text-2xl font-bold">運用ステータス</h2>
+        <h2 className="text-2xl font-black">あなたのページ</h2>
         {!data.lp && (
-          <Link href="/wizard" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
-            無料でLP・HPを試作する
+          <Link href="/wizard" className="bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white px-5 py-2.5 rounded-full font-bold">
+            ページをつくる
           </Link>
         )}
       </div>
@@ -226,13 +265,27 @@ function DashboardInner() {
           </div>
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl text-yellow-700 text-sm">
-            まだページがありません。まずは無料で試作してみましょう。
+            まだページがありません。さっそくつくってみよう！公開まで無料です。
           </div>
         )}
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-2">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
         {isAdmin && <Link href="/admin/tools" className="text-blue-600 underline text-sm block mt-1">外部ツールのカタログ管理 →</Link>}
       </div>
+
+      {data.lp && justCreated && (
+        <div className="rounded-3xl p-6 mb-8 text-white bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 shadow-lg">
+          <p className="text-2xl font-black mb-1">公開しました！</p>
+          <p className="text-sm opacity-90 mb-4">デザインはAIが仕上げ中です。まずはURLをシェアして、見てもらおう。</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={() => sharePage(data.lp.slug, data.lp.businessName)} className="bg-white text-violet-700 font-bold rounded-full px-6 py-3">
+              ページをシェアする
+            </button>
+            <a href={`/${data.lp.slug}`} target="_blank" className="text-center border border-white/70 font-bold rounded-full px-6 py-3">ページを見る</a>
+          </div>
+          {shareMsg && <p className="text-sm mt-3">{shareMsg}</p>}
+        </div>
+      )}
 
       {data.lp ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -332,9 +385,28 @@ function DashboardInner() {
         </div>
       )}
 
-      {data.lp && !hasLineConfig && (
+      {data.lp && (
+        <form onSubmit={saveLineUrl} className="bg-white rounded-xl border shadow-sm p-6 mb-8">
+          <p className="text-gray-500 text-sm mb-1">LINEボタン</p>
+          <p className="font-bold mb-3">{lineUrl ? 'ページにLINEボタンを表示中' : 'LINE公式アカウントの友だち追加URLを登録すると、ページにLINEボタンが出ます'}</p>
+          <input type="url" inputMode="url" autoCapitalize="none" placeholder="https://lin.ee/..." value={lineUrl}
+            onChange={(e) => setLineUrl(e.target.value)} className="w-full p-3 border rounded-lg text-base mb-3" />
+          <button disabled={lineUrlSaving} className="bg-gray-900 text-white px-6 py-3 rounded-full font-bold disabled:opacity-50">
+            {lineUrlSaving ? '保存中…' : '保存する'}
+          </button>
+          <p className="text-xs text-gray-500 mt-2">
+            LINE公式アカウントは
+            <a href="https://www.linebiz.com/jp/entry/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mx-1">こちら</a>
+            から無料で作れます。友だち追加URLは、LINE公式アカウントの管理画面で確認できます。空にして保存するとボタンを外せます。
+          </p>
+          {lineUrlMsg && <p className="text-sm mt-2">{lineUrlMsg}</p>}
+        </form>
+      )}
+
+      {/* LINE自動応答（Messaging API）の設定。AIの利用料がかかる上位機能のため、有料プラン加入者のみ */}
+      {data.lp && !hasLineConfig && isActive && (
         <div className="bg-white rounded-xl border shadow-sm p-6 mb-8">
-          <p className="text-gray-500 text-sm mb-1">LINE公式アカウント</p>
+          <p className="text-gray-500 text-sm mb-1">LINE自動応答</p>
           <p className="font-bold mb-3">まだ連携されていません</p>
           {pages.length > 1 && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
@@ -367,6 +439,7 @@ function DashboardInner() {
         </div>
       )}
 
+      {hasLineConfig && (<>
       <h3 className="text-xl font-bold mb-4">LINE お問い合わせ履歴{pages.length > 1 ? '（アカウント共通）' : ''}</h3>
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         {data.inquiries.length > 0 ? (
@@ -382,6 +455,7 @@ function DashboardInner() {
           <p className="p-6 text-gray-500">まだお問い合わせはありません。</p>
         )}
       </div>
+      </>)}
     </div>
   );
 }

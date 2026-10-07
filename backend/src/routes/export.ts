@@ -30,6 +30,8 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
     pages: pages.map((p) => ({
       slug: p.slug,
       siteType: p.siteType,
+      purpose: p.purpose,
+      lineAddUrl: p.lineAddUrl,
       businessName: p.businessName,
       heroTitle: p.heroTitle,
       strengths: p.strengths,

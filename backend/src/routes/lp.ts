@@ -44,6 +44,7 @@ router.post('/ai-generate', authenticate, async (req: AuthRequest, res) => {
   }
   aiGenerateRequests.set(userId, [...recent, now]);
 
+  const purpose = normalizePurpose(req.body.purpose);
   try {
     const client = new Anthropic();
     const response = await client.beta.messages.parse({
@@ -51,9 +52,11 @@ router.post('/ai-generate', authenticate, async (req: AuthRequest, res) => {
       max_tokens: 1024,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      system:
-        'あなたは日本の中小事業者のランディングページを手がけるコピーライターです。' +
-        '入力された事業内容から、見込み客の悩みや願いに応えるキャッチコピーと、事業の強み3つを日本語で作成してください。' +
+      system: (purpose === 'creator'
+        ? 'あなたは日本の若手クリエイター（音楽・イラスト・写真・動画・ハンドメイドなど）の活動紹介ページを手がけるコピーライターです。' +
+          '入力された活動内容から、ファンや依頼主の心に刺さるキャッチコピーと、作品や活動の魅力3つを、親しみやすく前向きな日本語で作成してください。'
+        : 'あなたは日本の中小事業者・個人事業主のランディングページを手がけるコピーライターです。' +
+          '入力された事業内容から、見込み客の悩みや願いに応えるキャッチコピーと、事業の強み3つを、親しみやすく分かりやすい日本語で作成してください。') +
         '入力に書かれていない数字・実績・受賞歴・ランキング・限定条件は、決して作らないでください（事実でない表示になるため）。',
       messages: [{ role: 'user', content: description }],
       output_config: { effort: 'low', format: betaZodOutputFormat(LpContentSchema) }
@@ -245,11 +248,29 @@ export async function setupLineWebhook(tenantId: string, channelAccessToken: str
   return { ok: true };
 }
 
+const normalizePurpose = (v: unknown) => (v === 'creator' ? 'creator' : 'business');
+
+// LINE公式アカウントの友だち追加URLだけを受け付ける（任意のURLを貼らせると偽サイトへの誘導に使われるため）。
+// 空文字はnull（未登録）として扱う
+const LINE_HOSTS = ['lin.ee', 'line.me', 'page.line.me'];
+function normalizeLineAddUrl(raw: unknown): { ok: true; value: string | null } | { ok: false } {
+  const text = String(raw ?? '').trim();
+  if (!text) return { ok: true, value: null };
+  try {
+    const u = new URL(text);
+    if (u.protocol !== 'https:' || u.username || u.password || !LINE_HOSTS.includes(u.hostname.toLowerCase())) return { ok: false };
+    return { ok: true, value: u.toString() };
+  } catch {
+    return { ok: false };
+  }
+}
+const LINE_URL_ERROR = 'LINEの友だち追加URL（https://lin.ee/... の形式）を入力してください。';
+
 // アプリの画面やAPIと同じ名前のURLは、LPが表示できなくなるので使わせない
 const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
@@ -284,9 +305,12 @@ router.post('/wizard', authenticate, async (req: AuthRequest, res) => {
   }
   const siteType = req.body.siteType === 'hp' ? 'hp' : 'lp';
   const templateKey = (PRESET_KEYS as string[]).includes(req.body.templateKey) ? req.body.templateKey : null;
+  const purpose = normalizePurpose(req.body.purpose);
+  const lineAdd = normalizeLineAddUrl(req.body.lineAddUrl);
+  if (!lineAdd.ok) return res.status(400).json({ error: LINE_URL_ERROR });
   try {
     const lp = await prisma.landingPage.create({
-      data: { userId, businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, siteType, templateKey }
+      data: { userId, businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, siteType, templateKey, purpose, lineAddUrl: lineAdd.value }
     });
 
     // デザイン（Claude→Gemini→Claudeの審査）は時間がかかるため、待たずに裏で作成する
@@ -317,6 +341,16 @@ router.post('/wizard', authenticate, async (req: AuthRequest, res) => {
     }
     res.status(400).json({ error: 'Failed to create LP' });
   }
+});
+
+// LINE友だち追加URL（公開ページのLINEボタンの行き先）をあとから登録・変更・削除する
+router.put('/contact', authenticate, async (req: AuthRequest, res) => {
+  const lp = await resolveLp(req.user!.id, req.body?.lpId);
+  if (!lp) return res.status(404).json({ error: '先にページを作成してください。' });
+  const lineAdd = normalizeLineAddUrl(req.body?.lineAddUrl);
+  if (!lineAdd.ok) return res.status(400).json({ error: LINE_URL_ERROR });
+  await prisma.landingPage.update({ where: { id: lp.id }, data: { lineAddUrl: lineAdd.value } });
+  res.json({ lineAddUrl: lineAdd.value });
 });
 
 // 無料お試し中にLINEをまだ持っていなかった顧客が、あとから接続情報を追加・更新する

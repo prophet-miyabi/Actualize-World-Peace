@@ -32,7 +32,13 @@ export type Lp = {
   variantId?: string | null;
   // ユーザーが追加した外部ツール（予約・ネットショップ・フォーム等）。URLはサーバー側で許可済みのhttpsホストのみ
   tools?: { label: string; url: string; display: string }[];
+  // business = お店・ビジネス / creator = クリエイター活動。見出しやボタンの言葉づかいが変わる
+  purpose?: string;
+  // 持ち主のLINE友だち追加URL。未登録ならLINEボタン・LINEの案内は出さない
+  lineAddUrl?: string | null;
 };
+
+const isCreator = (lp: Lp) => lp.purpose === 'creator';
 
 const FONT_FAMILY: Record<Design['font'], { body: string; heading: string; headingWeight: number }> = {
   modern: { body: 'var(--font-sans-jp)', heading: 'var(--font-sans-jp)', headingWeight: 700 },
@@ -83,11 +89,19 @@ function HeadingBlock({ tokens, children }: { tokens: Tokens; children: ReactNod
     </h2>
   );
 }
-function CtaLink({ tokens, large = false }: { tokens: Tokens; large?: boolean }) {
+// ヒーローのボタン。LINEが登録されていればLINEの案内へ、なければ外部ツール（予約・ショップ等）へ。どちらもなければ出さない
+function CtaLink({ lp, tokens, large = false }: { lp: Lp; tokens: Tokens; large?: boolean }) {
+  const tools = lp.tools ?? [];
+  const target = lp.lineAddUrl
+    ? { href: '#line', label: isCreator(lp) ? 'LINEでつながる' : 'LINEで気軽に相談する' }
+    : tools.length > 0
+      ? { href: '#tools', label: tools.length === 1 ? tools[0].label : isCreator(lp) ? 'ショップ・リンクを見る' : 'オンライン窓口へ' }
+      : null;
+  if (!target) return null;
   return (
-    <a href="#line" style={tokens.ctaStyle}
+    <a href={target.href} style={tokens.ctaStyle}
       className={`inline-block font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${large ? 'px-10 py-5 text-lg' : 'px-8 py-4'}`}>
-      LINEで無料相談する
+      {target.label}
     </a>
   );
 }
@@ -103,7 +117,7 @@ export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string
         <p style={{ color: onDark ? '#ffffff' : p.text, background: onDark ? 'rgba(255,255,255,0.14)' : alpha(p.primary, 0.08), borderRadius: r.button }}
           className="inline-block px-5 py-2 text-sm font-bold mb-8">{lp.socialProof}</p>
       )}
-      <div><CtaLink tokens={tokens} large /></div>
+      <div><CtaLink lp={lp} tokens={tokens} large /></div>
     </>
   );
 
@@ -194,7 +208,7 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   }
   return (
     <SectionWrap tokens={tokens} tint>
-      <HeadingBlock tokens={tokens}>選ばれる3つの理由</HeadingBlock>
+      <HeadingBlock tokens={tokens}>{isCreator(lp) ? '作品と活動の3つの魅力' : '選ばれる3つの理由'}</HeadingBlock>
       {block}
     </SectionWrap>
   );
@@ -327,7 +341,7 @@ export function ToolsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const embeds = tools.filter((t) => t.display === 'embed');
   return (
     <SectionWrap tokens={tokens} id="tools">
-      <HeadingBlock tokens={tokens}>オンライン窓口</HeadingBlock>
+      <HeadingBlock tokens={tokens}>{isCreator(lp) ? 'ショップ・リンク' : 'オンライン窓口'}</HeadingBlock>
       {buttons.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center gap-4">
           {buttons.map((t) => (
@@ -355,13 +369,17 @@ export function ToolsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
 
 export function LineCtaSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const { p, headingStyle, ctaStyle } = tokens;
+  if (!lp.lineAddUrl) return null;
+  const creator = isCreator(lp);
   return (
     <section id="line" className="px-6 py-20 sm:py-28 text-center" style={{ background: p.text, color: p.background }}>
       <div className="max-w-2xl mx-auto">
         {lp.scarcityOffer && <p className="font-bold mb-5" style={{ color: p.background, opacity: 0.9 }}>{lp.scarcityOffer}</p>}
-        <h2 style={{ ...headingStyle, color: p.background }} className="text-2xl sm:text-4xl mb-6">お気軽にご相談ください</h2>
-        <p className="mb-10 opacity-80 leading-relaxed">LINEから24時間受け付けています。担当者よりご返信いたします。</p>
-        <LineFriendAddLink slug={lp.slug} variantId={lp.variantId ?? null} style={{ ...ctaStyle, background: '#06C755', color: '#ffffff' }}
+        <h2 style={{ ...headingStyle, color: p.background }} className="text-2xl sm:text-4xl mb-6">{creator ? 'LINEでつながろう' : 'お気軽にご相談ください'}</h2>
+        <p className="mb-10 opacity-80 leading-relaxed">
+          {creator ? '新作のお知らせや、お仕事のご依頼はLINEからどうぞ。' : 'LINEから気軽にメッセージを送れます。'}
+        </p>
+        <LineFriendAddLink href={lp.lineAddUrl} slug={lp.slug} variantId={lp.variantId ?? null} style={{ ...ctaStyle, background: '#06C755', color: '#ffffff' }}
           className="inline-block px-10 py-5 font-bold text-lg shadow-lg">LINEで友だち追加する</LineFriendAddLink>
       </div>
     </section>
