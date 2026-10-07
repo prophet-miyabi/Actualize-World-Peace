@@ -60,6 +60,12 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'AIエージェント', name: 'ブラウザ操作の自動化ワークフロー', status: 'done', note: '認証情報系の操作は安全のため禁止' },
   { category: 'AIエージェント', name: '進捗報告エージェント', status: 'partial', note: '手動実行のみ。エージェントループへの組み込みは未着手' },
 
+  // ---- 運営（管理者画面） ----
+  { category: '運営', name: '運営者画面（ダッシュボード・要対応・設定の状態）', status: 'done' },
+  { category: '運営', name: '緊急コントロール（AIエージェント・SNS予約投稿の停止／再開）', status: 'done' },
+  { category: '運営', name: 'AIオペレーター（対話で状況確認・課題整理・提案。実行は承認後）', status: 'done' },
+  { category: '運営', name: 'AIによる開発（承認した提案をClaude CodeがGitHubで実装→プルリクエスト）', status: 'blocked', note: 'GitHubのトークン・Actionsの秘密情報・Claude GitHub Appの設定が必要' },
+
   // ---- 収益 ----
   { category: '収益', name: '提携ツールのカタログ・アフィリエイト導線・クリック計測', status: 'done' },
   { category: '収益', name: 'ASP提携とアフィリエイトリンクの登録', status: 'blocked', note: '運営者のASP登録・各プログラムとの提携が必要' },

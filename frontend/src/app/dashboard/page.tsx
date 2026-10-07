@@ -269,7 +269,8 @@ function DashboardInner() {
             まだページがありません。さっそくつくってみよう！公開まで無料です。
           </div>
         )}
-        {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-2">サイトの外装画像を管理 →</Link>}
+        {isAdmin && <Link href="/admin" className="text-violet-700 font-bold underline text-sm block mt-2">運営者画面（ダッシュボード・AIオペレーター） →</Link>}
+        {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-1">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
         {isAdmin && <Link href="/admin/tools" className="text-blue-600 underline text-sm block mt-1">提携ツールのカタログ管理 →</Link>}
         {isAdmin && <Link href="/admin/harness" className="text-blue-600 underline text-sm block mt-1">Harness導入支援の管理（料金・申し込み） →</Link>}

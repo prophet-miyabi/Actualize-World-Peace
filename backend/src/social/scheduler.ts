@@ -1,3 +1,4 @@
+import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
 import prisma from '../prisma';
 import { postToInstagramReels } from './platforms/instagram';
 import { postToFacebookPage } from './platforms/facebook';
@@ -66,6 +67,8 @@ async function processOne(id: string) {
 }
 
 async function tick() {
+  // 緊急コントロールで止められている間は投稿しない（予約はそのまま残り、再開後に投稿される）
+  if (await getFlag(SETTING_KEYS.pauseSnsPosting)) return;
   const due = await prisma.scheduledPost.findMany({
     where: { status: 'pending', scheduledAt: { lte: new Date() } },
     select: { id: true },

@@ -254,6 +254,35 @@ model HarnessOrder {
   @@index([userId])
 }
 
+// ---- 運営（管理者画面） ----
+// システム全体の切り替え（緊急コントロール）。key 例: pause_agent_loop / pause_sns_posting（値は "true" / "false"）
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+// AIオペレーター（管理者画面のチャット）からの提案。AIは提案を作るだけで、実行は運営者の承認後。
+// code_change: 承認するとGitHubに課題（ラベル claude）を作り、Claude Code が隔離環境で実装してプルリクエストを出す。
+//              本番への反映は、運営者がプルリクエストをマージしたときだけ（AIが直接本番を変えることはない）
+// setting:     承認すると SystemSetting を変更する（例: AIエージェントの一時停止）
+model OpsProposal {
+  id                String   @id @default(cuid())
+  kind              String   // code_change / setting
+  title             String
+  body              String   // 実装の指示書（code_change）や変更理由
+  payload           Json?    // setting の場合 { key, value }
+  status            String   @default("awaiting_approval") // awaiting_approval / approved / rejected / failed
+  githubIssueNumber Int?
+  githubIssueUrl    String?
+  error             String?
+  createdBy         String
+  decidedBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 // アフィリエイトリンクのクリック計測（どのツールが選ばれているかを把握し、カタログ改善に使う）。
 // 個人を特定する情報は保存しない
 model AffiliateClick {

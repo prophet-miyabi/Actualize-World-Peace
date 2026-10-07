@@ -58,6 +58,12 @@ services:
         sync: false
       - key: TWILIO_VERIFY_SERVICE_SID
         sync: false
+      # AIオペレーターが提案したコード変更を、承認後にGitHubの課題として登録する（Claude Code が実装→プルリクエスト）。
+      # GITHUB_OPS_TOKEN はこのリポジトリ限定の fine-grained token（Issues: Read and write）。GITHUB_REPO は owner/repo
+      - key: GITHUB_OPS_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PRICE_ID

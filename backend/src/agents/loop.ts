@@ -6,6 +6,7 @@ import { diagnoseOpenErrors } from './monitoring';
 import { runSelfPromotionAgents } from './selfPromotion';
 import { runXCampaignTask } from './xCampaign';
 import { captureError } from '../lib/errors';
+import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
 
 // 役割ごとのエージェント（プラットフォーム別のマーケティング担当・成長分析担当・コンプライアンス担当）を
 // 定期的に動かすループ。「作成・分析・審査」までは完全に自動で行う。
@@ -116,6 +117,8 @@ export async function runAgentsForUser(userId: string) {
 }
 
 async function tick() {
+  // 緊急コントロールで止められている間は、どのエージェントも動かさない
+  if (await getFlag(SETTING_KEYS.pauseAgentLoop)) return;
   // 実行コストがかかるため、有料プラン加入中（または管理者）のアカウントだけを対象にする
   const users = await prisma.user.findMany({ where: { OR: [{ subscriptionStatus: 'active' }, { isAdmin: true }] }, select: { id: true } });
   for (const u of users) {
