@@ -259,11 +259,27 @@ export default function Home() {
             まだ誰も見たことのない世界は、<br />
             あなたの「やりたい」から始まる。
           </p>
-          <p className="text-gray-600 leading-loose tracking-wide">
-            自由に組み立てた仕組みが、<br />
-            古い歯車と入れ替わるとき、<br />
-            世界は新たなカタチへと回り始める。
-          </p>
+          <div className="text-gray-600 leading-loose tracking-wide space-y-6">
+            <p>
+              社会を動かす仕組みを、<br />
+              もっと多くの人の手に。<br />
+              つくる人が増えるほど、<br />
+              まだ満たされていない誰かの「ほしい」に<br />
+              応える仕組みが生まれていく。
+            </p>
+            <p>
+              誰もが自分だけのシステムを<br />
+              自由に組み立てられる世界なら、<br />
+              ひとりひとりが、<br />
+              生まれ持った天性のままに、<br />
+              人生を豊かに生きていける。
+            </p>
+            <p className="font-bold text-gray-900">
+              そんな世界を、ここからつくる。<br />
+              AWPは、人類を世界平和へと導く<br />
+              環境を築いていきます。
+            </p>
+          </div>
         </div>
       </section>
 
