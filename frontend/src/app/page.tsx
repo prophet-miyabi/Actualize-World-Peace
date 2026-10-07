@@ -255,14 +255,14 @@ export default function Home() {
           <h2 className="text-3xl sm:text-5xl font-black mb-8 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">
             Actualize World Peace
           </h2>
-          <p className="text-lg sm:text-2xl font-black text-gray-900 leading-relaxed mb-6">
-            心の底から<br className="sm:hidden" />「やりたい！」って思うこと、ある？<br />
-            それをカタチにして、<br className="sm:hidden" />あなただけの世界をつくっちゃおう！
+          <p className="text-xl sm:text-3xl font-black text-gray-900 leading-relaxed tracking-wide mb-8">
+            まだ誰も見たことのない世界は、<br />
+            あなたの「やりたい」から始まる。
           </p>
-          <p className="text-gray-700 leading-loose">
-            AWPなら、誰でも自由に、<br className="sm:hidden" />自分だけのシステムを組み立てられる。<br />
-            世界を回す歯車を自分でつくって、<br className="sm:hidden" />古い歯車と入れ替えちゃえ。<br />
-            そのひとつひとつが、<br className="sm:hidden" />きっと世界平和につながっていく。
+          <p className="text-gray-600 leading-loose tracking-wide">
+            自由に組み立てた仕組みが、<br />
+            古い歯車と静かに入れ替わるとき、<br />
+            世界は少しだけ、やさしく回り出す。
           </p>
         </div>
       </section>
