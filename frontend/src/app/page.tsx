@@ -256,7 +256,7 @@ export default function Home() {
               人は天性のままに、豊かに生きていける。
             </p>
             <p className="font-bold text-gray-900">
-              AWPで<br className="sm:hidden" />世界のリーダーの一人になりましょう！
+              AWPで<br className="sm:hidden" />世界を動かすリーダーの一人に<br />あなたもなりましょう！
             </p>
           </div>
         </div>
