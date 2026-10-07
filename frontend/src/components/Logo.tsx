@@ -1,30 +1,42 @@
-// ブランドロゴ（AWP）。
-// AI画像生成は文字の描画が崩れやすいため、ロゴは手書きのSVGで作成し、
-// 常にくっきり読める状態を保証する。
+import { useId } from 'react';
+import { Outfit } from 'next/font/google';
+import { BRAND_GRADIENT, PHI, goldenSpiral } from '@/lib/brand';
+
+// ブランドロゴ（AWP）。AI画像生成は文字や形が崩れやすいため、SVGで描いて常にくっきり表示する。
+// 黄金比: マークの高さ : 文字の大きさ = φ : 1、マークと文字の間隔 = マーク × 1/φ²、角丸 = マーク × 1/φ³
+const brandFont = Outfit({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' });
+
+const VIEW = 40;
+const spiral = goldenSpiral(VIEW);
+
 export function LogoMark({ size = 36 }: { size?: number }) {
+  const gid = `awp-grad-${useId().replace(/:/g, '')}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    <svg width={size} height={size} viewBox={`0 0 ${VIEW} ${VIEW}`} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
       <defs>
-        <linearGradient id="awp-grad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#3b82f6" />
-          <stop offset="1" stopColor="#1d4ed8" />
+        <linearGradient id={gid} x1="0" y1="0" x2={VIEW} y2={VIEW} gradientUnits="userSpaceOnUse">
+          <stop stopColor={BRAND_GRADIENT[0]} />
+          <stop offset="0.5" stopColor={BRAND_GRADIENT[1]} />
+          <stop offset="1" stopColor={BRAND_GRADIENT[2]} />
         </linearGradient>
       </defs>
-      <rect width="40" height="40" rx="11" fill="url(#awp-grad)" />
-      <text x="20" y="25.5" textAnchor="middle"
-        fontFamily="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
-        fontWeight="800" fontSize="13" letterSpacing="0.5" fill="#ffffff">
-        AWP
-      </text>
+      <rect width={VIEW} height={VIEW} rx={VIEW / PHI ** 3} fill={`url(#${gid})`} />
+      <path d={spiral.path} stroke="#ffffff" strokeWidth={spiral.strokeWidth} strokeLinecap="round" fill="none" />
+      <circle cx={spiral.eye.cx} cy={spiral.eye.cy} r={spiral.eye.r} fill="#ffffff" />
     </svg>
   );
 }
 
 export default function Logo({ withWordmark = true, size = 36, className = '' }: { withWordmark?: boolean; size?: number; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
+    <span className={`inline-flex items-center ${className}`} style={{ gap: size / PHI ** 2 }}>
       <LogoMark size={size} />
-      {withWordmark && <span className="font-black tracking-tight text-blue-700">AWP</span>}
+      {withWordmark && (
+        <span className={`${brandFont.className} font-bold leading-none bg-clip-text text-transparent`}
+          style={{ fontSize: size / PHI, letterSpacing: '0.06em', backgroundImage: `linear-gradient(90deg, ${BRAND_GRADIENT.join(', ')})` }}>
+          AWP
+        </span>
+      )}
     </span>
   );
 }
