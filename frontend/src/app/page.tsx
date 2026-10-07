@@ -279,20 +279,24 @@ export default function Home() {
       <section className="px-5 py-20 text-center bg-gradient-to-br from-fuchsia-50 via-white to-sky-50">
         <div className="max-w-2xl mx-auto">
           <p className="text-violet-700 font-bold text-sm tracking-widest mb-3">OUR MISSION</p>
-          <h2 className="text-2xl sm:text-4xl font-black mb-6">
-            AWP = <span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">Actualize World Peace</span>
+          <h2 className="text-3xl sm:text-5xl font-black mb-8 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">
+            Actualize World Peace
           </h2>
+          <p className="text-lg sm:text-2xl font-black text-gray-900 leading-relaxed mb-6">
+            心の底から<br className="sm:hidden" />「やりたい！」って思うこと、ある？<br />
+            それをカタチにして、<br className="sm:hidden" />あなただけの世界をつくっちゃおう！
+          </p>
           <p className="text-gray-700 leading-loose">
-            ひとりひとりが、自分の「やりたい」をかたちにして、それで生きていける。<br className="hidden sm:inline" />
-            そんな人が増えるほど、世界はきっと平和に近づく。<br className="hidden sm:inline" />
-            AWPは、その一歩をスマホひとつで踏み出せる場所をつくります。
+            AWPなら、誰でも自由に、<br className="sm:hidden" />自分だけのシステムを組み立てられる。<br />
+            世界を回す歯車を自分でつくって、<br className="sm:hidden" />古い歯車と入れ替えちゃえ。<br />
+            そのひとつひとつが、<br className="sm:hidden" />きっと世界平和につながっていく。
           </p>
         </div>
       </section>
 
       {/* 最後のひと押し */}
       <section className="px-5 py-24 text-center text-white" style={{ background: 'linear-gradient(135deg, #d946ef, #7c3aed 50%, #0ea5e9)' }}>
-        <h2 className="text-2xl sm:text-4xl font-black mb-5">あなたのページを、今日から。</h2>
+        <h2 className="text-2xl sm:text-4xl font-black mb-5">あなたのページを、<br className="sm:hidden" />今日から。</h2>
         <p className="opacity-85 mb-10">アカウントの作成から、ページの公開まで無料です。</p>
         <Link href={SIGNUP} className="inline-block bg-white text-blue-700 font-bold rounded-full px-10 py-4 text-lg shadow-lg hover:bg-blue-50">
           無料ではじめる
