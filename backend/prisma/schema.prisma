@@ -42,6 +42,7 @@ model User {
   scheduledPosts      ScheduledPost[]
   agentTasks          AgentTask[]
   automationWorkflows AutomationWorkflow[]
+  harnessOrders       HarnessOrder[]
 }
 
 // 「どのサイトで、どの操作をするか」を編集できるブラウザ操作の自動化ワークフロー。
@@ -216,6 +217,41 @@ model LpTool {
   createdAt DateTime    @default(now())
 
   @@index([lpId])
+}
+
+// ---- Harness（L Harness / X Harness / IG Harness）の導入支援 ----
+// Harness は AIエージェント株式会社（野田修一 氏）が公開しているOSS（MIT License）。AWPは開発元と提携しておらず、
+// 独立した導入支援として「導入（無料）」と、その上に追加する有料機能（ボット導入・投稿/記事の自動作成など）を提供する。
+// 料金は運営者が管理画面で決める（priceYen が null のメニューはユーザーに表示しない）
+model HarnessAddon {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  harness     String   // line / x / instagram
+  name        String
+  description String
+  priceYen    Int?     // 0 = 無料（導入など）、null = 料金未設定（非表示）
+  isInstall   Boolean  @default(false) // そのHarness自体の導入メニュー
+  enabled     Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ユーザーの申し込み。金額は申し込み時点のメニューをサーバー側で写し取る（画面から送られた金額は使わない）。
+// 決済方法は後から追加するため、当面は paymentStatus で「未払い / 支払い不要」だけを管理する
+model HarnessOrder {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         Json     // [{ addonId, key, harness, name, priceYen }]
+  totalYen      Int
+  note          String?
+  status        String   @default("requested") // requested / in_progress / done / canceled
+  paymentStatus String   @default("unpaid")    // unpaid / not_required / paid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // アフィリエイトリンクのクリック計測（どのツールが選ばれているかを把握し、カタログ改善に使う）。

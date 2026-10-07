@@ -250,6 +250,7 @@ function DashboardInner() {
           <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">公開中（無料）</span>
             <Link href={`/tools${qs}`} className="text-blue-600 underline">提携ツールを追加</Link>
+            <Link href="/harness" className="text-blue-600 underline">LINE・X・Instagramを自動化</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
             {isActive && (
@@ -271,6 +272,7 @@ function DashboardInner() {
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-2">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
         {isAdmin && <Link href="/admin/tools" className="text-blue-600 underline text-sm block mt-1">提携ツールのカタログ管理 →</Link>}
+        {isAdmin && <Link href="/admin/harness" className="text-blue-600 underline text-sm block mt-1">Harness導入支援の管理（料金・申し込み） →</Link>}
       </div>
 
       {data.lp && justCreated && (

@@ -12,14 +12,15 @@ const b64 = (buf: Uint8Array | null | undefined, type: string | null | undefined
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const [user, pages, inquiries] = await Promise.all([
+  const [user, pages, inquiries, harnessOrders] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, createdAt: true } }),
     prisma.landingPage.findMany({
       where: { userId },
       include: { tools: true, photos: true, variants: true },
       orderBy: { createdAt: 'asc' }
     }),
-    prisma.inquiry.findMany({ where: { tenantId: userId }, orderBy: { createdAt: 'asc' } })
+    prisma.inquiry.findMany({ where: { tenantId: userId }, orderBy: { createdAt: 'asc' } }),
+    prisma.harnessOrder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
   ]);
 
   const data = {
@@ -52,7 +53,8 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
       pageViews: p.pageViews,
       createdAt: p.createdAt
     })),
-    inquiries: inquiries.map((i) => ({ senderName: i.senderName, message: i.message, source: i.source, createdAt: i.createdAt }))
+    inquiries: inquiries.map((i) => ({ senderName: i.senderName, message: i.message, source: i.source, createdAt: i.createdAt })),
+    harnessOrders: harnessOrders.map((o) => ({ items: o.items, totalYen: o.totalYen, note: o.note, status: o.status, paymentStatus: o.paymentStatus, createdAt: o.createdAt }))
   };
 
   res.set('Content-Disposition', `attachment; filename="awp-export-${new Date().toISOString().slice(0, 10)}.json"`);
