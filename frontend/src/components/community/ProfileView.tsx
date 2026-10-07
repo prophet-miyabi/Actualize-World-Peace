@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import FollowButton from './FollowButton';
 import ReportButton from './ReportButton';
+import ProfilePosts from './ProfilePosts';
 
 export type Profile = {
   username: string;
@@ -84,6 +85,8 @@ export default function ProfileView({ profile }: { profile: Profile }) {
           </div>
         )}
       </section>
+
+      <ProfilePosts username={profile.username} />
 
       <footer className="max-w-2xl mx-auto px-4 pb-10 flex items-center justify-between text-xs text-gray-400">
         <span>Made with <Link href="/" className="underline">AWP</Link></span>

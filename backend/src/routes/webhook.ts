@@ -4,6 +4,7 @@ import { messagingApi, WebhookEvent } from '@line/bot-sdk';
 import prisma from '../prisma';
 import { fallbackReply, generateLineReply } from '../ai/lineReply';
 import { captureError } from '../lib/errors';
+import { notifyUser } from '../lib/push';
 
 const router = Router();
 
@@ -17,33 +18,8 @@ function verifySignature(channelSecret: string, rawBody: Buffer, signature: stri
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
-// 新着問い合わせを、店主のスマホアプリへプッシュ通知する（Expo Push API）
-async function notifyOwner(tenantId: string, message: string) {
-  const user = await prisma.user.findUnique({ where: { id: tenantId }, select: { expoPushToken: true } });
-  if (!user?.expoPushToken) return;
-  try {
-    const res = await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        to: user.expoPushToken,
-        title: '新しいお問い合わせ',
-        body: message.slice(0, 100),
-        sound: 'default',
-        data: { type: 'inquiry' }
-      })
-    });
-    const json: any = await res.json().catch(() => ({}));
-    const ticket = Array.isArray(json?.data) ? json.data[0] : json?.data;
-    // アプリが削除された端末には以後送らない
-    if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
-      await prisma.user.update({ where: { id: tenantId }, data: { expoPushToken: null } });
-    }
-  } catch (e: any) {
-    console.error('push notification failed', e?.message);
-    void captureError('push_notification', e, { tenantId });
-  }
-}
+// 新着問い合わせを、店主のスマホアプリへプッシュ通知する
+const notifyOwner = (tenantId: string, message: string) => notifyUser(tenantId, '新しいお問い合わせ', message, { type: 'inquiry' });
 
 // テナントごとのLINE Webhook受け口（マルチテナントL-Harness運用基盤）
 // 注意: このルートはexpress.json()より前に、生のBodyを保持するミドルウェアで

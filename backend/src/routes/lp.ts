@@ -10,6 +10,8 @@ import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { submitLpToIndexNow } from '../seo/indexnow';
+import { publicProduct } from './products';
+import { normalizeBookingConfig } from './bookings';
 
 const router = Router();
 
@@ -270,7 +272,7 @@ const LINE_URL_ERROR = 'LINEの友だち追加URL（https://lin.ee/... の形式
 export const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'analytics', 'bookings', 'products', 'posts', 'feed', 'chat', 'shop', 'reserve', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
@@ -616,9 +618,16 @@ router.get('/:slug', async (req, res) => {
         select: { key: true, name: true, description: true }
       }))
     : [];
+  const products = await prisma.product.findMany({
+    where: { lpId: lp.id }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true, name: true, priceYen: true, priceNote: true, description: true, buyUrl: true, soldOut: true, imageType: true, updatedAt: true }
+  });
   res.json({
     ...publicLp(lpData),
     promotions,
+    products: products.map(publicProduct),
+    // 予約リクエストのフォームに必要な設定だけを出す
+    booking: lpData.bookingEnabled ? normalizeBookingConfig(lpData.bookingConfig) : null,
     heroTitle: variant?.heroTitle || lpData.heroTitle,
     variantId: variant?.id ?? null,
     // 公開ページ下部のバー（作成者のプロフィール・いいね）用。非公開にされたプロフィールは出さない

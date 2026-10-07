@@ -4,6 +4,9 @@ import type { Metadata } from 'next';
 import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
 import PageEngagementBar from '@/components/community/PageEngagementBar';
 import PromotionBlock from '@/components/community/PromotionBlock';
+import ProductsSection, { type PublicProduct } from '@/components/modules/ProductsSection';
+import BookingWidget from '@/components/modules/BookingWidget';
+import PageChatbot from '@/components/modules/PageChatbot';
 import ProfileView, { type Profile } from '@/components/community/ProfileView';
 
 // SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
@@ -14,6 +17,9 @@ const SITE_URL = process.env.SITE_URL || '';
 type PublicLp = Lp & {
   owner: { username: string; name: string } | null;
   promotions?: { key: string; name: string; description: string }[];
+  products?: PublicProduct[];
+  booking?: { menus: { name: string; note: string }[]; note: string; leadDays: number; maxDays: number } | null;
+  chatbotEnabled?: boolean;
 };
 
 async function fetchLp(slug: string): Promise<PublicLp | null> {
@@ -99,6 +105,17 @@ export default async function LandingPage({ params }: Params) {
     return <ProfileView profile={profile} />;
   }
   const siteUrl = SITE_URL || (await currentOrigin());
+  const { p: palette } = buildTokens(lp.design);
+  // 持ち主が追加した機能（商品・予約リクエスト・AIチャットボット）
+  const modules = (
+    <>
+      <ProductsSection lp={lp} products={lp.products ?? []} />
+      {lp.booking && (
+        <BookingWidget slug={lp.slug} businessName={lp.businessName} config={lp.booking} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />
+      )}
+      {lp.chatbotEnabled && <PageChatbot slug={lp.slug} businessName={lp.businessName} primary={palette.primary} onPrimary={palette.onPrimary} />}
+    </>
+  );
   const engagement = (
     <>
       <PromotionBlock slug={lp.slug} items={lp.promotions ?? []} />
@@ -134,6 +151,7 @@ export default async function LandingPage({ params }: Params) {
           <StrengthsSection lp={lp} tokens={tokens} />
           <ToolsSection lp={lp} tokens={tokens} />
           <LineCtaSection lp={lp} tokens={tokens} />
+          {modules}
           <SiteFooter lp={lp} tokens={tokens} />
           {engagement}
         </div>
@@ -144,7 +162,7 @@ export default async function LandingPage({ params }: Params) {
   return (
     <>
       {jsonLdScript}
-      <LandingView lp={lp} imageUrl={imageUrl} />
+      <LandingView lp={lp} imageUrl={imageUrl} extra={modules} />
       {engagement}
     </>
   );

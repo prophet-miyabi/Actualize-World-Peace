@@ -9,6 +9,7 @@ type Card = {
 };
 
 const TABS = [
+  { id: 'foryou', label: 'おすすめ' },
   { id: 'new', label: '新着' },
   { id: 'popular', label: '人気' },
   { id: 'following', label: 'フォロー中' }
@@ -19,9 +20,9 @@ const CATEGORIES = [
   { id: 'creator', label: 'クリエイター' }
 ];
 
-// 発見: みんなが公開したページを、新着・人気・フォロー中・キーワードで探す
+// 発見: みんなが公開したページを、おすすめ・新着・人気・フォロー中・キーワードで探す
 export default function DiscoverPage() {
-  const [tab, setTab] = useState('new');
+  const [tab, setTab] = useState('foryou');
   const [category, setCategory] = useState('');
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
@@ -45,7 +46,10 @@ export default function DiscoverPage() {
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-2">
           <div className="flex items-center justify-between">
             <Link href="/" aria-label="AWP トップ"><Logo size={28} /></Link>
-            <Link href="/dashboard" className="text-xs font-bold text-violet-700">マイページ</Link>
+            <span className="flex gap-3">
+              <Link href="/feed" className="text-xs font-bold text-violet-700">タイムライン</Link>
+              <Link href="/dashboard" className="text-xs font-bold text-violet-700">マイページ</Link>
+            </span>
           </div>
           <h1 className="text-2xl font-black mt-2">発見 <span className="text-base">✨</span></h1>
           <form onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); }} className="mt-2">

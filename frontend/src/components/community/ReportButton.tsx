@@ -11,7 +11,7 @@ const REASONS: { id: string; label: string }[] = [
   { id: 'other', label: 'その他' }
 ];
 
-export default function ReportButton({ targetType, targetId }: { targetType: 'page' | 'profile'; targetId: string }) {
+export default function ReportButton({ targetType, targetId }: { targetType: 'page' | 'profile' | 'post'; targetId: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
@@ -55,7 +55,7 @@ export default function ReportButton({ targetType, targetId }: { targetType: 'pa
               </>
             ) : (
               <>
-                <p className="font-bold">{targetType === 'page' ? 'このページ' : 'このプロフィール'}を通報する</p>
+                <p className="font-bold">{targetType === 'page' ? 'このページ' : targetType === 'post' ? 'この投稿' : 'このプロフィール'}を通報する</p>
                 <p className="text-xs text-gray-500 mt-1">理由を選んでください</p>
                 <div className="mt-3 grid gap-2">
                   {REASONS.map((r) => (

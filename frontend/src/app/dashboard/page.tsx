@@ -285,6 +285,11 @@ function DashboardInner() {
             )}
             <Link href={`/tools${qs}`} className="text-blue-600 underline">提携ツールを追加</Link>
             <Link href="/harness" className="text-blue-600 underline">LINE・X・Instagramを自動化</Link>
+            <Link href={`/analytics${qs}`} className="text-blue-600 underline">アクセス解析</Link>
+            <Link href={`/bookings${qs}`} className="text-blue-600 underline">予約リクエスト</Link>
+            <Link href={`/products${qs}`} className="text-blue-600 underline">商品</Link>
+            <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AIチャットボット</Link>
+            <Link href="/feed" className="text-blue-600 underline">投稿する</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
             {isActive && (

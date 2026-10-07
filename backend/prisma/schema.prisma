@@ -34,6 +34,7 @@ model User {
   followers Follow[] @relation("followers")
   pageLikes PageLike[]
   builderSessions BuilderSession[]
+  posts Post[]
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
@@ -202,6 +203,14 @@ model LandingPage {
 
   // 持ち主が「収益化（PR枠）」をオンにしたページ。PR表示付きで提携サービスの紹介枠を出す
   monetizationEnabled Boolean @default(false)
+  // 持ち主が「AIチャットボット」をオンにしたページ。確定した情報だけで訪問者の質問に答える
+  chatbotEnabled Boolean @default(false)
+  chatbotQuestions ChatbotQuestion[]
+  // 予約リクエスト（訪問者が希望日時を送り、持ち主が確定・お断りする）。設定: { menus: [{ name, note }], note, leadDays, maxDays }
+  bookingEnabled Boolean @default(false)
+  bookingConfig  Json?
+  bookings       Booking[]
+  products       Product[]
 
   // 対話で作ったページの「事実の台帳」（AI作成ページビルダー）。項目ごとに出どころ（status）を持つ
   brief    Json?
@@ -543,4 +552,73 @@ model RevenueEvent {
 
   @@unique([toolKey, externalRef])
   @@index([userId])
+}
+
+// ページのAIチャットボットに届いた質問（持ち主が「よく聞かれること」を知るため）。
+// 回答文や訪問者の情報は保存しない。90日を過ぎたものは自動で削除する
+model ChatbotQuestion {
+  id        String      @id @default(cuid())
+  lpId      String
+  lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  question  String
+  answered  Boolean     // AIがページの情報から答えられたか（false = 情報が足りなかった）
+  createdAt DateTime    @default(now())
+
+  @@index([lpId, createdAt])
+}
+
+// ---- 予約リクエスト ----
+// 訪問者の連絡先を扱うため、保存するのは予約のやり取りに必要な最小限だけ。希望日から1年過ぎたものは自動で削除する
+model Booking {
+  id          String      @id @default(cuid())
+  lpId        String
+  lp          LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  code        String      @unique // 訪問者が状況を確認するための番号（推測されにくいランダム文字列）
+  menu        String?
+  requestedAt DateTime    // 希望日時
+  name        String
+  contact     String      // メールアドレスまたは電話番号
+  message     String?
+  status      String      @default("requested") // requested / confirmed / declined / canceled
+  ownerNote   String?     // 持ち主から訪問者への一言（状況確認ページに表示）
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([lpId, requestedAt])
+}
+
+// ---- 商品（ページに並べる商品カタログ） ----
+// 購入は持ち主が使っているネットショップ（BASE・STORES など）で行う。AWPは代金を預からない
+model Product {
+  id          String      @id @default(cuid())
+  lpId        String
+  lp          LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  name        String
+  priceYen    Int?        // 持ち主が入力した価格（未入力なら価格を出さない）
+  priceNote   String?     // 例: 税込 / 送料別
+  description String?
+  image       Bytes?
+  imageType   String?
+  buyUrl      String?     // 許可したネットショップのhttps URLのみ
+  soldOut     Boolean     @default(false)
+  sortOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([lpId])
+}
+
+// ---- 投稿（プロフィールとフォロワーのタイムラインに出る短い投稿） ----
+model Post {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  image     Bytes?
+  imageType String?
+  hidden    Boolean  @default(false) // 通報で運営者が非公開にした投稿
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }

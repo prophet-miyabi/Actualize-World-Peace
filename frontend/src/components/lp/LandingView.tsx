@@ -420,7 +420,8 @@ export function SiteNav({ lp, tokens, current }: { lp: Lp; tokens: Tokens; curre
 }
 
 // LP（1ページ完結）モード。すべてのセクションを1つのスクロールに並べる。
-export default function LandingView({ lp, imageUrl }: { lp: Lp; imageUrl: string | null }) {
+// extra = 持ち主が追加した機能（商品・予約など）。フッターの直前に表示する
+export default function LandingView({ lp, imageUrl, extra }: { lp: Lp; imageUrl: string | null; extra?: ReactNode }) {
   const tokens = buildTokens(lp.design);
   return (
     <div style={{ background: tokens.p.background, color: tokens.p.text, fontFamily: tokens.font.body }} className="min-h-screen">
@@ -429,6 +430,7 @@ export default function LandingView({ lp, imageUrl }: { lp: Lp; imageUrl: string
       {lp.sections.map((s, i) => <FeatureSection key={s.feature} section={s} index={i} tokens={tokens} />)}
       <ToolsSection lp={lp} tokens={tokens} />
       <LineCtaSection lp={lp} tokens={tokens} />
+      {extra}
       <SiteFooter lp={lp} tokens={tokens} />
     </div>
   );

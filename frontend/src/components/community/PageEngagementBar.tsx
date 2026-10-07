@@ -30,6 +30,27 @@ export default function PageEngagementBar({ slug, owner, siteUrl }: Props) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
       body: JSON.stringify({ type: 'view', slug, ref })
     }).catch(() => {});
+
+    // ページ内のリンクが押されたら、行き先の種類だけを記録する（URLや押した人の情報は送らない）
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.('a');
+      // AWP自身のバー（作った人・ログインなど）のリンクは数えない
+      if (!a || !a.href || a.closest('[data-awp-bar]')) return;
+      let target: string | null = null;
+      try {
+        const u = new URL(a.href, location.href);
+        if (u.pathname.startsWith('/api/tools/go/')) target = 'ad';
+        else if (/(^|\.)(lin\.ee|line\.me)$/.test(u.hostname)) target = 'line';
+        else if (/(^|\.)(instagram\.com|x\.com|twitter\.com|tiktok\.com|youtube\.com|youtu\.be|facebook\.com|threads\.net)$/.test(u.hostname)) target = 'sns';
+        else if (u.host !== location.host) target = 'tool';
+      } catch { /* 無視 */ }
+      if (!target) return;
+      const body = JSON.stringify({ type: 'click', slug, target });
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/community/events', new Blob([body], { type: 'application/json' }));
+      else fetch('/api/community/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
   }, [slug]);
 
   const toggleLike = async () => {
@@ -49,7 +70,7 @@ export default function PageEngagementBar({ slug, owner, siteUrl }: Props) {
   };
 
   return (
-    <div className="bg-white text-gray-800 border-t border-gray-200 px-4 py-4" style={{ fontFamily: 'var(--font-sans-jp)' }}>
+    <div data-awp-bar className="bg-white text-gray-800 border-t border-gray-200 px-4 py-4" style={{ fontFamily: 'var(--font-sans-jp)' }}>
       <div className="max-w-3xl mx-auto flex items-center gap-3">
         <button onClick={toggleLike} disabled={busy} aria-pressed={liked} aria-label="いいね"
           className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold border transition ${liked ? 'bg-pink-50 border-pink-300 text-pink-600' : 'border-gray-200 text-gray-600'}`}>

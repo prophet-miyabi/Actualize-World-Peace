@@ -3,13 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
 
 type Report = {
-  id: string; targetType: 'page' | 'profile'; targetId: string; reason: string; detail: string | null;
+  id: string; targetType: 'page' | 'profile' | 'post'; targetId: string;
+  post?: { body: string; hasImage: boolean; author: string | null } | null; reason: string; detail: string | null;
   reporterId: string | null; status: 'open' | 'resolved' | 'dismissed'; createdAt: string;
 };
 
 const REASON_LABEL: Record<string, string> = {
   scam: '詐欺・誇大な表現', illegal: '違法な内容', adult: 'わいせつ・暴力的', harassment: '誹謗中傷・嫌がらせ', copyright: '著作権・肖像権', other: 'その他'
 };
+const TYPE_LABEL: Record<Report['targetType'], string> = { page: 'ページ', profile: 'プロフィール', post: '投稿' };
 const STATUS_LABEL: Record<Report['status'], string> = { open: '未対応', resolved: '非公開にした', dismissed: '問題なし' };
 
 // 運営者専用: ページ・プロフィールへの通報を確認し、非公開にする／問題なしとして閉じる
@@ -28,7 +30,7 @@ export default function AdminReportsPage() {
   }, [load]);
 
   const act = async (r: Report, action: 'hide' | 'unhide' | 'dismiss') => {
-    if (action === 'hide' && !confirm(`${r.targetType === 'page' ? 'ページ' : 'プロフィール'}「${r.targetId}」を非公開にしますか？`)) return;
+    if (action === 'hide' && !confirm(`${TYPE_LABEL[r.targetType]}「${r.targetId}」を非公開にしますか？`)) return;
     setBusy(r.id);
     setError('');
     try {
@@ -60,9 +62,17 @@ export default function AdminReportsPage() {
           {open.map((r) => (
             <div key={r.id} className="bg-white border-2 border-amber-200 rounded-2xl p-4">
               <p className="text-[11px] font-bold text-amber-700">{REASON_LABEL[r.reason] || r.reason}・{new Date(r.createdAt).toLocaleString('ja-JP')}</p>
-              <a href={`/${r.targetId}`} target="_blank" rel="noopener noreferrer" className="font-bold underline break-all">
-                {r.targetType === 'page' ? 'ページ' : 'プロフィール'}: /{r.targetId}
-              </a>
+              {r.targetType === 'post' ? (
+                <div>
+                  <p className="font-bold">投稿{r.post?.author ? `（@${r.post.author}）` : ''}{r.post?.hasImage ? '・画像あり' : ''}</p>
+                  <p className="text-sm bg-gray-50 rounded-lg p-3 mt-1 whitespace-pre-wrap break-words">{r.post ? r.post.body : '（削除済み）'}</p>
+                  {r.post?.hasImage && <a href={`/api/posts/${r.targetId}/image`} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-700 underline">画像を見る</a>}
+                </div>
+              ) : (
+                <a href={`/${r.targetId}`} target="_blank" rel="noopener noreferrer" className="font-bold underline break-all">
+                  {TYPE_LABEL[r.targetType]}: /{r.targetId}
+                </a>
+              )}
               {r.detail && <p className="text-sm text-gray-700 mt-2 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap break-words">{r.detail}</p>}
               <p className="text-[11px] text-gray-400 mt-1">{r.reporterId ? 'ログイン中のユーザーからの通報' : '未ログインの訪問者からの通報'}</p>
               <div className="flex gap-2 mt-3">

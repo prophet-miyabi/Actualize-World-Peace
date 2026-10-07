@@ -91,5 +91,11 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'プラットフォーム', name: '対話型AIページビルダー（事実の出どころ管理・未確定の事実は公開しない）', status: 'done' },
   { category: 'プラットフォーム', name: '収益化（PR枠）・複式簿記の台帳・78/22分配・キャッシュでの支払い', status: 'done', note: '報酬は運営者がASPで確定を確認して記録する。分配は規約で認められた案件（分配OK）だけ' },
   { category: 'プラットフォーム', name: 'キャッシュの出金（銀行振込）', status: 'blocked', note: 'Stripe Connect等の送金基盤・本人確認・税務（支払調書・インボイス）の確認が必要。弁護士・税理士への相談推奨' },
-  { category: 'プラットフォーム', name: '外部ツールへのキャッシュ利用・予約/EC/決済モジュール・ページ内チャットボット・おすすめ表示', status: 'not_started', note: '外部へのキャッシュ利用は資金決済法の確認が必要' }
+  { category: 'プラットフォーム', name: 'アクセス解析（閲覧・クリック・流入元）・おすすめ表示', status: 'done' },
+  { category: 'プラットフォーム', name: 'ページのAIチャットボット（確定情報のみで回答・答えられなかった質問の可視化）', status: 'done' },
+  { category: 'プラットフォーム', name: '予約リクエスト（受付・確定/お断り・訪問者の状況確認ページ）', status: 'done', note: '決済なし。空き枠の自動管理は未実装' },
+  { category: 'プラットフォーム', name: '商品カタログ（購入は持ち主のネットショップへ）', status: 'done' },
+  { category: 'プラットフォーム', name: '投稿・タイムライン（みんな／フォロー中）・投稿の通報', status: 'done' },
+  { category: 'プラットフォーム', name: 'AWP内での決済（商品販売・予約の事前決済）', status: 'blocked', note: 'Stripe Connect・特定商取引法の表示・返金規定の整備が必要（運営者の判断待ち）' },
+  { category: 'プラットフォーム', name: '外部ツールへのキャッシュ利用', status: 'blocked', note: '資金決済法（第三者型前払式支払手段・資金移動業）の確認が必要' }
 ];

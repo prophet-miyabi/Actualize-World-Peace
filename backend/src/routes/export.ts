@@ -12,16 +12,17 @@ const b64 = (buf: Uint8Array | null | undefined, type: string | null | undefined
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const [user, pages, inquiries, harnessOrders, cashEntries] = await Promise.all([
+  const [user, pages, inquiries, harnessOrders, cashEntries, posts] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, createdAt: true, username: true, bio: true, category: true, region: true, links: true } }),
     prisma.landingPage.findMany({
       where: { userId },
-      include: { tools: true, photos: true, variants: true },
+      include: { tools: true, photos: true, variants: true, products: true, bookings: true },
       orderBy: { createdAt: 'asc' }
     }),
     prisma.inquiry.findMany({ where: { tenantId: userId }, orderBy: { createdAt: 'asc' } }),
     prisma.harnessOrder.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
-    prisma.ledgerEntry.findMany({ where: { userId }, orderBy: { createdAt: 'asc' }, include: { tx: { select: { kind: true, memo: true } } } })
+    prisma.ledgerEntry.findMany({ where: { userId }, orderBy: { createdAt: 'asc' }, include: { tx: { select: { kind: true, memo: true } } } }),
+    prisma.post.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })
   ]);
 
   const data = {
@@ -51,10 +52,15 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
         original: b64(ph.original, ph.originalType),
         enhanced: b64(ph.enhanced, ph.enhancedType)
       })),
+      brief: p.brief,
+      products: p.products.map((pr) => ({ name: pr.name, priceYen: pr.priceYen, priceNote: pr.priceNote, description: pr.description, buyUrl: pr.buyUrl, soldOut: pr.soldOut, image: b64(pr.image, pr.imageType) })),
+      bookingConfig: p.bookingConfig,
+      bookings: p.bookings.map((b) => ({ menu: b.menu, requestedAt: b.requestedAt, name: b.name, contact: b.contact, message: b.message, status: b.status, createdAt: b.createdAt })),
       pageViews: p.pageViews,
       createdAt: p.createdAt
     })),
     inquiries: inquiries.map((i) => ({ senderName: i.senderName, message: i.message, source: i.source, createdAt: i.createdAt })),
+    posts: posts.map((p) => ({ body: p.body, image: b64(p.image, p.imageType), createdAt: p.createdAt })),
     cashHistory: cashEntries.map((e) => ({ amount: e.credit - e.debit, kind: e.tx.kind, memo: e.tx.memo, createdAt: e.createdAt })),
     harnessOrders: harnessOrders.map((o) => ({ items: o.items, totalYen: o.totalYen, note: o.note, status: o.status, paymentStatus: o.paymentStatus, createdAt: o.createdAt }))
   };

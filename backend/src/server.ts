@@ -20,6 +20,10 @@ import opsRoutes from './routes/ops';
 import communityRoutes from './routes/community';
 import builderRoutes from './routes/builder';
 import walletRoutes from './routes/wallet';
+import chatbotRoutes from './routes/chatbot';
+import bookingRoutes from './routes/bookings';
+import productRoutes from './routes/products';
+import postRoutes from './routes/posts';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -61,6 +65,10 @@ app.use('/api/ops', opsRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/builder', builderRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/posts', postRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

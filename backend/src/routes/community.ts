@@ -186,7 +186,7 @@ router.delete('/likes/:slug', authenticate, async (req: AuthRequest, res) => {
 // ---- 発見（新着・人気・フォロー中・キーワード・カテゴリー） ----
 
 router.get('/discover', async (req: AuthRequest, res) => {
-  const tab = ['new', 'popular', 'following'].includes(String(req.query.tab)) ? String(req.query.tab) : 'new';
+  const tab = ['foryou', 'new', 'popular', 'following'].includes(String(req.query.tab)) ? String(req.query.tab) : 'new';
   const category = ['business', 'creator'].includes(String(req.query.category)) ? String(req.query.category) : null;
   const q = String(req.query.q ?? '').trim().slice(0, 50);
   const me = viewerId(req);
@@ -207,16 +207,19 @@ router.get('/discover', async (req: AuthRequest, res) => {
     where.user = { ...where.user, followers: { some: { followerId: me } } };
   }
 
-  const pages = await prisma.landingPage.findMany({
-    where,
-    orderBy: tab === 'popular' ? [{ likes: { _count: 'desc' } }, { pageViews: 'desc' }] : { createdAt: 'desc' },
-    take: PAGE_SIZE,
-    select: {
-      slug: true, businessName: true, heroTitle: true, purpose: true, heroImageType: true, designUpdatedAt: true,
-      user: { select: { username: true, name: true } },
-      _count: { select: { likes: true } }
-    }
-  });
+  const select = {
+    id: true, slug: true, businessName: true, heroTitle: true, purpose: true, heroImageType: true, designUpdatedAt: true, createdAt: true, userId: true,
+    user: { select: { username: true, name: true, region: true } },
+    _count: { select: { likes: true } }
+  } as const;
+  const pages = tab === 'foryou'
+    ? await recommend(where, me)
+    : await prisma.landingPage.findMany({
+        where,
+        orderBy: tab === 'popular' ? [{ likes: { _count: 'desc' } }, { pageViews: 'desc' }] : { createdAt: 'desc' },
+        take: PAGE_SIZE,
+        select
+      });
   res.json({
     pages: pages.map((p) => ({
       slug: p.slug, businessName: p.businessName, heroTitle: p.heroTitle, purpose: p.purpose, likes: p._count.likes,
@@ -225,6 +228,98 @@ router.get('/discover', async (req: AuthRequest, res) => {
     }))
   });
 });
+
+// ---- 持ち主向けのアクセス解析（直近30日） ----
+// 閲覧はページを開いた端末から送られた記録（PageEvent）で数える。検索ロボットの取得は含まない
+router.get('/me/analytics', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const lpId = typeof req.query.lpId === 'string' && req.query.lpId ? req.query.lpId : undefined;
+  const lp = await prisma.landingPage.findFirst({
+    where: lpId ? { id: lpId, userId } : { userId }, orderBy: { createdAt: 'asc' },
+    select: { id: true, slug: true, businessName: true, monetizationEnabled: true, _count: { select: { likes: true } } }
+  });
+  if (!lp) return res.json({ page: null });
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [daily, clicks, sources, followers, prClicks] = await Promise.all([
+    prisma.$queryRaw<{ day: string; views: bigint }[]>`
+      SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD') AS day, COUNT(*) AS views
+      FROM "PageEvent" WHERE "lpId" = ${lp.id} AND type = 'view' AND "createdAt" >= ${since}
+      GROUP BY 1 ORDER BY 1`,
+    prisma.pageEvent.groupBy({ by: ['target'], where: { lpId: lp.id, type: 'click', createdAt: { gte: since } }, _count: { _all: true } }),
+    prisma.pageEvent.groupBy({
+      by: ['source'], where: { lpId: lp.id, type: 'view', createdAt: { gte: since } }, _count: { _all: true },
+      orderBy: { _count: { source: 'desc' } }, take: 8
+    }),
+    prisma.follow.count({ where: { followingId: userId } }),
+    prisma.affiliateClick.count({ where: { lpId: lp.id, createdAt: { gte: since } } })
+  ]);
+  // 30日分の日付をすべて並べる（閲覧0の日も表示するため）
+  const byDay = Object.fromEntries(daily.map((d) => [d.day, Number(d.views)]));
+  const days: { date: string; views: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() + 9 * 3600_000 - i * 86_400_000).toISOString().slice(0, 10);
+    days.push({ date: d, views: byDay[d] ?? 0 });
+  }
+  const clickBy = Object.fromEntries(clicks.map((c) => [c.target ?? 'other', c._count._all]));
+  res.json({
+    page: { id: lp.id, slug: lp.slug, businessName: lp.businessName, monetizationEnabled: lp.monetizationEnabled },
+    totals: { views: days.reduce((a, d) => a + d.views, 0), likes: lp._count.likes, followers, prClicks },
+    days,
+    clicks: { tool: clickBy.tool ?? 0, line: clickBy.line ?? 0, sns: clickBy.sns ?? 0, ad: clickBy.ad ?? 0 },
+    sources: sources.map((s) => ({ source: s.source || '直接・不明', views: s._count._all }))
+  });
+});
+
+// おすすめ: 新しめの公開ページを候補に、反応（いいね・直近7日の閲覧）と、見ている人との近さ
+// （フォロー中の人のページ・いいねしたページと同じジャンル・同じ地域）で点数をつけて並べる。
+// 自分のページと、いいね済みのページは出さない
+async function recommend(where: any, me: string | null) {
+  const candidates = await prisma.landingPage.findMany({
+    where, orderBy: { createdAt: 'desc' }, take: 200,
+    select: {
+      id: true, slug: true, businessName: true, heroTitle: true, purpose: true, heroImageType: true, designUpdatedAt: true, createdAt: true, userId: true,
+      user: { select: { username: true, name: true, region: true } },
+      _count: { select: { likes: true } }
+    }
+  });
+  if (candidates.length === 0) return [];
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const views = await prisma.pageEvent.groupBy({
+    by: ['lpId'], where: { type: 'view', createdAt: { gte: since }, lpId: { in: candidates.map((c) => c.id) } }, _count: { _all: true }
+  });
+  const viewsBy = Object.fromEntries(views.map((v) => [v.lpId, v._count._all]));
+
+  let liked = new Set<string>();
+  let followed = new Set<string>();
+  const likedPurposes = new Map<string, number>();
+  let region: string | null = null;
+  if (me) {
+    const [likes, follows, user] = await Promise.all([
+      prisma.pageLike.findMany({ where: { userId: me }, select: { lpId: true, lp: { select: { purpose: true } } }, take: 500 }),
+      prisma.follow.findMany({ where: { followerId: me }, select: { followingId: true }, take: 1000 }),
+      prisma.user.findUnique({ where: { id: me }, select: { region: true } })
+    ]);
+    liked = new Set(likes.map((l) => l.lpId));
+    followed = new Set(follows.map((f) => f.followingId));
+    for (const l of likes) likedPurposes.set(l.lp.purpose, (likedPurposes.get(l.lp.purpose) ?? 0) + 1);
+    region = user?.region ?? null;
+  }
+  const topPurpose = [...likedPurposes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const now = Date.now();
+  return candidates
+    .filter((c) => c.userId !== me && !liked.has(c.id))
+    .map((c) => {
+      const ageDays = (now - c.createdAt.getTime()) / 86_400_000;
+      let score = c._count.likes * 3 + Math.log1p(viewsBy[c.id] ?? 0) * 2 + Math.max(0, 3 - ageDays / 10);
+      if (followed.has(c.userId)) score += 5;
+      if (topPurpose && c.purpose === topPurpose) score += 2;
+      if (region && c.user.region && (c.user.region.includes(region) || region.includes(c.user.region))) score += 2;
+      return { c, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, PAGE_SIZE)
+    .map((x) => x.c);
+}
 
 // ---- 閲覧・クリックの記録（公開ページから送られる。訪問者を特定する情報は受け取らない） ----
 
@@ -250,7 +345,7 @@ router.post('/events', async (req, res) => {
 // ---- 通報 ----
 
 router.post('/reports', async (req: AuthRequest, res) => {
-  const targetType = req.body?.targetType === 'profile' ? 'profile' : req.body?.targetType === 'page' ? 'page' : null;
+  const targetType = ['profile', 'page', 'post'].includes(req.body?.targetType) ? (req.body.targetType as string) : null;
   const targetId = String(req.body?.targetId ?? '').trim().toLowerCase();
   const reason = REPORT_REASONS.includes(req.body?.reason) ? req.body.reason : null;
   if (!targetType || !reason || !/^[a-z0-9-]{3,40}$/.test(targetId)) return res.status(400).json({ error: '通報の内容が正しくありません' });
@@ -264,7 +359,13 @@ router.post('/reports', async (req: AuthRequest, res) => {
 router.get('/admin/reports', authenticate, async (req: AuthRequest, res) => {
   if (!(await requireAdmin(req, res))) return;
   const reports = await prisma.report.findMany({ orderBy: [{ status: 'asc' }, { createdAt: 'desc' }], take: 200 });
-  res.json({ reports });
+  // 投稿への通報は、判断できるよう本文と投稿者を添える
+  const postIds = reports.filter((r) => r.targetType === 'post').map((r) => r.targetId);
+  const posts = postIds.length
+    ? await prisma.post.findMany({ where: { id: { in: postIds } }, select: { id: true, body: true, imageType: true, user: { select: { username: true } } } })
+    : [];
+  const postBy = Object.fromEntries(posts.map((p) => [p.id, { body: p.body.slice(0, 300), hasImage: !!p.imageType, author: p.user.username }]));
+  res.json({ reports: reports.map((r) => ({ ...r, post: r.targetType === 'post' ? postBy[r.targetId] ?? null : undefined })) });
 });
 
 // 運営者の対応: hide = 対象を非公開にする / unhide = 公開に戻す / dismiss = 問題なしとして閉じる
@@ -279,6 +380,8 @@ router.put('/admin/reports/:id', authenticate, async (req: AuthRequest, res) => 
     const hidden = action === 'hide';
     if (report.targetType === 'page') {
       await prisma.landingPage.updateMany({ where: { slug: report.targetId }, data: { hidden } });
+    } else if (report.targetType === 'post') {
+      await prisma.post.updateMany({ where: { id: report.targetId }, data: { hidden } });
     } else {
       await prisma.user.updateMany({ where: { username: report.targetId }, data: { profileHidden: hidden } });
     }
