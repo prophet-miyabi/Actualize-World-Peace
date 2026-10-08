@@ -61,7 +61,8 @@ export const CHANNELS = {
   review: { name: '✅-マージ待ち', topic: 'レビューに合格したPR。あなたが確認してマージすると本番に反映されます' },
   progress: { name: '📈-進捗', topic: '1日の振り返りと、公開日までの見通し' },
   alerts: { name: '🚨-アラート', topic: '本番のエラーや、遅れの警告' },
-  ask: { name: '💬-相談', topic: '/ask で質問、/bug で不具合、/add でタスク追加' }
+  ask: { name: '💬-相談', topic: '/ask で質問、/bug で不具合、/add でタスク追加' },
+  company: { name: '🏢-AI企業', topic: 'CEOの日次報告・承認待ちの操作・監査の結果' }
 } as const;
 export type ChannelKey = keyof typeof CHANNELS;
 

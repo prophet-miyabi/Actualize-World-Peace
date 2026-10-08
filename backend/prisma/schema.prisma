@@ -830,3 +830,120 @@ model Order {
   @@index([sellerId, createdAt])
   @@index([status, expiresAt])
 }
+
+// ---- AI企業（AIエージェントによる自律運営） ----
+// 人間が目標（CompanyGoal）を設定 → CEOが分析し COO に委任 → COO がタスク（CompanyTask）に分解して専門エージェントへ →
+// 各エージェントが道具（Hands）で実行 → 監査役（Auditor）が実際のシステム状態で検証 → CEO へ報告、のサイクル。
+// エージェント同士は直接会話せず、必ずタスク・イベント・メモリを介してやり取りする（誰が・いつ・何を・なぜ、を追跡できるように）
+model CompanyGoal {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  kpis        Json     // [{ key, label, target, unit, by }]
+  status      String   @default("active") // active / paused / achieved / dropped
+  setBy       String   // 人間（運営者）のID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       CompanyTask[]
+}
+
+model CompanyTask {
+  id            String    @id @default(cuid())
+  goalId        String?
+  goal          CompanyGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  parentId      String?
+  title         String
+  instructions  String
+  assignee      String    // エージェントのキー（registry.ts）
+  createdBy     String    // エージェントのキー または human
+  risk          String    @default("low") // low / medium / high
+  status        String    @default("queued") // queued / running / awaiting_approval / verifying / done / failed / rejected / canceled
+  runAt         DateTime  @default(now())
+  attempts      Int       @default(0)
+  result        Json?     // { summary, facts, assumptions, artifacts, nextActions }
+  verification  Json?     // 監査役の判定 { passed, findings, checkedAt }
+  error         String?
+  costUsd       Float     @default(0)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  actions       CompanyAction[]
+  runs          AgentRun[]
+
+  @@index([status, runAt])
+  @@index([assignee, createdAt])
+  @@index([parentId])
+}
+
+// 人間の承認が必要な操作（高リスクの道具の呼び出し）。承認されると実行され、結果はタスクに戻る
+model CompanyAction {
+  id         String      @id @default(cuid())
+  taskId     String
+  task       CompanyTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agent      String
+  tool       String
+  input      Json
+  reason     String
+  risk       String
+  status     String      @default("pending") // pending / approved / rejected / executed / failed
+  result     Json?
+  decidedBy  String?
+  decidedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([status, createdAt])
+}
+
+model CompanyEvent {
+  id        String   @id @default(cuid())
+  type      String   // task.created / task.done / action.requested / memory.written / cycle.ceo など
+  actor     String
+  taskId    String?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// スコープ付きのメモリ。company（全社）/ dept:<部門> / agent:<キー> / project:<id>。
+// エージェントは registry.ts で許可されたスコープだけ読み書きできる
+model CompanyMemory {
+  id        String   @id @default(cuid())
+  scope     String
+  key       String
+  content   String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, key])
+  @@index([scope])
+}
+
+model AgentRun {
+  id           String      @id @default(cuid())
+  agent        String
+  taskId       String?
+  task         CompanyTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  model        String
+  inputTokens  Int         @default(0)
+  outputTokens Int         @default(0)
+  costUsd      Float       @default(0)
+  toolCalls    Int         @default(0)
+  status       String      // ok / error / budget
+  error        String?
+  startedAt    DateTime    @default(now())
+  finishedAt   DateTime?
+
+  @@index([agent, startedAt])
+}
+
+// エージェントごとの運用設定（コード上の定義を上書きする分だけ）
+model CompanyAgentConfig {
+  key            String  @id
+  enabled        Boolean @default(true)
+  model          String?
+  dailyBudgetUsd Float?
+  updatedAt      DateTime @updatedAt
+}
