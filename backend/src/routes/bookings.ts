@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 import { notifyUser } from '../lib/push';
 
 // 予約リクエスト: 訪問者が希望日時と連絡先を送り、持ち主が「確定」「お断り」を返す。
@@ -56,7 +57,7 @@ router.post('/:slug', async (req, res) => {
     return res.status(400).json({ error: `希望日時は${config.leadDays ? `${config.leadDays}日後` : '今'}から${config.maxDays}日後までで選んでください` });
   }
   if (!req.body?.agree) return res.status(400).json({ error: '個人情報の取り扱いへの同意が必要です' });
-  if (hitRateLimit(`booking:${lp.id}`, DAILY_PER_PAGE, 24 * 3600_000)) return res.status(429).json({ error: 'ただいま予約リクエストが混み合っています。時間をおいてお試しください。' });
+  if (!(await isAdminUser(lp.userId)) && hitRateLimit(`booking:${lp.id}`, DAILY_PER_PAGE, 24 * 3600_000)) return res.status(429).json({ error: 'ただいま予約リクエストが混み合っています。時間をおいてお試しください。' });
 
   const code = crypto.randomBytes(9).toString('base64url');
   await prisma.booking.create({ data: { lpId: lp.id, code, menu, requestedAt, name, contact, message } });

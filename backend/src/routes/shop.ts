@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 import { notifyUser } from '../lib/push';
 import { seal, open } from '../lib/secretBox';
 
@@ -204,7 +205,7 @@ router.post('/orders/:slug', async (req, res) => {
   const rawItems = Array.isArray(req.body?.items) ? req.body.items.slice(0, 20) : [];
   const wanted = rawItems.map((i: any) => ({ productId: String(i?.productId ?? ''), qty: Number(i?.qty) })).filter((i: any) => i.productId && Number.isInteger(i.qty) && i.qty >= 1 && i.qty <= 99);
   if (!wanted.length) return res.status(400).json({ error: '商品を選んでください' });
-  if (hitRateLimit(`order:${lp.id}`, DAILY_ORDERS_PER_PAGE, DAY_MS)) return res.status(429).json({ error: 'ただいま注文が混み合っています。時間をおいてお試しください' });
+  if (!(await isAdminUser(lp.userId)) && hitRateLimit(`order:${lp.id}`, DAILY_ORDERS_PER_PAGE, DAY_MS)) return res.status(429).json({ error: 'ただいま注文が混み合っています。時間をおいてお試しください' });
 
   try {
     const order = await prisma.$transaction(async (db) => {

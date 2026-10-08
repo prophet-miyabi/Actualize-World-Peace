@@ -9,6 +9,7 @@ import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
 import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
 import { authenticate, AuthRequest } from '../middlewares/auth';
+import { isAdminUser } from '../middlewares/admin';
 import { submitLpToIndexNow } from '../seo/indexnow';
 import { publicProduct } from './products';
 import { normalizeBookingConfig } from './bookings';
@@ -44,7 +45,7 @@ router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRe
   const userId = req.user!.id;
   const now = Date.now();
   const recent = (aiGenerateRequests.get(userId) ?? []).filter((t) => now - t < 24 * 60 * 60 * 1000);
-  if (recent.length >= AI_GENERATE_LIMIT) {
+  if (recent.length >= AI_GENERATE_LIMIT && !(await isAdminUser(userId))) {
     return res.status(429).json({ error: `AI自動入力は24時間に${AI_GENERATE_LIMIT}回までです。時間をおいてお試しください。` });
   }
   aiGenerateRequests.set(userId, [...recent, now]);
@@ -461,7 +462,7 @@ router.post('/design', authenticate, metered('page_design'), async (req: AuthReq
 
   const now = Date.now();
   const recent = (designRequests.get(userId) ?? []).filter((t) => now - t < 24 * 60 * 60 * 1000);
-  if (recent.length >= DESIGN_LIMIT) {
+  if (recent.length >= DESIGN_LIMIT && !(await isAdminUser(userId))) {
     return res.status(429).json({ error: `デザインの作り直しは24時間に${DESIGN_LIMIT}回までです。時間をおいてお試しください。` });
   }
   designRequests.set(userId, [...recent, now]);
@@ -508,7 +509,7 @@ router.post('/features/:id', authenticate, metered('page_section'), async (req: 
 
   const now = Date.now();
   const recent = (sectionRequests.get(userId) ?? []).filter((t) => now - t < 24 * 60 * 60 * 1000);
-  if (recent.length >= SECTION_LIMIT) {
+  if (recent.length >= SECTION_LIMIT && !(await isAdminUser(userId))) {
     return res.status(429).json({ error: `機能の作成は24時間に${SECTION_LIMIT}回までです。時間をおいてお試しください。` });
   }
   sectionRequests.set(userId, [...recent, now]);

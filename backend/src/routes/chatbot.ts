@@ -5,6 +5,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 import { FACT_META, PUBLISHABLE, type Brief } from '../ai/builderAgent';
 import { aiClient, aiQuota, runAsUser } from '../lib/aiUsage';
 
@@ -87,7 +88,7 @@ router.post('/:slug', async (req, res) => {
   if (turns.length === 0 || turns[turns.length - 1].role !== 'user') return res.status(400).json({ error: '質問を入力してね' });
   while (turns.length && turns[0].role !== 'user') turns.shift();
 
-  if (hitRateLimit(`chatbot:${lp.id}`, DAILY_PER_PAGE, 24 * 3600_000) || hitRateLimit('chatbot:global', HOURLY_GLOBAL, 3600_000)) {
+  if (!(await isAdminUser(lp.userId)) && (hitRateLimit(`chatbot:${lp.id}`, DAILY_PER_PAGE, 24 * 3600_000) || hitRateLimit('chatbot:global', HOURLY_GLOBAL, 3600_000))) {
     return res.status(429).json({ error: '質問が混み合っています。少し時間をおいてね。' });
   }
 

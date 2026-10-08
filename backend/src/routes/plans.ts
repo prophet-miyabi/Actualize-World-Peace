@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
+import { isAdminUser } from '../middlewares/admin';
 import { ACCOUNTS, cashBalance, postTransaction } from '../lib/ledger';
 import { activePlan, getPlanConfig, PLAN_KEYS, PLAN_LABEL, planPrices, setPlanConfig, type PlanKey } from '../lib/plans';
 import { aiQuota } from '../lib/aiUsage';
@@ -87,6 +88,7 @@ router.get('/', async (req: AuthRequest, res) => {
     free: { aiUsd: c.freeAiUsd, aiYen: Math.round(c.freeAiUsd * c.usdJpy) },
     basis: { baseUsd: c.baseUsd, usdJpy: c.usdJpy, aiShare: 78 },
     current: { plan: activePlan(user!), label: PLAN_LABEL[activePlan(user!)], until: user?.planUntil ?? null, legacyStripe: user?.subscriptionStatus === 'active' },
+    isAdmin: !!user?.isAdmin,
     quota: { ...quota, usedYen: Math.round(quota.usedUsd * c.usdJpy), allowanceYen: Number.isFinite(quota.allowanceUsd) ? Math.round(quota.allowanceUsd * c.usdJpy) : null },
     methods: { bank: !!bank, cash },
     months: MONTH_OPTIONS,
@@ -102,6 +104,12 @@ router.post('/purchase', async (req: AuthRequest, res) => {
   if (!PLAN_KEYS.includes(plan)) return res.status(400).json({ error: 'プランを選んでください' });
   if (!MONTH_OPTIONS.includes(months)) return res.status(400).json({ error: '期間を選んでください' });
   if (!method) return res.status(400).json({ error: '支払い方法を選んでください' });
+  // 管理者（運営者自身）は支払いなしでプランを有効にできる（画面の確認・テストのため。台帳には記録しない）
+  if (await isAdminUser(userId)) {
+    const until = await activatePlan(prisma, userId, plan, months);
+    const payment = await prisma.planPayment.create({ data: { userId, plan, months, amountYen: 0, method: 'admin', reference: `ADMIN${Date.now().toString(36).toUpperCase()}`, status: 'confirmed', confirmedAt: new Date(), confirmedBy: 'admin' } });
+    return res.status(201).json({ payment, until, admin: true });
+  }
   const amountYen = planPrices(await getPlanConfig())[plan].priceYen * months;
   const reference = `AWP${crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)}`;
 

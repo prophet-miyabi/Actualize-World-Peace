@@ -317,6 +317,7 @@ function DashboardInner() {
             まだページがありません。さっそくつくってみよう！公開まで無料です。
           </div>
         )}
+        {isAdmin && <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3 mt-2">管理者モード：有料機能・AIの利用枠・回数制限・独自ドメインの条件は通過できます（支払いは発生しません）。すべての機能をそのまま使えます。</p>}
         {isAdmin && <Link href="/admin" className="text-violet-700 font-bold underline text-sm block mt-2">運営者画面（ダッシュボード・AIオペレーター） →</Link>}
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-1">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}

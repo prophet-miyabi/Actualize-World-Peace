@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 import { metered } from '../lib/aiUsage';
 import { RESERVED_SLUGS } from './lp';
 import { publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
@@ -47,7 +48,7 @@ router.post('/sessions/:id/messages', metered('builder'), async (req: AuthReques
   const text = String(req.body?.text ?? '').trim().slice(0, 1000);
   if (!text) return res.status(400).json({ error: 'メッセージを入力してね' });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AIが利用できないため、いまは対話で作れません。' });
-  if (hitRateLimit(`builder:${req.user!.id}`, DAILY_TURNS, 24 * 60 * 60 * 1000)) {
+  if (!(await isAdminUser(req.user!.id)) && hitRateLimit(`builder:${req.user!.id}`, DAILY_TURNS, 24 * 60 * 60 * 1000)) {
     return res.status(429).json({ error: '今日はたくさん話したね！続きは明日できるよ。' });
   }
 

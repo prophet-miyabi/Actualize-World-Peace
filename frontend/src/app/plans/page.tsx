@@ -11,6 +11,7 @@ type Data = {
   free: { aiYen: number };
   basis: { baseUsd: number; usdJpy: number; aiShare: number };
   current: { plan: string; label: string; until: string | null; legacyStripe: boolean };
+  isAdmin?: boolean;
   quota: { usedYen: number; allowanceYen: number | null; exceeded: boolean };
   methods: { bank: boolean; cash: number };
   months: number[];
@@ -78,6 +79,9 @@ export default function PlansPage() {
           <p className="text-xs text-gray-500 mt-1">ページの作成・公開・SNS・ショップはずっと無料。もっとAIを使いたい人と、独自ドメインで公開したい人のための有料プランです。</p>
         </div>
 
+        {d.isAdmin && (
+          <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3">管理者としてログイン中：料金・AIの利用枠・1日の回数制限はすべて通過できます。Harnessの申し込みも支払い不要になります。</p>
+        )}
         <section className="rounded-3xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white p-5">
           <p className="text-xs opacity-90">いまのプラン</p>
           <p className="text-2xl font-black">{d.current.label}{d.current.until && d.current.plan !== 'free' ? <span className="text-sm font-bold">（{new Date(d.current.until).toLocaleDateString('ja-JP')}まで）</span> : ''}</p>
@@ -119,6 +123,11 @@ export default function PlansPage() {
             </div>
             <p className="text-sm">お支払い金額: <span className="font-black text-lg">{yen(total)}</span>（{months * 30}日間）</p>
             {d.current.plan !== 'free' && d.current.plan !== selected && <p className="text-[11px] text-gray-500">いまのプランの残り期間は、金額で換算して新しいプランの期間に足します。</p>}
+            {d.isAdmin && (
+              <button disabled={busy} onClick={() => buy('cash')} className="w-full rounded-full bg-gray-900 text-white font-bold py-3 disabled:opacity-40">
+                管理者: 支払いなしで有効にする（テスト・運営用）
+              </button>
+            )}
             <div className="grid gap-2">
               <button disabled={busy || d.methods.cash < total} onClick={() => buy('cash')}
                 className="rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold py-3 disabled:opacity-40">

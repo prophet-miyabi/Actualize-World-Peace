@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
 import { authenticate, AuthRequest, JWT_SECRET } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 
 // 投稿: プロフィールと、フォロワーのタイムラインに出る短い投稿（文章＋画像1枚）。
 // 投稿するにはユーザー名（プロフィール）の設定が必要。通報で運営者が非公開にできる
@@ -87,7 +88,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     if (image.length > MAX_IMAGE_BYTES) return res.status(400).json({ error: '画像は3MBまでにしてね' });
     imageType = m[1];
   }
-  if (hitRateLimit(`post:${userId}`, DAILY_POSTS, 24 * 3600_000)) return res.status(429).json({ error: '今日はたくさん投稿したね！続きは明日。' });
+  if (!(await isAdminUser(userId)) && hitRateLimit(`post:${userId}`, DAILY_POSTS, 24 * 3600_000)) return res.status(429).json({ error: '今日はたくさん投稿したね！続きは明日。' });
   const post = await prisma.post.create({ data: { userId, body, image, imageType }, select });
   res.status(201).json({ post: view(post, userId) });
 });

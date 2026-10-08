@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
+import { isAdminUser } from '../middlewares/admin';
 import { refundHarnessCash } from './wallet';
 
 // Harness（L Harness / X Harness / IG Harness）の導入支援。
@@ -53,7 +54,8 @@ router.post('/orders', authenticate, async (req: AuthRequest, res) => {
   const note = String(req.body?.note ?? '').trim().slice(0, 1000) || null;
 
   const order = await prisma.harnessOrder.create({
-    data: { userId: req.user!.id, items, totalYen, note, paymentStatus: totalYen > 0 ? 'unpaid' : 'not_required' }
+    // 管理者（運営者自身）の申し込みは支払い不要にする（テストと実際の利用のため）
+    data: { userId: req.user!.id, items, totalYen, note, paymentStatus: totalYen > 0 && !(await isAdminUser(req.user!.id)) ? 'unpaid' : 'not_required' }
   });
   res.status(201).json({ order });
 });

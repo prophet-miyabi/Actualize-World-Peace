@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { isAdminUser } from '../middlewares/admin';
 import { metered } from '../lib/aiUsage';
 import { seal, open } from '../lib/secretBox';
 import { draftForPlatform } from '../agents/marketing';
@@ -106,7 +107,7 @@ router.post('/:kind/draft', metered('sns_draft'), async (req: AuthRequest, res) 
   const lpId = typeof req.body?.lpId === 'string' && req.body.lpId ? req.body.lpId : undefined;
   const lp = await prisma.landingPage.findFirst({ where: lpId ? { id: lpId, userId: req.user!.id } : { userId: req.user!.id }, orderBy: { createdAt: 'asc' } });
   if (!lp) return res.status(400).json({ error: '先にページを作成してください' });
-  if (hitRateLimit(`harness-draft:${req.user!.id}`, 20, 24 * 3600_000)) return res.status(429).json({ error: '今日の下書き作成の上限に達しました' });
+  if (!(await isAdminUser(req.user!.id)) && hitRateLimit(`harness-draft:${req.user!.id}`, 20, 24 * 3600_000)) return res.status(429).json({ error: '今日の下書き作成の上限に達しました' });
   try {
     const input = { businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths, sections: storedSections(lp).map((s) => ({ feature: s.feature, content: s.content })) };
     const text = await draftForPlatform(kind, input);
@@ -131,7 +132,7 @@ router.post('/:kind/schedule', async (req: AuthRequest, res) => {
   if (text.length > 2200) return res.status(400).json({ error: '投稿文は2200文字以内にしてください' });
   const scheduledAt = new Date(String(req.body?.scheduledAt ?? ''));
   if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() < Date.now() - 60_000) return res.status(400).json({ error: '予約日時は未来の日時にしてください' });
-  if (hitRateLimit(`harness-schedule:${userId}`, DAILY_SCHEDULES, 24 * 3600_000)) return res.status(429).json({ error: '今日の予約の上限に達しました' });
+  if (!(await isAdminUser(userId)) && hitRateLimit(`harness-schedule:${userId}`, DAILY_SCHEDULES, 24 * 3600_000)) return res.status(429).json({ error: '今日の予約の上限に達しました' });
 
   let body: unknown;
   let path: string;
