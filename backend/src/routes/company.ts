@@ -4,7 +4,7 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey } from '../company/registry';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
-import { agentConfig, executeAction, runTask, spentTodayUsd } from '../company/runtime';
+import { agentConfig, COMPANY_MONTHLY_CAP_USD, executeAction, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { companyTick } from '../company/loop';
 import { seedCompany } from '../company/seed';
 
@@ -35,7 +35,7 @@ router.get('/status', async (_req, res) => {
     key: a.key, name: a.name, department: a.department, reportsTo: a.reportsTo, mission: a.mission, tools: a.tools, maxAutoRisk: a.maxAutoRisk, webSearch: !!a.webSearch,
     model: cfgBy[a.key]?.model || a.model, enabled: cfgBy[a.key]?.enabled ?? true, dailyBudgetUsd: cfgBy[a.key]?.dailyBudgetUsd ?? a.dailyBudgetUsd, spentTodayUsd: todayBy[a.key] ?? 0
   }));
-  res.json({ configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, events, costs, metrics });
+  res.json({ configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, events, costs, metrics, monthly: { spentUsd: await spentThisMonthUsd(), capUsd: COMPANY_MONTHLY_CAP_USD } });
 });
 
 router.get('/tasks/:id', async (req, res) => {

@@ -10,6 +10,7 @@ type Status = {
   configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; tasks: Task[]; actions: Action[];
   events: { id: string; type: string; actor: string; payload: any; createdAt: string }[];
   costs: { companyAgents30d: { agent: string; runs: number; costUsd: number }[]; userFacingAi30d: { costUsd: number; calls: number } };
+  monthly: { spentUsd: number; capUsd: number };
   metrics: { totals: { users: number; publishedPages: number; activeUsers7d: number }; period: { signups: number; pages: number; posts: number; bookings: number; orders: number; planSales: { yen: number }; confirmedRewards: { toPlatformYen: number } } };
 };
 
@@ -113,6 +114,7 @@ export default function CompanyPage() {
           ))}
         </div>
         <p className="text-[11px] text-gray-500 mt-2">AI費用（30日）: 会社のエージェント {usd(cost30)} / 利用者向けAI {usd(s.costs.userFacingAi30d.costUsd)}（見積もり）</p>
+        <p className="text-[11px] text-gray-500">今月の会社のエージェントの費用 {usd(s.monthly.spentUsd)} / 上限 {usd(s.monthly.capUsd)}（上限に達すると来月まで休みます。COMPANY_MONTHLY_CAP_USD で変更）</p>
       </section>
 
       <div className="flex gap-1 text-xs">

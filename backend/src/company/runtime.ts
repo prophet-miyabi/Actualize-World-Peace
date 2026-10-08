@@ -40,6 +40,15 @@ export async function agentConfig(agent: AgentDef) {
   return { enabled: c?.enabled ?? true, model: c?.model || agent.model, dailyBudgetUsd: c?.dailyBudgetUsd ?? agent.dailyBudgetUsd };
 }
 
+// 会社全体の今月のAI費用の上限（米ドル）。Max プランの月間APIクレジット（$200）を、利用者向けAIの分も残して使うための安全弁
+export const COMPANY_MONTHLY_CAP_USD = Number(process.env.COMPANY_MONTHLY_CAP_USD || 150);
+export async function spentThisMonthUsd() {
+  const now = new Date(Date.now() + 9 * 3600_000);
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 9 * 3600_000);
+  const agg = await prisma.agentRun.aggregate({ where: { startedAt: { gte: start } }, _sum: { costUsd: true } });
+  return agg._sum.costUsd ?? 0;
+}
+
 export async function spentTodayUsd(agentKey: string) {
   const today = new Date(new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) + 'T00:00:00+09:00');
   const agg = await prisma.agentRun.aggregate({ where: { agent: agentKey, startedAt: { gte: today } }, _sum: { costUsd: true } });
@@ -67,6 +76,12 @@ export async function runTask(taskId: string): Promise<void> {
   const cfg = await agentConfig(agent);
   if (!cfg.enabled) {
     await prisma.companyTask.update({ where: { id: taskId }, data: { runAt: new Date(Date.now() + 6 * 3600_000) } });
+    return;
+  }
+  if ((await spentThisMonthUsd()) >= COMPANY_MONTHLY_CAP_USD) {
+    // 会社全体の月の上限に達した: 来月まで休む（翌日に再確認）
+    await prisma.companyTask.update({ where: { id: taskId }, data: { runAt: new Date(Date.now() + 24 * 3600_000) } });
+    await emitEvent('company.monthly_cap_reached', 'system', { taskId, capUsd: COMPANY_MONTHLY_CAP_USD });
     return;
   }
   if ((await spentTodayUsd(agent.key)) >= cfg.dailyBudgetUsd) {
