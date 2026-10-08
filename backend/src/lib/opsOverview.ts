@@ -1,4 +1,5 @@
 import prisma from '../prisma';
+import { anthropicKeyProblem } from './aiUsage';
 import { smsMode } from './sms';
 import { githubConfigured } from './github';
 import { getAllFlags } from './systemSettings';
@@ -31,7 +32,8 @@ export async function buildOverview() {
   const config = {
     smsVerification: smsMode() === 'twilio' ? '有効' : smsMode() === 'dev' ? '開発用モード' : '未設定',
     stripe: !!process.env.STRIPE_SECRET_KEY,
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    anthropic: !!process.env.ANTHROPIC_API_KEY && !anthropicKeyProblem(),
+    anthropicProblem: anthropicKeyProblem(),
     imageAi: !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) || !!process.env.GEMINI_API_KEY,
     githubForAiDevelopment: githubConfigured(),
     customDomainBase: !!process.env.MAIN_DOMAIN
@@ -41,7 +43,8 @@ export async function buildOverview() {
     { label: '未対応のHarness申し込み', count: ordersRequested, href: '/admin/harness' },
     { label: '承認待ちのAIの提案', count: proposalsWaiting, href: '/admin/ops' },
     { label: '未解決のエラー', count: openErrors, href: '/admin/monitoring' },
-    { label: '料金未設定のHarnessメニュー', count: unpricedAddons, href: '/admin/harness' }
+    { label: '料金未設定のHarnessメニュー', count: unpricedAddons, href: '/admin/harness' },
+    { label: `AIのAPIキーの設定に問題: ${anthropicKeyProblem() ?? ''}`, count: anthropicKeyProblem() ? 1 : 0, href: '/admin/monitoring' }
   ].filter((t) => t.count > 0);
 
   return {

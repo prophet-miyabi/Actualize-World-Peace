@@ -34,6 +34,7 @@ import { startCrew } from './crew/orchestrator';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
+import { anthropicKeyProblem } from './lib/aiUsage';
 
 const app = express();
 app.use(cors());
@@ -97,6 +98,14 @@ const port = process.env.PORT || 8000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
 startScheduler();
 startAgentLoop();
+// 起動時に設定の明らかな誤りを知らせる（マスクされたAPIキーなど）
+{
+  const problem = anthropicKeyProblem();
+  if (problem) {
+    console.error(`⚠ ${problem}`);
+    void captureError('config', new Error(problem));
+  }
+}
 startCrew();
 startCompany();
 // 振込期限を過ぎた注文の取り消しと、保存期間を過ぎた注文の削除

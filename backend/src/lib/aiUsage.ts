@@ -24,6 +24,26 @@ function pricesFor(model: string) {
   return table[key];
 }
 
+// APIキーが使える形か（表示用にマスクされた「sk-ant-a••••」などをそのまま貼ると、非ASCII文字が混ざって送信時に失敗する）
+export function anthropicKeyProblem(): string | null {
+  const key = process.env.ANTHROPIC_API_KEY || '';
+  if (!key) return 'ANTHROPIC_API_KEY が未設定です';
+  const bad = key.split('').findIndex((c) => c.charCodeAt(0) > 126 || c.charCodeAt(0) < 33);
+  if (bad >= 0) return `ANTHROPIC_API_KEY に使えない文字（${bad + 1}文字目「${key[bad]}」）が含まれています。Console で表示される「•」で隠されたキーではなく、作成時に表示された完全なキーを Render に入れ直してください`;
+  if (!key.startsWith('sk-ant-')) return 'ANTHROPIC_API_KEY の形式が正しくありません（sk-ant- で始まるキー）';
+  return null;
+}
+
+// AIの呼び出しで起きたエラーを、運営者がそのまま読める日本語にする
+export function describeAiError(e: any): string {
+  const msg = String(e?.message ?? e ?? '');
+  if (/ByteString/.test(msg)) return anthropicKeyProblem() ?? 'APIキーに使えない文字が含まれています';
+  if (e?.status === 401) return 'APIキーが無効です（Render の ANTHROPIC_API_KEY を確認してください）';
+  if (e?.status === 429) return 'AIのレート制限に達しました。少し待ってからお試しください';
+  if (e?.status === 402 || /credit balance/i.test(msg)) return 'AIのクレジット残高がありません（Console でクレジットを追加するか、Max プランのクレジットをリンクしてください）';
+  return msg.slice(0, 300);
+}
+
 export class AiQuotaError extends Error {
   constructor() {
     super('今月のAIの利用枠を使い切りました。プランを上げると、すぐに使えるようになります。');

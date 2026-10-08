@@ -13,7 +13,7 @@ import { isAdminUser } from '../middlewares/admin';
 import { submitLpToIndexNow } from '../seo/indexnow';
 import { publicProduct } from './products';
 import { normalizeBookingConfig } from './bookings';
-import { aiClient, metered } from '../lib/aiUsage';
+import { aiClient, describeAiError, metered } from '../lib/aiUsage';
 import { hasPaidPlan, userHasPaidPlan } from '../lib/plans';
 import { domainServable, evaluateDomain } from '../lib/domainPolicy';
 
@@ -83,7 +83,7 @@ router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRe
     } else if (e instanceof Anthropic.RateLimitError) {
       res.status(429).json({ error: 'レート制限に達しました。少し待ってからお試しください。' });
     } else {
-      res.status(500).json({ error: String(e.message || e) });
+      res.status(500).json({ error: describeAiError(e) });
     }
   }
 });
