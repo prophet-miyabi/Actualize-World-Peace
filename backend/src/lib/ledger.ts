@@ -9,6 +9,7 @@ export const ACCOUNTS = {
   receivable: 'platform:receivable',
   revenue: 'platform:revenue',
   sales: 'platform:sales',
+  bank: 'platform:bank', // AWPの銀行口座への入金（有料プランの銀行振込）
   userCash: (userId: string) => `user:${userId}:cash`
 };
 

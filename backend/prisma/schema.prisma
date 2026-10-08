@@ -38,6 +38,14 @@ model User {
   harnessLinks HarnessLink[]
   harnessPosts HarnessScheduledPost[]
 
+  // AWPの有料プラン（自前の請求: 銀行振込・キャッシュ）。planUntil を過ぎると無料プランに戻る
+  plan      String    @default("free") // free / lite / standard / pro
+  planUntil DateTime?
+  planPayments PlanPayment[]
+  aiUsages     AiUsage[]
+  domainReferrals DomainReferral[]
+  sellerProfile SellerProfile?
+
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
   subscriptionStatus   String? // active / past_due / canceled / null(未加入)
@@ -180,6 +188,10 @@ model LandingPage {
   // 独自ドメイン（例: www.example.jp）。DNSのCNAME確認が取れたらverified=true
   customDomain         String?  @unique
   customDomainVerified Boolean  @default(false)
+  // 独自ドメインの公開条件: affiliate = 提携リンクから取得（無料）/ paid = 有料プラン / review = 運営者の確認待ち（猶予期間あり）
+  customDomainMode     String?
+  customDomainNote     String?
+  customDomainReviewUntil DateTime?
 
   // AIが作成したデザイン（配色・書体・レイアウト）。nullなら業種に合うプリセットを使う
   design          Json?
@@ -213,6 +225,7 @@ model LandingPage {
   bookingConfig  Json?
   bookings       Booking[]
   products       Product[]
+  orders         Order[]
 
   // 対話で作ったページの「事実の台帳」（AI作成ページビルダー）。項目ごとに出どころ（status）を持つ
   brief    Json?
@@ -289,6 +302,10 @@ model ToolCatalogItem {
   // 利用者のページのPR枠に出して、報酬を利用者と分け合ってよいか。
   // ASP・広告主の規約で「第三者サイトへの掲載・報酬の分配」が認められている案件だけ、運営者がtrueにする
   revenueShareAllowed Boolean @default(false)
+  // ドメインの登録サービス（このリンクから取得したドメインは、独自ドメインの公開が無料になる）
+  isDomainRegistrar Boolean @default(false)
+  // 取得の確認に使う、登録事業者名の一部（RDAPの registrar 名と照合。例: Xserver）
+  registrarMatch    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -603,6 +620,10 @@ model Product {
   imageType   String?
   buyUrl      String?     // 許可したネットショップのhttps URLのみ
   soldOut     Boolean     @default(false)
+  // AWPで注文を受け付けるか（出品者の設定と特商法の表示がそろっている場合のみ）
+  purchasable Boolean     @default(false)
+  stock       Int?        // 在庫（null = 数を管理しない）
+  requiresShipping Boolean @default(true)
   sortOrder   Int         @default(0)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -717,4 +738,95 @@ model CrewLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ---- 有料プランの支払い（自前の請求。決済会社を通さない） ----
+model PlanPayment {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        String    // lite / standard / pro
+  months      Int
+  amountYen   Int
+  method      String    // bank / cash
+  reference   String    @unique // 振込の名義に付けてもらう番号
+  status      String    @default("pending") // pending / confirmed / canceled / expired
+  expiresAt   DateTime? // 振込の期限
+  confirmedAt DateTime?
+  confirmedBy String?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+// AIの利用記録（プランごとの月のAI利用枠の計算に使う。料金は公開価格からの見積もり）
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature      String
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ドメインの登録サービスへの提携リンクを、ログイン中の本人が押した記録（無料の独自ドメインの判定に使う）
+model DomainReferral {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolKey   String
+  clickedAt DateTime @default(now())
+
+  @@index([userId, clickedAt])
+}
+
+// ---- 直接払いのショップ（AWPは代金を預からない。購入者は出品者に直接支払う） ----
+model SellerProfile {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled        Boolean  @default(false)
+  // 特定商取引法に基づく表記（出品者ごと）: { sellerName, responsible, address, phone, email, priceNote, extraFees, deliveryTime, returns, paymentNote, disclosureOnRequest }
+  legal          Json
+  bankEnc        String?  // 振込先（暗号化）: { bank, branch, type, number, holder }
+  bankEnabled    Boolean  @default(false)
+  inPersonEnabled Boolean @default(false)  // 店頭・手渡しでの支払い
+  inPersonNote   String?
+  shippingFeeYen Int      @default(0)
+  freeShippingOverYen Int?
+  paymentDays    Int      @default(7)      // 振込の期限（日）
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  code          String      @unique // 購入者が状況を確認する番号（推測されにくいランダム文字列）
+  lpId          String
+  lp            LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  sellerId      String
+  items         Json        // [{ productId, name, priceYen, qty }]
+  subtotalYen   Int
+  shippingYen   Int
+  totalYen      Int
+  paymentMethod String      // bank / in_person
+  buyerName     String
+  buyerContact  String
+  shipping      Json?       // { postal, address, name }
+  message       String?
+  status        String      @default("awaiting_payment") // awaiting_payment / paid / shipped / completed / canceled
+  expiresAt     DateTime?
+  paidAt        DateTime?
+  shippedAt     DateTime?
+  sellerNote    String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([sellerId, createdAt])
+  @@index([status, expiresAt])
 }

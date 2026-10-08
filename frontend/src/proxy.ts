@@ -14,6 +14,7 @@ const MAIN_DOMAIN = (process.env.MAIN_DOMAIN || '').toLowerCase().replace(/^\.+/
 
 // サーバー内部からAPIを呼ぶときの接続先（画面側の /api 中継とは別。相対URLは使えない）
 const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
+const SITE_URL = process.env.SITE_URL || '';
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 // LP作成時（backend/src/routes/lp.ts）のslugバリデーションと同じ規則。
@@ -62,7 +63,9 @@ export async function proxy(req: NextRequest) {
   try {
     const res = await fetch(`${API}/lp/by-domain/${encodeURIComponent(host)}`, { cache: 'no-store' });
     if (res.ok) {
-      const { slug } = await res.json();
+      const { slug, redirect } = await res.json();
+      // 独自ドメインの公開条件（提携リンク経由 or 有料プラン）を満たしていない場合は、AWPのURLのページへ案内する
+      if (redirect && SITE_URL) return NextResponse.redirect(new URL(`/${slug}`, SITE_URL), 302);
       return rewriteToSlug(req, slug);
     }
   } catch {

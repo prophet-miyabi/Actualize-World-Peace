@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
 import PageEngagementBar from '@/components/community/PageEngagementBar';
 import PromotionBlock from '@/components/community/PromotionBlock';
-import ProductsSection, { type PublicProduct } from '@/components/modules/ProductsSection';
+import ProductsSection, { type PublicProduct, type PublicShop } from '@/components/modules/ProductsSection';
 import BookingWidget from '@/components/modules/BookingWidget';
 import PageChatbot from '@/components/modules/PageChatbot';
 import ProfileView, { type Profile } from '@/components/community/ProfileView';
@@ -18,6 +18,7 @@ type PublicLp = Lp & {
   owner: { username: string; name: string } | null;
   promotions?: { key: string; name: string; description: string }[];
   products?: PublicProduct[];
+  shop?: PublicShop | null;
   booking?: { menus: { name: string; note: string }[]; note: string; leadDays: number; maxDays: number } | null;
   chatbotEnabled?: boolean;
 };
@@ -109,7 +110,7 @@ export default async function LandingPage({ params }: Params) {
   // 持ち主が追加した機能（商品・予約リクエスト・AIチャットボット）
   const modules = (
     <>
-      <ProductsSection lp={lp} products={lp.products ?? []} />
+      <ProductsSection lp={lp} products={lp.products ?? []} shop={lp.shop} siteUrl={siteUrl} />
       {lp.booking && (
         <BookingWidget slug={lp.slug} businessName={lp.businessName} config={lp.booking} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />
       )}

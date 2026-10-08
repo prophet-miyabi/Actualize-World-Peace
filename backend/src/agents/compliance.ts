@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod/v4';
+import { aiClient } from '../lib/aiUsage';
 
 // コンプライアンス担当エージェント：他のエージェントが作った投稿下書きを、
 // 実際に公開する前に審査する「意思決定ポイント」に特化したエージェント。
@@ -29,7 +30,7 @@ export async function reviewSocialDraft(input: ComplianceInput): Promise<Complia
     `登録済みの強み: ${input.strengths.filter(Boolean).join(' / ')}`
   ].join('\n');
 
-  const client = new Anthropic();
+  const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 1024,

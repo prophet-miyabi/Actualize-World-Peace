@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { metered } from '../lib/aiUsage';
 import { RESERVED_SLUGS } from './lp';
 import { publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
 import { FEATURES, getFeature } from '../features/catalog';
@@ -40,7 +41,7 @@ router.post('/sessions', async (req: AuthRequest, res) => {
   res.status(201).json({ session: view(s) });
 });
 
-router.post('/sessions/:id/messages', async (req: AuthRequest, res) => {
+router.post('/sessions/:id/messages', metered('builder'), async (req: AuthRequest, res) => {
   const s = await ownSession(req);
   if (!s || s.status !== 'active') return res.status(404).json({ error: '見つかりません' });
   const text = String(req.body?.text ?? '').trim().slice(0, 1000);
@@ -106,7 +107,7 @@ router.put('/sessions/:id/brief', async (req: AuthRequest, res) => {
   res.json({ session: view(updated) });
 });
 
-router.post('/sessions/:id/publish', async (req: AuthRequest, res) => {
+router.post('/sessions/:id/publish', metered('builder_publish', false), async (req: AuthRequest, res) => {
   const s = await ownSession(req);
   if (!s || s.status !== 'active') return res.status(404).json({ error: '見つかりません' });
   const brief = s.brief as unknown as Brief;

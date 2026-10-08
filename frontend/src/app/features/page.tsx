@@ -150,7 +150,7 @@ function FeaturesInner() {
                   ))}
 
                   {error && <p className="text-red-600 text-sm">{error}</p>}
-                  {needsPlan && <Link href="/billing" className="text-blue-600 underline text-sm">有料プランに加入する</Link>}
+                  {needsPlan && <Link href="/plans" className="text-blue-600 underline text-sm">プランを見る</Link>}
                   {busy && <p className="text-sm text-blue-700">{step}</p>}
 
                   <div className="flex gap-3">

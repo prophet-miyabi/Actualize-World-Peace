@@ -257,6 +257,13 @@ function DashboardInner() {
           <span className="block font-bold text-sm mt-1">発見</span>
           <span className="block text-[11px] text-gray-500">みんなのページを見る</span>
         </Link>
+        <Link href="/plans" className="col-span-2 rounded-2xl bg-white border border-gray-200 p-4 flex items-center gap-3">
+          <span className="text-lg" aria-hidden>⚡</span>
+          <span className="min-w-0">
+            <span className="block font-bold text-sm">プランとAIの利用枠</span>
+            <span className="block text-[11px] text-gray-500">今月のAIの利用状況・独自ドメイン・有料機能</span>
+          </span>
+        </Link>
         <Link href="/wallet" className="col-span-2 rounded-2xl bg-white border border-gray-200 p-4 flex items-center gap-3">
           <span className="text-lg" aria-hidden>💰</span>
           <span className="min-w-0">
@@ -288,6 +295,8 @@ function DashboardInner() {
             <Link href={`/analytics${qs}`} className="text-blue-600 underline">アクセス解析</Link>
             <Link href={`/bookings${qs}`} className="text-blue-600 underline">予約リクエスト</Link>
             <Link href={`/products${qs}`} className="text-blue-600 underline">商品</Link>
+            <Link href="/shop-settings" className="text-blue-600 underline">ショップの設定</Link>
+            <Link href="/orders" className="text-blue-600 underline">注文</Link>
             <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AIチャットボット</Link>
             <Link href="/feed" className="text-blue-600 underline">投稿する</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>

@@ -80,6 +80,16 @@ router.get('/go/:key', async (req, res) => {
   res.redirect(302, item.affiliateUrl || item.officialUrl);
 });
 
+// ドメインの登録サービスへの提携リンク（ログイン中の本人が押した記録を残し、独自ドメインの無料公開の判定に使う）。
+// 画面側はこの応答の url へ移動する
+router.post('/domain-referral/:key', authenticate, async (req: AuthRequest, res) => {
+  const item = await prisma.toolCatalogItem.findFirst({ where: { key: String(req.params.key), enabled: true, isDomainRegistrar: true } });
+  if (!item) return res.status(404).json({ error: '見つかりません' });
+  await prisma.domainReferral.create({ data: { userId: req.user!.id, toolKey: item.key } });
+  await prisma.affiliateClick.create({ data: { toolKey: item.key, source: 'domain' } }).catch(() => {});
+  res.json({ url: item.affiliateUrl || item.officialUrl });
+});
+
 router.get('/mine', authenticate, async (req: AuthRequest, res) => {
   const lp = await ownLp(req.user!.id, req.query.lpId);
   if (!lp) return res.json({ tools: [] });
@@ -147,6 +157,8 @@ function parseCatalogBody(body: any): { data?: any; error?: string } {
       embeddable: !!body?.embeddable,
       enabled: body?.enabled !== false,
       revenueShareAllowed: !!body?.revenueShareAllowed,
+      isDomainRegistrar: !!body?.isDomainRegistrar,
+      registrarMatch: String(body?.registrarMatch ?? '').trim().slice(0, 60) || null,
       sortOrder: Number.isFinite(Number(body?.sortOrder)) ? Number(body.sortOrder) : 0
     }
   };

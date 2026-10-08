@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
 import { fetchWithRetry } from './cloudflareFetch';
+import { aiClient, recordAiCost } from '../lib/aiUsage';
 
 // ---------------------------------------------------------------------------
 // デザインは「AIが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAIが選ぶ方式。
@@ -200,7 +201,7 @@ const ART_DIRECTOR_PROMPT = [
 ].join('\n');
 
 export async function designWithClaude(input: DesignInput, templateKey?: string | null): Promise<Design> {
-  const client = new Anthropic();
+  const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 2048,
@@ -238,7 +239,7 @@ const ReviewSchema = z.object({
 export type Review = { acceptable: boolean; issues: string; design: Design };
 
 export async function reviewImageWithClaude(input: DesignInput, design: Design, image: { data: Buffer; mimeType: string }, templateKey?: string | null): Promise<Review> {
-  const client = new Anthropic();
+  const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 2048,
@@ -302,6 +303,8 @@ async function imageFromGemini(prompt: string): Promise<{ data: Buffer; mimeType
   });
   const image = interaction.output_image;
   if (!image?.data) throw new Error('Gemini returned no image');
+  // 画像1枚あたりの見積もり（GEMINI_IMAGE_COST_USD で変更可）。利用者の操作から始まった場合だけ記録される
+  void recordAiCost('gemini-image', process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image', Number(process.env.GEMINI_IMAGE_COST_USD || 0.04));
   return { data: Buffer.from(image.data, 'base64'), mimeType: image.mime_type || 'image/jpeg' };
 }
 

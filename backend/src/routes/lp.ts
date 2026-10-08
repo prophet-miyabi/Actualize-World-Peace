@@ -12,6 +12,9 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 import { submitLpToIndexNow } from '../seo/indexnow';
 import { publicProduct } from './products';
 import { normalizeBookingConfig } from './bookings';
+import { aiClient, metered } from '../lib/aiUsage';
+import { hasPaidPlan, userHasPaidPlan } from '../lib/plans';
+import { domainServable, evaluateDomain } from '../lib/domainPolicy';
 
 const router = Router();
 
@@ -31,7 +34,7 @@ const LpContentSchema = z.object({
 const AI_GENERATE_LIMIT = 10;
 const aiGenerateRequests = new Map<string, number[]>();
 
-router.post('/ai-generate', authenticate, async (req: AuthRequest, res) => {
+router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRequest, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(400).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AI自動入力は使えません。' });
   }
@@ -48,7 +51,7 @@ router.post('/ai-generate', authenticate, async (req: AuthRequest, res) => {
 
   const purpose = normalizePurpose(req.body.purpose);
   try {
-    const client = new Anthropic();
+    const client = aiClient();
     const response = await client.beta.messages.parse({
       model: process.env.CLAUDE_MODEL || 'claude-opus-5',
       max_tokens: 1024,
@@ -107,21 +110,29 @@ function normalizeDomain(input: string): string {
 
 // 独自ドメインの設定状況と、Xserverへの誘導リンク（運営者のアフィリエイトURL）を返す
 router.get('/domain', authenticate, async (req: AuthRequest, res) => {
-  const lp = await resolveLp(req.user!.id, req.query.lpId);
+  const userId = req.user!.id;
+  const lp = await resolveLp(userId, req.query.lpId);
+  const [registrars, referrals, paid] = await Promise.all([
+    prisma.toolCatalogItem.findMany({ where: { isDomainRegistrar: true, enabled: true }, orderBy: { sortOrder: 'asc' }, select: { key: true, name: true, description: true } }),
+    prisma.domainReferral.findMany({ where: { userId }, orderBy: { clickedAt: 'desc' }, take: 5, select: { toolKey: true, clickedAt: true } }),
+    userHasPaidPlan(userId)
+  ]);
   res.json({
     hasLp: !!lp,
+    slug: lp?.slug ?? null,
     customDomain: lp?.customDomain ?? null,
     verified: lp?.customDomainVerified ?? false,
+    mode: lp?.customDomainMode ?? null,
+    note: lp?.customDomainNote ?? null,
+    reviewUntil: lp?.customDomainReviewUntil ?? null,
+    servable: lp ? domainServable(lp, paid) : false,
+    hasPaidPlan: paid,
     cnameTarget: process.env.CUSTOM_DOMAIN_CNAME_TARGET || null,
-    // A8.netで発行される成果測定リンクを丸ごと .env に設定する
-    xserverDomainUrl: process.env.AFF_XSERVER_DOMAIN_URL || null,
-    xserverUrl: process.env.AFF_XSERVER_URL || null
+    registrars,
+    referrals
   });
 });
 
-// 取得したドメインを登録（DNS確認前なので未接続状態で保存）
-// 顧客に「どのサブドメインにするか」を考えさせないよう、常に www. 付きで公開する
-// （CNAMEはドメイン直下には設定できないため、www が最も確実）
 router.put('/domain', authenticate, async (req: AuthRequest, res) => {
   const input = normalizeDomain(req.body.domain);
   const domain = input.startsWith('www.') ? input : `www.${input}`;
@@ -130,6 +141,14 @@ router.put('/domain', authenticate, async (req: AuthRequest, res) => {
   }
   const lp = await resolveLp(req.user!.id, req.body.lpId);
   if (!lp) return res.status(400).json({ error: '先にLPを作成してください。' });
+  // 公開条件の判定: 提携リンクから取得 → 無料 / それ以外 → 有料プランが必要
+  const policy = await evaluateDomain(req.user!.id, domain);
+  if (!policy.mode) {
+    return res.status(402).json({
+      error: `独自ドメインでの公開には有料プランへの加入が必要です（${policy.note}）。AWPの提携リンクから取得したドメインなら無料で公開できます。`,
+      upgradeUrl: '/plans'
+    });
+  }
   try {
     // 他人が未接続のまま登録しているだけのドメインは解放する（持ち主でない人の先取りを防ぐ）。
     // 接続確認済み＝実際にDNSを操作できた持ち主なので、そちらは守る。
@@ -139,9 +158,9 @@ router.put('/domain', authenticate, async (req: AuthRequest, res) => {
     });
     const updated = await prisma.landingPage.update({
       where: { id: lp.id },
-      data: { customDomain: domain, customDomainVerified: false }
+      data: { customDomain: domain, customDomainVerified: false, customDomainMode: policy.mode, customDomainNote: policy.note, customDomainReviewUntil: policy.reviewUntil ?? null }
     });
-    res.json({ customDomain: updated.customDomain, verified: false });
+    res.json({ customDomain: updated.customDomain, verified: false, mode: policy.mode, note: policy.note, reviewUntil: policy.reviewUntil ?? null });
   } catch (e: any) {
     if (e?.code === 'P2002') return res.status(400).json({ error: 'このドメインは既に別のページで使われています。' });
     res.status(500).json({ error: '保存に失敗しました。' });
@@ -176,25 +195,66 @@ router.post('/domain/verify', authenticate, async (req: AuthRequest, res) => {
 router.get('/tls-ask', async (req, res) => {
   const domain = normalizeDomain(String(req.query.domain || ''));
   const lp = domain
-    ? await prisma.landingPage.findFirst({ where: { customDomain: domain, customDomainVerified: true }, select: { id: true } })
+    ? await prisma.landingPage.findFirst({
+        where: { customDomain: domain, customDomainVerified: true },
+        select: { customDomainVerified: true, customDomainMode: true, customDomainReviewUntil: true, userId: true }
+      })
     : null;
-  res.sendStatus(lp ? 200 : 404);
+  // 公開条件を満たしているドメインだけ証明書を発行する
+  res.sendStatus(lp && domainServable(lp, await userHasPaidPlan(lp.userId)) ? 200 : 404);
 });
 
-// 独自ドメインでアクセスされたときに、どのLPを表示するかを返す（フロントのmiddlewareが使う）
+// 独自ドメイン → ページ。公開条件を満たしていない場合は、AWPのURLへ案内する（ページ自体は引き続きAWPで見られる）
 router.get('/by-domain/:host', async (req, res) => {
   const lp = await prisma.landingPage.findFirst({
     where: { customDomain: normalizeDomain(req.params.host), customDomainVerified: true, hidden: false },
-    select: { slug: true }
+    select: { slug: true, userId: true, customDomainVerified: true, customDomainMode: true, customDomainReviewUntil: true }
   });
   if (!lp) return res.status(404).json({ error: 'Not found' });
-  res.json({ slug: lp.slug });
+  const servable = domainServable(lp, await userHasPaidPlan(lp.userId));
+  res.json({ slug: lp.slug, redirect: !servable });
 });
 
-// ---------- 完成例ギャラリー ----------
-// 「作る前に、自分のLPがどう仕上がるか一目でわかる」ための機能。
-// 入力した店名・キャッチコピー・強みをそのまま使い、6種類の見本デザインで実際にどう見えるかを返す。
-// AIは呼ばない（プリセットの組み合わせを返すだけ）ため、何回呼んでも無料・即時。
+// ---- 運営者向け: 独自ドメインの確認 ----
+async function requireAdminUser(req: AuthRequest, res: any) {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isAdmin: true } });
+  if (!user?.isAdmin) {
+    res.status(403).json({ error: '管理者のみ利用できます' });
+    return false;
+  }
+  return true;
+}
+
+router.get('/admin/domains', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdminUser(req, res))) return;
+  const pages = await prisma.landingPage.findMany({
+    where: { customDomain: { not: null } },
+    orderBy: { customDomainReviewUntil: 'asc' },
+    select: {
+      id: true, slug: true, businessName: true, customDomain: true, customDomainVerified: true, customDomainMode: true, customDomainNote: true, customDomainReviewUntil: true,
+      user: { select: { id: true, name: true, domainReferrals: { orderBy: { clickedAt: 'desc' }, take: 5, select: { toolKey: true, clickedAt: true } } } }
+    }
+  });
+  res.json({ pages });
+});
+
+// approve = 提携リンクからの取得を確認できた（無料で公開）/ reject = 確認できない（有料プランが必要）
+router.post('/admin/domains/:id/:action', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdminUser(req, res))) return;
+  const action = String(req.params.action);
+  if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: '操作が正しくありません' });
+  const lp = await prisma.landingPage.findUnique({ where: { id: String(req.params.id) }, select: { id: true, userId: true, customDomain: true } });
+  if (!lp?.customDomain) return res.status(404).json({ error: '見つかりません' });
+  const note = String(req.body?.note ?? '').trim().slice(0, 300);
+  await prisma.landingPage.update({
+    where: { id: lp.id },
+    data: action === 'approve'
+      ? { customDomainMode: 'affiliate', customDomainNote: note || '運営者が提携リンクからの取得を確認', customDomainReviewUntil: null }
+      : { customDomainMode: 'paid', customDomainNote: note || '提携リンクからの取得を確認できなかったため、有料プランで公開', customDomainReviewUntil: null }
+  });
+  res.json({ ok: true });
+});
+
 router.get('/templates', (req, res) => {
   res.json({ templates: PRESET_KEYS.map((key) => ({ key, ...PRESET_META[key] })) });
 });
@@ -272,7 +332,7 @@ const LINE_URL_ERROR = 'LINEの友だち追加URL（https://lin.ee/... の形式
 export const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'analytics', 'bookings', 'products', 'posts', 'feed', 'chat', 'shop', 'reserve', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'analytics', 'bookings', 'products', 'posts', 'feed', 'chat', 'shop', 'reserve', 'plans', 'order', 'orders', 'shop-settings', 'sell', 'cart', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
@@ -282,9 +342,7 @@ export const RESERVED_SLUGS = [
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
 // ページの公開は無料。LINE自動応答はAIの利用料がかかるため、有効化はこれがtrueの場合のみ
-function isPaidUser(user: { isAdmin: boolean; subscriptionStatus: string | null } | null): boolean {
-  return !!user && (user.isAdmin || user.subscriptionStatus === 'active');
-}
+const isPaidUser = hasPaidPlan;
 
 // 1アカウントで複数のページ（店舗・事業ごと）を持てるようにするためのヘルパー。
 // lpIdの指定があればそのページを、なければ最初に作成したページを対象にする
@@ -296,7 +354,7 @@ async function resolveLp(userId: string, lpId: unknown) {
 }
 
 // LPとLINE設定を同時に作成する（作成・公開は無料。LINE自動応答の有効化は有料プラン加入後）
-router.post('/wizard', authenticate, async (req: AuthRequest, res) => {
+router.post('/wizard', authenticate, metered('page_design', false), async (req: AuthRequest, res) => {
   const { businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, channelId, channelSecret, channelAccessToken, description } = req.body;
   const userId = req.user!.id;
   if (!/^[a-z0-9-]{3,40}$/.test(slug || '')) {
@@ -395,7 +453,7 @@ router.get('/design', authenticate, async (req: AuthRequest, res) => {
 });
 
 // デザインを作り直す（無料お試し中も、満足のいく仕上がりになるまで試せる）
-router.post('/design', authenticate, async (req: AuthRequest, res) => {
+router.post('/design', authenticate, metered('page_design'), async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const lp = await resolveLp(userId, req.body?.lpId);
   if (!lp) return res.status(404).json({ error: '先にページを作成してください。' });
@@ -430,7 +488,7 @@ router.get('/features', authenticate, async (req: AuthRequest, res) => {
   });
 });
 
-router.post('/features/:id', authenticate, async (req: AuthRequest, res) => {
+router.post('/features/:id', authenticate, metered('page_section'), async (req: AuthRequest, res) => {
   const feature = getFeature(String(req.params.id));
   if (!feature) return res.status(404).json({ error: 'この機能はありません。' });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AIが利用できないため、現在この機能を追加できません。' });
@@ -620,9 +678,12 @@ router.get('/:slug', async (req, res) => {
     : [];
   const products = await prisma.product.findMany({
     where: { lpId: lp.id }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    select: { id: true, name: true, priceYen: true, priceNote: true, description: true, buyUrl: true, soldOut: true, imageType: true, updatedAt: true }
+    select: { id: true, name: true, priceYen: true, priceNote: true, description: true, buyUrl: true, soldOut: true, purchasable: true, stock: true, requiresShipping: true, imageType: true, updatedAt: true }
   });
+  // 直接払いショップ（出品者が販売を始めている場合だけ）
+  const seller = await prisma.sellerProfile.findUnique({ where: { userId: lp.userId }, select: { enabled: true, bankEnabled: true, inPersonEnabled: true, shippingFeeYen: true, freeShippingOverYen: true } });
   res.json({
+    shop: seller?.enabled ? { methods: { bank: seller.bankEnabled, inPerson: seller.inPersonEnabled }, shippingFeeYen: seller.shippingFeeYen, freeShippingOverYen: seller.freeShippingOverYen } : null,
     ...publicLp(lpData),
     promotions,
     products: products.map(publicProduct),

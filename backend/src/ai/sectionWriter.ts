@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { GoogleGenAI } from '@google/genai';
 
 import type { Feature } from '../features/catalog';
+import { aiClient } from '../lib/aiUsage';
 
 // 2つのAIの連携:
 //   1. Gemini: 顧客の回答と事業の雰囲気から、この機能専用の指示文（プロンプト）を設計する
@@ -52,7 +53,7 @@ async function craftPromptWithGemini(feature: Feature, business: Business, input
 }
 
 async function executeWithClaude(feature: Feature, business: Business, inputs: Record<string, string>, draftPrompt: string) {
-  const client = new Anthropic();
+  const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 4096,

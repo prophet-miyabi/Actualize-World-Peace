@@ -6,6 +6,7 @@ import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
 import { FACT_META, PUBLISHABLE, type Brief } from '../ai/builderAgent';
+import { aiClient, aiQuota, runAsUser } from '../lib/aiUsage';
 
 // ページのAIチャットボット。訪問者の質問に、ページに載っている情報と、持ち主が確定した事実だけで答える。
 // わからないことは「わからない」と答え、問い合わせ方法を案内する（推測で料金・空き状況などを答えない）。
@@ -74,7 +75,7 @@ const SYSTEM = (name: string, knowledge: string) => `あなたは「${name}」�
 ${knowledge}`;
 
 router.post('/:slug', async (req, res) => {
-  const lp = await prisma.landingPage.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, businessName: true, chatbotEnabled: true, hidden: true } });
+  const lp = await prisma.landingPage.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, userId: true, businessName: true, chatbotEnabled: true, hidden: true } });
   if (!lp || lp.hidden || !lp.chatbotEnabled) return res.status(404).json({ error: 'Not found' });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'いまはAIが使えません。' });
 
@@ -92,16 +93,20 @@ router.post('/:slug', async (req, res) => {
 
   const knowledge = await knowledgeFor(lp.id);
   if (!knowledge) return res.status(404).json({ error: 'Not found' });
+  // 訪問者の質問は、ページの持ち主のAI利用枠を使う。枠を使い切ったら、AIを呼ばずに問い合わせを案内する
+  if ((await aiQuota(lp.userId)).exceeded) {
+    return res.json({ answer: 'ごめんなさい、いまはAIでお答えできません。ページ内のお問い合わせ方法から、お店に直接聞いてみてください。' });
+  }
 
   try {
-    const client = new Anthropic();
-    const msg = await client.beta.messages.parse({
+    const client = aiClient();
+    const msg = await runAsUser(lp.userId, 'chatbot', () => client.beta.messages.parse({
       model: process.env.CHATBOT_MODEL || 'claude-haiku-4-5-20251001',
       max_tokens: 800,
       system: SYSTEM(lp.businessName, knowledge),
       messages: turns,
       output_config: { format: betaZodOutputFormat(AnswerSchema) }
-    });
+    }));
     const out = msg.parsed_output;
     if (msg.stop_reason === 'refusal' || !out) return res.json({ answer: 'ごめんなさい、その質問にはお答えできません。' });
     const answer = out.answer.trim() || 'ごめんなさい、うまく答えられませんでした。';

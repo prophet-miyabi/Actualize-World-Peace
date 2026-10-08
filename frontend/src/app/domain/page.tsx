@@ -6,11 +6,23 @@ import api from '@/lib/api';
 
 type DomainInfo = {
   hasLp: boolean;
+  slug: string | null;
   customDomain: string | null;
   verified: boolean;
+  mode: 'affiliate' | 'paid' | 'review' | null;
+  note: string | null;
+  reviewUntil: string | null;
+  servable: boolean;
+  hasPaidPlan: boolean;
   cnameTarget: string | null;
-  xserverDomainUrl: string | null;
-  xserverUrl: string | null;
+  registrars: { key: string; name: string; description: string }[];
+  referrals: { toolKey: string; clickedAt: string }[];
+};
+
+const MODE_LABEL: Record<NonNullable<DomainInfo['mode']>, string> = {
+  affiliate: '無料（提携リンクから取得）',
+  paid: '有料プランで公開',
+  review: '運営者が確認中（確認が終わるまでの14日間は公開できます）'
 };
 
 const OPENED_KEY = 'wls_xserver_opened';
@@ -65,6 +77,25 @@ function DomainSetupInner() {
 
   const markOpened = () => {
     try { localStorage.setItem(OPENED_KEY, '1'); } catch {}
+  };
+
+  // 提携リンクを開く（ログイン中の本人が押した記録を残し、そのドメインの独自ドメイン公開を無料にする判定に使う）
+  const openRegistrar = async (key: string) => {
+    markOpened();
+    const w = window.open('', '_blank');
+    try {
+      const { data } = await api.post(`/tools/domain-referral/${encodeURIComponent(key)}`);
+      if (w) {
+        w.opener = null;
+        w.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
+      load();
+    } catch {
+      w?.close();
+      setError('リンクを開けませんでした。時間をおいてお試しください。');
+    }
   };
 
   const verify = useCallback(async () => {
@@ -160,32 +191,43 @@ function DomainSetupInner() {
           </div>
         )}
 
+        {/* 公開の条件 */}
+        <section className="bg-gradient-to-r from-fuchsia-50 via-violet-50 to-sky-50 border border-violet-100 rounded-xl p-5 mb-4 text-sm">
+          <p className="font-bold">独自ドメインで公開する条件</p>
+          <ul className="mt-2 space-y-1 text-gray-700">
+            <li>✅ 下の<span className="font-bold">提携リンクから取得したドメインは無料</span>で公開できます</li>
+            <li>💳 それ以外のドメインは、<Link href="/plans" className="underline font-bold">有料プラン</Link>（ライト以上）への加入が必要です</li>
+            <li>🔁 独自ドメインにしても、ページはAWPで動き続けます。編集・ページの追加・新しい機能はこれまでどおり使えます{info.slug ? `（AWPのURL /${info.slug} もそのまま使えます）` : ''}</li>
+          </ul>
+          {info.hasPaidPlan && <p className="mt-2 text-xs text-violet-700 font-bold">あなたは有料プラン中なので、どのドメインでも公開できます。</p>}
+        </section>
+
         {/* ステップ1: ドメインを用意（アプリの外に出るのはここだけ） */}
         <section className="bg-white border rounded-xl p-6 mb-4">
           <h2 className="font-bold mb-2">ステップ1　ドメインを用意する</h2>
-          {info.xserverDomainUrl ? (
+          {info.registrars.length > 0 ? (
             <>
               <p className="text-sm text-gray-600 mb-4">
-                まだドメインをお持ちでない方は、XServerドメインで取得できます。新しいタブで開くので、このページは閉じずにそのままお待ちください。
+                まだドメインをお持ちでない方は、ここから取得すると<span className="font-bold">独自ドメインでの公開が無料</span>になります。新しいタブで開くので、このページは閉じずにお待ちください。
               </p>
-              <a href={info.xserverDomainUrl} target="_blank" rel="noopener sponsored" onClick={markOpened}
-                className="block text-center bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700">
-                XServerドメインでドメインを取得する
-              </a>
-              {info.xserverUrl && (
-                <p className="text-sm text-gray-600 mt-3">
-                  ホームページ（WordPress等）もご自身で運営したい方は{' '}
-                  <a href={info.xserverUrl} target="_blank" rel="noopener sponsored" onClick={markOpened}
-                    className="text-blue-600 underline">エックスサーバー</a>{' '}もご検討ください。
-                </p>
+              <div className="space-y-2">
+                {info.registrars.map((r) => (
+                  <button key={r.key} onClick={() => openRegistrar(r.key)}
+                    className="block w-full text-center bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700">
+                    {r.name}でドメインを取得する
+                  </button>
+                ))}
+              </div>
+              {info.referrals.length > 0 && (
+                <p className="text-xs text-green-700 mt-2">✓ 提携リンクを開いた記録があります（{new Date(info.referrals[0].clickedAt).toLocaleString('ja-JP')}）。このあと取得したドメインが無料の対象です。</p>
               )}
               <p className="text-xs text-gray-400 mt-3">
                 <span className="border border-gray-300 px-1 rounded mr-1">PR</span>
-                このリンクは広告を含みます。ご契約いただくと当社に紹介料が支払われる場合があります。
+                このリンクは広告を含みます。ご契約いただくと当社に紹介料が支払われる場合があります。無料の判定のため、あなたがこのリンクを開いた日時を記録します。
               </p>
             </>
           ) : (
-            <p className="text-sm text-gray-600">お持ちのドメインをステップ2に入力してください。</p>
+            <p className="text-sm text-gray-600">提携しているドメインの登録サービスは準備中です。お持ちのドメインを使う場合は、有料プランへの加入が必要です。</p>
           )}
           <p className="text-sm text-gray-500 mt-3">すでにドメインをお持ちの方は、そのままステップ2へ進んでください。</p>
         </section>
@@ -194,7 +236,13 @@ function DomainSetupInner() {
         <section className="bg-white border rounded-xl p-6 mb-4">
           <h2 className="font-bold mb-2">ステップ2　取得したドメインを入力する</h2>
           {info.customDomain && (
-            <p className="text-sm mb-3">登録済み: <span className="font-bold">{info.customDomain}</span></p>
+            <div className="text-sm mb-3 space-y-1">
+              <p>登録済み: <span className="font-bold">{info.customDomain}</span></p>
+              {info.mode && <p className="text-xs">公開の条件: <span className="font-bold">{MODE_LABEL[info.mode]}</span>{info.note ? `（${info.note}）` : ''}</p>}
+              {info.verified && !info.servable && (
+                <p className="text-xs text-amber-700">⚠ いまは公開の条件を満たしていないため、独自ドメインを開くとAWPのURLに案内されます。<Link href="/plans" className="underline font-bold">有料プランに加入</Link>すると、すぐに独自ドメインで表示されます。</p>
+              )}
+            </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3">
             <input ref={step2Ref} type="text" inputMode="url" autoCapitalize="none" autoCorrect="off"
@@ -207,7 +255,7 @@ function DomainSetupInner() {
           </div>
           <p className="text-xs text-gray-500 mt-2">LPは「www.」を付けたアドレスで公開されます（例: example.jp → www.example.jp）。</p>
           {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-          {needsPlan && <Link href="/billing" className="text-blue-600 underline text-sm">有料プランに加入する</Link>}
+          {needsPlan && <Link href="/plans" className="text-blue-600 underline text-sm">有料プランを見る</Link>}
         </section>
 
         {/* ステップ3: DNS設定の値を表示し、接続確認はアプリ内で行う */}

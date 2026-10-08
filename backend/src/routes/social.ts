@@ -9,6 +9,7 @@ import { facebookAuthorizeUrl, exchangeFacebookCode } from '../social/platforms/
 import { xAuthorizeUrl, exchangeXCode, generatePkce } from '../social/platforms/x';
 import { tiktokAuthorizeUrl, exchangeTikTokCode } from '../social/platforms/tiktok';
 import { captureError } from '../lib/errors';
+import { hasPaidPlan } from '../lib/plans';
 
 const router = Router();
 
@@ -69,7 +70,7 @@ router.get('/:platform/connect', async (req, res) => {
     return res.status(401).json({ error: 'ログインが必要です。' });
   }
   const user = await prisma.user.findUnique({ where: { id: uid } });
-  if (!user || !(user.isAdmin || user.subscriptionStatus === 'active')) {
+  if (!hasPaidPlan(user)) {
     return res.status(402).json({ error: '有料プランへの加入が必要です。' });
   }
 

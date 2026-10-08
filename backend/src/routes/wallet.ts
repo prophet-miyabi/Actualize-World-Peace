@@ -14,6 +14,7 @@ router.use(authenticate);
 const PAYMENT_LABEL: Record<string, string> = {
   revenue_share: '収益の分配',
   harness_payment: 'Harness導入支援の支払い',
+  plan_payment: '有料プランの支払い',
   reversal: '取り消し'
 };
 

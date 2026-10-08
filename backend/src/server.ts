@@ -26,6 +26,8 @@ import productRoutes from './routes/products';
 import postRoutes from './routes/posts';
 import harnessLinkRoutes from './routes/harnessLink';
 import crewRoutes, { discordInteractions } from './routes/crew';
+import planRoutes from './routes/plans';
+import shopRoutes, { sweepOrders } from './routes/shop';
 import { startCrew } from './crew/orchestrator';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
@@ -77,6 +79,8 @@ app.use('/api/products', productRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/harness-link', harnessLinkRoutes);
 app.use('/api/crew', crewRoutes);
+app.use('/api/plans', planRoutes);
+app.use('/api/shop', shopRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -91,3 +95,5 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 startScheduler();
 startAgentLoop();
 startCrew();
+// 振込期限を過ぎた注文の取り消しと、保存期間を過ぎた注文の削除
+setInterval(() => void sweepOrders().catch((e) => console.error('order sweep failed', e?.message)), 10 * 60_000);

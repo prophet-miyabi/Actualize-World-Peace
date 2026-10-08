@@ -45,7 +45,7 @@ function DashboardPreviewInner() {
     <div>
       <div className="bg-blue-600 text-white text-sm px-4 py-3 flex flex-wrap items-center justify-center gap-3 text-center">
         <span>これはプレビューです。実際の公開URLではありません。</span>
-        <Link href="/billing" className="bg-white text-blue-700 px-3 py-1 rounded-full font-bold whitespace-nowrap">
+        <Link href="/plans" className="bg-white text-blue-700 px-3 py-1 rounded-full font-bold whitespace-nowrap">
           このページを公開する →
         </Link>
       </div>

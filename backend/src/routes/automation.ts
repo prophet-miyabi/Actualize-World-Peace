@@ -4,12 +4,12 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 import { validateWorkflowSteps, MAX_STEPS } from '../automation/safety';
 import { runWorkflow } from '../automation/executor';
 import type { AutomationStep } from '../automation/types';
+import { userHasPaidPlan } from '../lib/plans';
 
 const router = Router();
 
 async function requirePaidOrAdmin(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true, subscriptionStatus: true } });
-  return !!user && (user.isAdmin || user.subscriptionStatus === 'active');
+  return userHasPaidPlan(userId);
 }
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {

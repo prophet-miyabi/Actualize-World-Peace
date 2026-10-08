@@ -33,10 +33,11 @@ async function ownLp(userId: string, lpId: unknown) {
   return prisma.landingPage.findFirst({ where: id ? { id, userId } : { userId }, orderBy: { createdAt: 'asc' } });
 }
 
-const fields = { id: true, name: true, priceYen: true, priceNote: true, description: true, buyUrl: true, soldOut: true, sortOrder: true, imageType: true, updatedAt: true } as const;
-export function publicProduct(p: { id: string; name: string; priceYen: number | null; priceNote: string | null; description: string | null; buyUrl: string | null; soldOut: boolean; imageType: string | null; updatedAt: Date }) {
+const fields = { id: true, name: true, priceYen: true, priceNote: true, description: true, buyUrl: true, soldOut: true, purchasable: true, stock: true, requiresShipping: true, sortOrder: true, imageType: true, updatedAt: true } as const;
+export function publicProduct(p: { id: string; name: string; priceYen: number | null; priceNote: string | null; description: string | null; buyUrl: string | null; soldOut: boolean; purchasable?: boolean; stock?: number | null; requiresShipping?: boolean; imageType: string | null; updatedAt: Date }) {
   return {
-    id: p.id, name: p.name, priceYen: p.priceYen, priceNote: p.priceNote, description: p.description, buyUrl: p.buyUrl, soldOut: p.soldOut,
+    id: p.id, name: p.name, priceYen: p.priceYen, priceNote: p.priceNote, description: p.description, buyUrl: p.buyUrl,
+    soldOut: p.soldOut || p.stock === 0, purchasable: !!p.purchasable && p.priceYen != null, stock: p.stock ?? null, requiresShipping: p.requiresShipping !== false,
     image: p.imageType ? `/api/products/${p.id}/image?v=${p.updatedAt.getTime()}` : null
   };
 }
@@ -54,6 +55,9 @@ function parse(body: any): { data?: any; error?: string } {
     priceNote: String(body?.priceNote ?? '').trim().slice(0, 30) || null,
     description: String(body?.description ?? '').trim().slice(0, 300) || null,
     soldOut: !!body?.soldOut,
+    purchasable: !!body?.purchasable,
+    requiresShipping: body?.requiresShipping !== false,
+    stock: body?.stock === '' || body?.stock === null || body?.stock === undefined ? null : Number.isInteger(Number(body.stock)) && Number(body.stock) >= 0 && Number(body.stock) <= 1_000_000 ? Number(body.stock) : null,
     sortOrder: Number.isInteger(Number(body?.sortOrder)) ? Number(body.sortOrder) : 0
   };
   if (body?.imageDataUrl === null) {
@@ -91,6 +95,11 @@ router.post('/mine', authenticate, async (req: AuthRequest, res) => {
   if ((await prisma.product.count({ where: { lpId: lp.id } })) >= MAX_PRODUCTS) return res.status(400).json({ error: `商品は${MAX_PRODUCTS}個まで登録できます` });
   const { data, error } = parse(req.body);
   if (error) return res.status(400).json({ error });
+  if (data.purchasable) {
+    if (data.priceYen == null) return res.status(400).json({ error: 'AWPで購入できるようにするには、価格を入力してください' });
+    const seller = await prisma.sellerProfile.findUnique({ where: { userId: req.user!.id }, select: { enabled: true } });
+    if (!seller?.enabled) return res.status(400).json({ error: '先に「ショップの設定」で特定商取引法の表記と支払い方法をそろえて、販売を始めてください' });
+  }
   const p = await prisma.product.create({ data: { ...data, lpId: lp.id }, select: fields });
   res.status(201).json({ product: publicProduct(p) });
 });
@@ -100,6 +109,11 @@ router.put('/mine/:id', authenticate, async (req: AuthRequest, res) => {
   if (!existing) return res.status(404).json({ error: '見つかりません' });
   const { data, error } = parse(req.body);
   if (error) return res.status(400).json({ error });
+  if (data.purchasable) {
+    if (data.priceYen == null) return res.status(400).json({ error: 'AWPで購入できるようにするには、価格を入力してください' });
+    const seller = await prisma.sellerProfile.findUnique({ where: { userId: req.user!.id }, select: { enabled: true } });
+    if (!seller?.enabled) return res.status(400).json({ error: '先に「ショップの設定」で特定商取引法の表記と支払い方法をそろえて、販売を始めてください' });
+  }
   const p = await prisma.product.update({ where: { id: existing.id }, data, select: fields });
   res.json({ product: publicProduct(p) });
 });

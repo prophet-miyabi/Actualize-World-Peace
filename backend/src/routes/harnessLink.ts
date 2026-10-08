@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
+import { metered } from '../lib/aiUsage';
 import { seal, open } from '../lib/secretBox';
 import { draftForPlatform } from '../agents/marketing';
 import { reviewSocialDraft } from '../agents/compliance';
@@ -99,7 +100,7 @@ router.delete('/:kind', async (req: AuthRequest, res) => {
 });
 
 // AIの下書き（ページに登録済みの事実だけを使い、公開前の審査AIを通す）
-router.post('/:kind/draft', async (req: AuthRequest, res) => {
+router.post('/:kind/draft', metered('sns_draft'), async (req: AuthRequest, res) => {
   const kind = req.params.kind;
   if (!isKind(kind)) return res.status(404).json({ error: '見つかりません' });
   const lpId = typeof req.body?.lpId === 'string' && req.body.lpId ? req.body.lpId : undefined;

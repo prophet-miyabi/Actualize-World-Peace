@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod/v4';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { aiClient } from '../lib/aiUsage';
 
 // 対話で作るページビルダーのAI。ユーザーと会話しながら、ページに載せる事実を項目ごとに聞き取る。
 // AIは事実の「出どころ」を必ず付ける（provided=本人が言った / assumed=推測 / unconfirmed=不明）。
@@ -96,7 +97,7 @@ export async function runBuilderTurn(history: ChatMessage[], brief: Brief): Prom
   }
   if (merged[0]?.role !== 'user') merged.unshift({ role: 'user', content: 'ページを作りたいです。' });
 
-  const client = new Anthropic();
+  const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 2048,

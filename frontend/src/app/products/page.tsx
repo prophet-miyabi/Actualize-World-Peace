@@ -7,9 +7,9 @@ import { resizeImageToDataUrl } from '@/lib/image';
 
 type Product = {
   id: string; name: string; priceYen: number | null; priceNote: string | null; description: string | null;
-  buyUrl: string | null; soldOut: boolean; image: string | null;
+  buyUrl: string | null; soldOut: boolean; image: string | null; purchasable: boolean; stock: number | null; requiresShipping: boolean;
 };
-const EMPTY = { name: '', priceYen: '', priceNote: '税込', description: '', buyUrl: '', soldOut: false, imageDataUrl: undefined as string | null | undefined, preview: '' };
+const EMPTY = { name: '', priceYen: '', priceNote: '税込', description: '', buyUrl: '', soldOut: false, purchasable: false, stock: '', requiresShipping: true, imageDataUrl: undefined as string | null | undefined, preview: '' };
 
 export default function ProductsPage() {
   return (
@@ -39,7 +39,7 @@ function Products() {
 
   const startNew = () => { setForm({ ...EMPTY }); setEditing(null); setOpen(true); setError(''); };
   const startEdit = (p: Product) => {
-    setForm({ name: p.name, priceYen: p.priceYen == null ? '' : String(p.priceYen), priceNote: p.priceNote || '', description: p.description || '', buyUrl: p.buyUrl || '', soldOut: p.soldOut, imageDataUrl: undefined, preview: p.image || '' });
+    setForm({ name: p.name, priceYen: p.priceYen == null ? '' : String(p.priceYen), priceNote: p.priceNote || '', description: p.description || '', buyUrl: p.buyUrl || '', soldOut: p.soldOut, purchasable: p.purchasable, stock: p.stock == null ? '' : String(p.stock), requiresShipping: p.requiresShipping, imageDataUrl: undefined, preview: p.image || '' });
     setEditing(p.id);
     setOpen(true);
     setError('');
@@ -59,7 +59,7 @@ function Products() {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const body = { lpId: page!.id, name: form.name, priceYen: form.priceYen, priceNote: form.priceNote, description: form.description, buyUrl: form.buyUrl, soldOut: form.soldOut, ...(form.imageDataUrl !== undefined ? { imageDataUrl: form.imageDataUrl } : {}) };
+    const body = { lpId: page!.id, name: form.name, priceYen: form.priceYen, priceNote: form.priceNote, description: form.description, buyUrl: form.buyUrl, soldOut: form.soldOut, purchasable: form.purchasable, stock: form.stock, requiresShipping: form.requiresShipping, ...(form.imageDataUrl !== undefined ? { imageDataUrl: form.imageDataUrl } : {}) };
     try {
       if (editing) await api.put(`/products/mine/${editing}`, body);
       else await api.post('/products/mine', body);
@@ -90,7 +90,7 @@ function Products() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-2xl font-black">商品</h1>
-            <p className="text-xs text-gray-500 mt-1">ページに商品を並べられるよ。購入はあなたのネットショップで。</p>
+            <p className="text-xs text-gray-500 mt-1">ページに商品を並べられるよ。AWPで直接売る（手数料0円）か、あなたのネットショップへ案内できるよ。</p>
           </div>
           <button onClick={startNew} className="shrink-0 rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white text-sm font-bold px-4 py-2">＋ 追加</button>
         </div>
@@ -110,7 +110,7 @@ function Products() {
                   </div>
                   <div className="p-3">
                     <p className="font-bold text-sm truncate">{p.name}</p>
-                    <p className="text-xs text-gray-500">{p.priceYen != null ? `¥${p.priceYen.toLocaleString('ja-JP')}` : '価格なし'}{p.soldOut ? '・売り切れ' : ''}</p>
+                    <p className="text-xs text-gray-500">{p.priceYen != null ? `¥${p.priceYen.toLocaleString('ja-JP')}` : '価格なし'}{p.soldOut ? '・売り切れ' : ''}{p.purchasable ? `・AWPで販売中${p.stock != null ? `（在庫${p.stock}）` : ''}` : ''}</p>
                   </div>
                 </button>
               </li>
@@ -151,6 +151,16 @@ function Products() {
               <input className={input} type="url" inputMode="url" value={form.buyUrl} placeholder="https://〇〇.base.shop/items/..." onChange={(e) => setForm({ ...form, buyUrl: e.target.value })} />
               <span className="block text-[11px] font-normal text-gray-500 mt-1">BASE・STORES・Shopify・minne・Creema・BOOTH・メルカリShops・楽天・Amazon・SUZURI などのURLが使えます</span>
             </label>
+            <div className="rounded-xl bg-violet-50 border border-violet-100 p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={form.purchasable} onChange={(e) => setForm({ ...form, purchasable: e.target.checked })} />AWPで購入できるようにする（手数料0円・直接払い）</label>
+              {form.purchasable && (
+                <>
+                  <label className="block text-sm">在庫数（空欄なら数を管理しない）<input className={input} type="number" min={0} inputMode="numeric" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} /></label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requiresShipping} onChange={(e) => setForm({ ...form, requiresShipping: e.target.checked })} />配送が必要（お届け先と送料をお客様に聞く）</label>
+                </>
+              )}
+              <p className="text-[11px] text-gray-500">先に <Link href="/shop-settings" className="underline">ショップの設定</Link> で特定商取引法の表記と支払い方法をそろえてね。</p>
+            </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.soldOut} onChange={(e) => setForm({ ...form, soldOut: e.target.checked })} />売り切れにする</label>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button disabled={busy} className="w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold py-3 disabled:opacity-40">{busy ? '保存中…' : '保存する'}</button>

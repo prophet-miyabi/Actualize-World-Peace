@@ -5,6 +5,7 @@ import prisma from '../prisma';
 import { fallbackReply, generateLineReply } from '../ai/lineReply';
 import { captureError } from '../lib/errors';
 import { notifyUser } from '../lib/push';
+import { aiQuota, runAsUser } from '../lib/aiUsage';
 
 const router = Router();
 
@@ -49,7 +50,10 @@ router.post('/:tenantId', async (req: any, res) => {
       // 自動応答メッセージ（失敗しても問い合わせの保存・店主への通知・LINEへの応答は止めない）
       try {
         const lp = await prisma.landingPage.findFirst({ where: { userId: tenantId } });
-        const replyText = lp ? await generateLineReply(lp, event.message.text) : fallbackReply(event.message.text);
+        // AIの自動応答は持ち主のAI利用枠を使う。枠を使い切っていたら、定型の応答にする
+        const text = event.message.text;
+        const canUseAi = lp && !(await aiQuota(tenantId)).exceeded;
+        const replyText = canUseAi ? await runAsUser(tenantId, 'line_reply', () => generateLineReply(lp, text)) : fallbackReply(text);
         await client.replyMessage({
           replyToken: event.replyToken,
           messages: [{ type: 'text', text: replyText }]

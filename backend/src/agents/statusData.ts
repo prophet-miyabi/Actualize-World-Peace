@@ -97,6 +97,8 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'プラットフォーム', name: '商品カタログ（購入は持ち主のネットショップへ）', status: 'done' },
   { category: 'プラットフォーム', name: '投稿・タイムライン（みんな／フォロー中）・投稿の通報', status: 'done' },
   { category: '運営', name: 'ローンチ・クルー（Discordで15分刻みの進行・GitHubで実装とレビューを自動で回す開発チーム）', status: 'partial', note: 'Discord・GitHub・Maxプランのトークンの設定待ち（タスクT01〜T04）' },
-  { category: 'プラットフォーム', name: 'AWP内での決済（商品販売・予約の事前決済）', status: 'blocked', note: 'Stripe Connect・特定商取引法の表示・返金規定の整備が必要（運営者の判断待ち）' },
+  { category: 'プラットフォーム', name: '直接払いショップ（注文・在庫・期限・出品者ごとの特商法表記。代金は購入者→出品者へ直接、手数料0円）', status: 'done', note: 'カード決済は決済会社なしでは不可（割賦販売法・PCI DSS）。弁護士の確認待ち（T27）' },
+  { category: 'プラットフォーム', name: '有料プラン3段階（Claude Pro基準・料金の78%をAI利用枠）・自前の請求（銀行振込・キャッシュ）・AIの利用量の計測と上限', status: 'done', note: '振込先口座の登録待ち（T28）' },
+  { category: 'プラットフォーム', name: '独自ドメインの条件（提携リンク経由は無料・それ以外は有料プラン）とRDAPでの自動確認・運営者の確認画面', status: 'done', note: 'ドメイン登録サービスの提携・登録待ち（T29）' },
   { category: 'プラットフォーム', name: '外部ツールへのキャッシュ利用', status: 'blocked', note: '資金決済法（第三者型前払式支払手段・資金移動業）の確認が必要' }
 ];

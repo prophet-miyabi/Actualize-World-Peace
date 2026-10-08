@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod/v4';
+import { aiClient } from '../lib/aiUsage';
 
 // LINEお問い合わせへのAI一次返信。
 // 「事実として登録されている内容だけを使う」を徹底し、AIが数字・期限・在庫・実績を
@@ -24,7 +25,7 @@ export async function generateLineReply(store: StoreFacts, userMessage: string):
   const facts = sections.map((s) => `[${s.feature}] ${JSON.stringify(s.content)}`).join('\n').slice(0, 3000);
 
   try {
-    const client = new Anthropic();
+    const client = aiClient();
     const response = await client.beta.messages.parse({
       model: process.env.CLAUDE_MODEL || 'claude-opus-5',
       max_tokens: 512,
