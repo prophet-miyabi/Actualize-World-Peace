@@ -1,11 +1,11 @@
 import { useId } from 'react';
-import { Outfit } from 'next/font/google';
 import { BRAND_GRADIENT, PHI, goldenRosette } from '@/lib/brand';
 
 // ブランドロゴ（AWP）。AI画像生成は文字や形が崩れやすいため、SVGで描いて常にくっきり表示する。
 // マークは、日本を中心にした地球（白い線）を、黄金らせん6つが60°ずつ囲む円環（lib/brand.ts）。
 // 黄金比: マークの高さ : 文字の大きさ = φ : 1、マークと文字の間隔 = マーク × 1/φ²、角丸 = マーク × 1/φ³
-const brandFont = Outfit({ subsets: ['latin'], weight: ['600', '700'], display: 'swap' });
+// ロゴの書体（Outfit）は app/layout.tsx で読み込む
+const BRAND_FONT = "'Outfit', var(--font-sans-jp), sans-serif";
 
 const VIEW = 40;
 const rosette = goldenRosette(VIEW);
@@ -39,8 +39,8 @@ export default function Logo({ withWordmark = true, size = 36, className = '' }:
     <span className={`inline-flex items-center ${className}`} style={{ gap: size / PHI ** 2 }}>
       <LogoMark size={size} />
       {withWordmark && (
-        <span className={`${brandFont.className} font-bold leading-none bg-clip-text text-transparent`}
-          style={{ fontSize: size / PHI, letterSpacing: '0.06em', backgroundImage: `linear-gradient(90deg, ${BRAND_GRADIENT.join(', ')})` }}>
+        <span className="font-bold leading-none bg-clip-text text-transparent"
+          style={{ fontFamily: BRAND_FONT, fontSize: size / PHI, letterSpacing: '0.06em', backgroundImage: `linear-gradient(90deg, ${BRAND_GRADIENT.join(', ')})` }}>
           AWP
         </span>
       )}

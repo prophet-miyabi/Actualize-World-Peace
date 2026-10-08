@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ページの書体（app/layout.tsx で Google Fonts から読み込む） */
+:root {
+  --font-sans-jp: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+  --font-serif-jp: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-rounded-jp: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', sans-serif;
+}
