@@ -2,11 +2,12 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 
-type Flags = { pause_agent_loop: boolean; pause_sns_posting: boolean };
+type Flags = { pause_agent_loop: boolean; pause_sns_posting: boolean; pause_crew: boolean };
 
 const CONTROLS: { key: keyof Flags; title: string; body: string }[] = [
   { key: 'pause_agent_loop', title: 'AIエージェントの定期実行', body: 'マーケティング・成長分析・監視・自己PRなど、6時間ごとに動くAIエージェントをすべて止めます。' },
-  { key: 'pause_sns_posting', title: 'SNSの予約投稿', body: '予約されているSNS投稿の送信を止めます。予約は消えず、再開すると順に投稿されます。' }
+  { key: 'pause_sns_posting', title: 'SNSの予約投稿', body: '予約されているSNS投稿の送信を止めます。予約は消えず、再開すると順に投稿されます。' },
+  { key: 'pause_crew', title: 'ローンチ・クルー', body: 'Discordでの進行（予定・15分ごとのお知らせ）と、GitHubへの実装依頼をすべて止めます。進行中のClaude Codeの作業は止まりません。' }
 ];
 
 // 緊急コントロール: 自動で動く処理を、その場で止める・再開する（確認はボタンの場所で行う）

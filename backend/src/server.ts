@@ -25,6 +25,8 @@ import bookingRoutes from './routes/bookings';
 import productRoutes from './routes/products';
 import postRoutes from './routes/posts';
 import harnessLinkRoutes from './routes/harnessLink';
+import crewRoutes, { discordInteractions } from './routes/crew';
+import { startCrew } from './crew/orchestrator';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
@@ -38,6 +40,9 @@ app.use(
   express.json({ verify: (req: any, _res, buf) => { req.rawBody = buf; } }),
   webhookRoutes
 );
+
+// Discord の Interactions は署名検証に生のBodyが必要
+app.post('/api/crew/discord/interactions', express.raw({ type: 'application/json' }), discordInteractions);
 
 // Stripeは生のBufferのみで良い（SDKがそこから直接検証・パースする）
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
@@ -71,6 +76,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/harness-link', harnessLinkRoutes);
+app.use('/api/crew', crewRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -84,3 +90,4 @@ const port = process.env.PORT || 8000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
 startScheduler();
 startAgentLoop();
+startCrew();

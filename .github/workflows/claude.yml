@@ -1,9 +1,10 @@
-# AWPの管理者画面で運営者が承認した実装依頼（ラベル "claude" の付いた課題）を、
-# Claude Code が GitHub Actions の隔離された環境で実装し、プルリクエストとして提出する。
+# AWPのローンチ・クルー（Discord）や管理者画面から依頼された実装（ラベル "claude" の付いた課題）と、
+# PRへのレビュー依頼（"@claude" を含むコメント）を、Claude Code が GitHub Actions の隔離された環境で実行する。
 # 本番への反映は、運営者がプルリクエストを確認してマージしたときだけ（Render が main を自動デプロイ）。
 #
 # 必要な設定（運営者が行う）:
-# - リポジトリの Settings → Secrets and variables → Actions に ANTHROPIC_API_KEY を登録
+# - Claude Max プランで `claude setup-token` を実行し、出たトークンを
+#   リポジトリの Settings → Secrets and variables → Actions に CLAUDE_CODE_OAUTH_TOKEN として登録
 # - Claude の GitHub App をこのリポジトリにインストール（https://github.com/apps/claude）
 # 書き込み権限のあるユーザー（運営者・運営者のトークン）からの依頼だけが実行される（アクションの既定）
 name: Claude Code
@@ -33,9 +34,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # 型チェック（npx tsc --noEmit）を実行できるよう、依存関係を先に入れておく
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci && npx prisma generate && cd ..
+          cd frontend && npm ci
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: claude
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: >-
+            --allowedTools "Bash(npx tsc:*),Bash(npx prisma generate:*),Bash(npx prisma validate:*),Bash(npm run build:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*)"

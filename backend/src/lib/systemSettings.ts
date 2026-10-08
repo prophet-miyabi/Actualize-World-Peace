@@ -3,14 +3,16 @@ import prisma from '../prisma';
 // 緊急コントロールなど、システム全体の切り替え。値は文字列 "true" / "false" で保存する
 export const SETTING_KEYS = {
   pauseAgentLoop: 'pause_agent_loop',
-  pauseSnsPosting: 'pause_sns_posting'
+  pauseSnsPosting: 'pause_sns_posting',
+  pauseCrew: 'pause_crew'
 } as const;
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS) as SettingKey[];
 
 export const SETTING_LABEL: Record<SettingKey, string> = {
   pause_agent_loop: 'AIエージェントの定期実行を止める',
-  pause_sns_posting: 'SNSの予約投稿を止める'
+  pause_sns_posting: 'SNSの予約投稿を止める',
+  pause_crew: 'ローンチ・クルー（Discordの進行・GitHubへの実装依頼）を止める'
 };
 
 export async function getFlag(key: SettingKey): Promise<boolean> {

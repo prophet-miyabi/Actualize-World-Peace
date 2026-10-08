@@ -9,7 +9,7 @@ type Overview = {
     users: number; newUsers7d: number; pages: number; newPages7d: number; ordersRequested: number; ordersInProgress: number;
     openErrors: number; pendingReviews: number; proposalsWaiting: number; affiliateClicks7d: number;
   };
-  emergency: { pause_agent_loop: boolean; pause_sns_posting: boolean };
+  emergency: { pause_agent_loop: boolean; pause_sns_posting: boolean; pause_crew?: boolean };
   config: { smsVerification: string; stripe: boolean; anthropic: boolean; imageAi: boolean; githubForAiDevelopment: boolean; customDomainBase: boolean };
   todos: { label: string; count: number; href: string }[];
 };
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
     { label: '承認待ちのAI提案', value: o.kpi.proposalsWaiting, href: '/admin/ops', alert: o.kpi.proposalsWaiting > 0 },
     { label: '提携ツールのクリック', value: o.kpi.affiliateClicks7d, sub: '直近7日間' }
   ];
-  const paused = o.emergency.pause_agent_loop || o.emergency.pause_sns_posting;
+  const paused = o.emergency.pause_agent_loop || o.emergency.pause_sns_posting || !!o.emergency.pause_crew;
 
   return (
     <div className="px-4 py-6 md:px-8 max-w-5xl">
@@ -51,7 +51,7 @@ export default function AdminDashboard() {
 
       {paused && (
         <Link href="/admin/emergency" className="block mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-bold">
-          緊急停止中: {[o.emergency.pause_agent_loop && 'AIエージェント', o.emergency.pause_sns_posting && 'SNS予約投稿'].filter(Boolean).join('・')} →
+          緊急停止中: {[o.emergency.pause_agent_loop && 'AIエージェント', o.emergency.pause_sns_posting && 'SNS予約投稿', o.emergency.pause_crew && 'ローンチ・クルー'].filter(Boolean).join('・')} →
         </Link>
       )}
 

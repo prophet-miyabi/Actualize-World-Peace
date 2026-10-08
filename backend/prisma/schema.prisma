@@ -657,3 +657,64 @@ model HarnessScheduledPost {
 
   @@index([userId, createdAt])
 }
+
+// ---- ローンチ・クルー（Discordで動く開発チームのエージェント） ----
+// 公開までのタスク・1日の15分刻みの予定・状態を持つ。実装はGitHubの課題→Claude Code→PR→運営者のマージで行う
+model CrewTask {
+  key          String    @id // 例: T01（あなたの作業）/ A01（エージェントの作業）/ B01（不具合）
+  title        String
+  area         String    // setup / legal / dev / qa / content / ops / launch
+  epic         String    // スクワッド（Discordのスレッド）単位のまとまり
+  owner        String    // user / agent
+  agents       String[]  // 担当ペルソナ（mina / sora / kei / tetsu / ritsu / haru）
+  estimateMin  Int
+  remainingMin Int
+  priority     Int       @default(2) // 0 が最優先
+  planDay      String    // 目標日 YYYY-MM-DD（JST）
+  dueDay       String?
+  dependsOn    String[]
+  status       String    @default("todo") // todo / doing / waiting / blocked / review / done / skipped
+  steps        String?   // あなたの作業の手順
+  acceptance   String    // 完了の条件
+  notes        String?   // 完了時のメモなど（後続タスクに引き継ぐ）
+  issueNumber  Int?
+  issueUrl     String?
+  branch       String?
+  prNumber     Int?
+  prUrl        String?
+  reviewState  String?   // requested / passed / attention
+  reviewRequestedAt DateTime?
+  dispatchedAt DateTime?
+  doneAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, planDay])
+}
+
+model CrewDayPlan {
+  day        String    @id // YYYY-MM-DD（JST）
+  blocks     Json      // [{ start, end, kind, taskKey?, title }]
+  postedAt   DateTime?
+  reportedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// チャンネルID・Webhook（暗号化）・最後に処理した時刻など
+model CrewState {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model CrewLog {
+  id        String   @id @default(cuid())
+  agent     String
+  kind      String
+  taskKey   String?
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

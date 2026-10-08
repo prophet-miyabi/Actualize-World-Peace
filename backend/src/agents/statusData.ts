@@ -96,6 +96,7 @@ export const FEATURE_CHECKLIST: FeatureItem[] = [
   { category: 'プラットフォーム', name: '予約リクエスト（受付・確定/お断り・訪問者の状況確認ページ）', status: 'done', note: '決済なし。空き枠の自動管理は未実装' },
   { category: 'プラットフォーム', name: '商品カタログ（購入は持ち主のネットショップへ）', status: 'done' },
   { category: 'プラットフォーム', name: '投稿・タイムライン（みんな／フォロー中）・投稿の通報', status: 'done' },
+  { category: '運営', name: 'ローンチ・クルー（Discordで15分刻みの進行・GitHubで実装とレビューを自動で回す開発チーム）', status: 'partial', note: 'Discord・GitHub・Maxプランのトークンの設定待ち（タスクT01〜T04）' },
   { category: 'プラットフォーム', name: 'AWP内での決済（商品販売・予約の事前決済）', status: 'blocked', note: 'Stripe Connect・特定商取引法の表示・返金規定の整備が必要（運営者の判断待ち）' },
   { category: 'プラットフォーム', name: '外部ツールへのキャッシュ利用', status: 'blocked', note: '資金決済法（第三者型前払式支払手段・資金移動業）の確認が必要' }
 ];

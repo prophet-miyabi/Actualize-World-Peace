@@ -67,7 +67,7 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object',
       properties: {
-        key: { type: 'string', enum: ALL_SETTING_KEYS, description: 'pause_agent_loop=AIエージェントの定期実行を止める / pause_sns_posting=SNSの予約投稿を止める' },
+        key: { type: 'string', enum: ALL_SETTING_KEYS, description: 'pause_agent_loop=AIエージェントの定期実行を止める / pause_sns_posting=SNSの予約投稿を止める / pause_crew=ローンチ・クルーを止める' },
         value: { type: 'boolean', description: 'true=止める、false=再開する' },
         reason: { type: 'string', description: '変更する理由（運営者に表示する）' }
       },

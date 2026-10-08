@@ -64,6 +64,20 @@ services:
         sync: false
       - key: GITHUB_REPO
         sync: false
+      # ローンチ・クルー（Discordで動く開発チーム）。設定手順は管理画面「ローンチ・クルー」とタスクT03を参照
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_APPLICATION_ID
+        sync: false
+      - key: DISCORD_PUBLIC_KEY
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: DISCORD_OWNER_ID
+        sync: false
+      # 利用者から預かる鍵（Harness・Discord Webhook）の暗号化キー。一度決めたら変えない
+      - key: SECRET_ENCRYPTION_KEY
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_PRICE_ID
