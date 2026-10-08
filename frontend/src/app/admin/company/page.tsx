@@ -57,6 +57,7 @@ export default function CompanyPage() {
         <h1 className="text-2xl font-black">AI企業</h1>
         <p className="text-sm text-gray-600 mt-1">あなたが目標と重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。お金・設定・公開に関わる操作は、ここで承認したときだけ実行されます。</p>
         {!s.configured && <p className="mt-2 text-sm text-red-600">ANTHROPIC_API_KEY が未設定のため、エージェントは動きません。</p>}
+        <p className="mt-2 text-sm"><a href="/admin/company/chat" className="text-violet-700 font-bold underline">💬 エージェントと直接話して指示する →</a></p>
         <div className="mt-3 flex items-center gap-3">
           <button onClick={() => run(() => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AI企業を開始しました。毎朝8時（JST）にCEOの経営見直しが動きます。' : 'AI企業を停止しました。')}
             className={`rounded-full px-5 py-2 text-sm font-bold ${s.paused ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white' : 'border text-gray-700'}`}>

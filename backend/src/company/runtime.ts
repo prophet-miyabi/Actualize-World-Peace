@@ -7,9 +7,9 @@ import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 //   システムプロンプト（会社の決まり + 役割 + 読めるメモリの一覧）→ Claude の道具ループ → finish_task で成果を構造化して保存。
 // 道具のリスクが役割の上限を超えるときは実行せず CompanyAction（人間の承認待ち）を作る。
 // 利用量は AgentRun に記録し、1日の予算を超えたエージェントはその日は動かない
-const MAX_ROUNDS = 12;
+export const MAX_ROUNDS = 12;
 const PRICES: Record<string, { in: number; out: number }> = { opus: { in: 5, out: 25 }, sonnet: { in: 3, out: 15 }, haiku: { in: 1, out: 5 } };
-const SEARCH_COST_USD = 0.01;
+export const SEARCH_COST_USD = 0.01;
 
 export type TaskResult = { summary: string; facts: string[]; assumptions: string[]; artifacts: string[]; nextActions: string[]; blocked?: string };
 
@@ -30,7 +30,7 @@ const FINISH_TOOL: Anthropic.Tool = {
   }
 };
 
-function priceFor(model: string) {
+export function priceFor(model: string) {
   const k = Object.keys(PRICES).find((p) => model.includes(p)) ?? 'opus';
   return PRICES[k];
 }
@@ -63,6 +63,21 @@ async function memoryIndex(agent: AgentDef) {
 async function strategyText() {
   const s = await prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'strategy' } } });
   return s?.content ?? '（戦略メモはまだありません）';
+}
+
+// システムプロンプトの共通部分（目標・戦略・読めるメモリの一覧）。タスク実行と会話の両方で使う
+export async function buildAgentContext(agent: AgentDef) {
+  const [goals, mem, strategy] = await Promise.all([
+    prisma.companyGoal.findMany({ where: { status: 'active' }, select: { title: true, kpis: true } }),
+    memoryIndex(agent),
+    strategyText()
+  ]);
+  const NL = String.fromCharCode(10);
+  return [
+    `${NL}【会社の目標】${NL}${goals.map((g) => `- ${g.title} / KPI: ${JSON.stringify(g.kpis)}`).join(NL) || '（未設定）'}`,
+    `${NL}【会社の戦略（company/strategy）】${NL}${strategy.slice(0, 6000)}`,
+    `${NL}【読めるメモリの一覧（必要なものは read_memory で全文を読む）】${NL}${mem || '（まだありません）'}`
+  ].join(NL);
 }
 
 export async function runTask(taskId: string): Promise<void> {

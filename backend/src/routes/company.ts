@@ -6,6 +6,7 @@ import { AGENTS, isAgentKey } from '../company/registry';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, COMPANY_MONTHLY_CAP_USD, executeAction, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { companyTick } from '../company/loop';
+import { chatWithAgent, type ChatTurn } from '../company/chat';
 import { seedCompany } from '../company/seed';
 
 // AI企業の管理画面用API（運営者のみ）: 組織図・目標・タスク・承認待ち・メモリ・イベント・費用
@@ -141,6 +142,69 @@ router.post('/pause', async (req: AuthRequest, res) => {
   await setFlag(SETTING_KEYS.pauseCompany, !!req.body?.paused, req.user!.id);
   await emitEvent(req.body?.paused ? 'company.paused' : 'company.started', 'owner');
   res.json({ paused: !!req.body?.paused });
+});
+
+// ---- 運営者とエージェントの会話 ----
+router.get('/chats', async (_req, res) => {
+  const chats = await prisma.companyChat.findMany({ orderBy: { updatedAt: 'desc' }, take: 50, select: { id: true, agent: true, title: true, costUsd: true, updatedAt: true } });
+  res.json({ chats });
+});
+
+router.post('/chats', async (req, res) => {
+  const agent = String(req.body?.agent ?? 'ceo');
+  if (!isAgentKey(agent)) return res.status(400).json({ error: 'エージェントが正しくありません' });
+  const chat = await prisma.companyChat.create({ data: { agent, title: '新しい会話', messages: [] } });
+  res.status(201).json({ chat });
+});
+
+router.get('/chats/:id', async (req, res) => {
+  const chat = await prisma.companyChat.findUnique({ where: { id: String(req.params.id) } });
+  if (!chat) return res.status(404).json({ error: '見つかりません' });
+  const actions = chat.taskId ? await prisma.companyAction.findMany({ where: { taskId: chat.taskId }, orderBy: { createdAt: 'asc' } }) : [];
+  res.json({ chat, actions });
+});
+
+router.delete('/chats/:id', async (req, res) => {
+  await prisma.companyChat.deleteMany({ where: { id: String(req.params.id) } });
+  res.json({ ok: true });
+});
+
+// メッセージを送り、返答をSSEで流す。会話の記録はサーバー側で保存する
+router.post('/chats/:id/messages', async (req: AuthRequest, res) => {
+  const chat = await prisma.companyChat.findUnique({ where: { id: String(req.params.id) } });
+  if (!chat) return res.status(404).json({ error: '見つかりません' });
+  const text = String(req.body?.text ?? '').trim().slice(0, 6000);
+  if (!text) return res.status(400).json({ error: 'メッセージを入力してください' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
+  if (await getFlag(SETTING_KEYS.pauseCompany)) return res.status(409).json({ error: 'AI企業は停止中です（管理画面で開始してください）' });
+
+  const prior = ((chat.messages as any[]) ?? []) as { role: 'user' | 'assistant'; content: string }[];
+  const history: ChatTurn[] = [...prior.map((m) => ({ role: m.role, content: String(m.content) })), { role: 'user', content: text }];
+  const title = prior.length === 0 ? text.slice(0, 40) : chat.title;
+  await prisma.companyChat.update({ where: { id: chat.id }, data: { title, messages: [...prior, { role: 'user', content: text }] as any } });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  let reply = '';
+  const tools: string[] = [];
+  const actions: { id: string; tool: string; reason: string }[] = [];
+  const send = (e: unknown) => res.write(`data: ${JSON.stringify(e)}\n\n`);
+  try {
+    await chatWithAgent(chat.agent, history, chat.id, (e) => {
+      if (e.type === 'text') reply += e.text;
+      if (e.type === 'tool') tools.push(e.name);
+      if (e.type === 'action') actions.push({ id: e.id, tool: e.tool, reason: e.reason });
+      send(e);
+    });
+  } catch (e: any) {
+    send({ type: 'error', message: String(e?.message ?? e).slice(0, 300) });
+  }
+  const latest = await prisma.companyChat.findUnique({ where: { id: chat.id } });
+  await prisma.companyChat.update({ where: { id: chat.id }, data: { messages: [...((latest?.messages as any[]) ?? []), { role: 'assistant', content: reply || '（返答なし）', tools, actions }] as any } });
+  await emitEvent('chat.turn', chat.agent, { chatId: chat.id, tools: tools.length, actions: actions.length });
+  res.end();
 });
 
 router.post('/tick', async (_req, res) => {

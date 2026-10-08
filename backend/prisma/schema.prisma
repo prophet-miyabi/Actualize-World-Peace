@@ -947,3 +947,17 @@ model CompanyAgentConfig {
   dailyBudgetUsd Float?
   updatedAt      DateTime @updatedAt
 }
+
+// 運営者とエージェントの会話（管理画面のチャット）。会話の中でもエージェントは道具を使って実行する
+model CompanyChat {
+  id        String   @id @default(cuid())
+  agent     String
+  title     String
+  messages  Json     // [{ role, content, tools?: string[], actions?: [{id, tool, reason}] }]
+  taskId    String?  // 会話の中で作った操作・タスクの親になる CompanyTask
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
+}
