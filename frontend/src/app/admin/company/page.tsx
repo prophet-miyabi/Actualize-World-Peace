@@ -23,7 +23,7 @@ type Status = {
   settings: Settings; reports: { key: string; content: string; updatedAt: string }[];
   monthly: { spentUsd: number; capUsd: number };
   health: { lastTickAt: string | null; queued: number; running: number; awaitingApproval: number; verifying: number; failed24h: number; lastCeoDay: string | null };
-  models: { strong: string; fast: string };
+  models: { strong: string; balanced: string; fast: string };
 };
 
 const STATUS: Record<string, string> = { queued: '待機', running: '実行中', awaiting_approval: '承認待ち', verifying: '検証中', done: '完了', failed: '失敗', rejected: '却下', canceled: '取り消し' };
@@ -308,9 +308,10 @@ export default function CompanyPage() {
                   <p>{usd(a.spentTodayUsd)} / {usd(a.dailyBudgetUsd)} 今日</p>
                   <button onClick={() => run(a.key, () => api.put(`/company/agents/${a.key}`, { enabled: !a.enabled }), a.enabled ? '停止しました。' : '再開しました。')} className={`rounded-full px-3 py-1 font-bold ${a.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{a.enabled ? '稼働中' : '停止中'}</button>
                   <select value={a.model} onChange={(e) => run(a.key, () => api.put(`/company/agents/${a.key}`, { model: e.target.value }), 'モデルを変更しました。')} className="block w-full border rounded px-1 py-0.5 text-[11px]">
-                    <option value={s.models.strong}>強い</option>
-                    <option value={s.models.fast}>速い</option>
-                    {![s.models.strong, s.models.fast].includes(a.model) && <option value={a.model}>{a.model}</option>}
+                    <option value={s.models.strong}>強い（Opus）</option>
+                    <option value={s.models.balanced}>標準（Sonnet）</option>
+                    <option value={s.models.fast}>速い（Haiku）</option>
+                    {![s.models.strong, s.models.balanced, s.models.fast].includes(a.model) && <option value={a.model}>{a.model}</option>}
                   </select>
                   <button onClick={() => { const v = prompt('1日の予算（ドル）', String(a.dailyBudgetUsd)); if (v !== null) run(a.key, () => api.put(`/company/agents/${a.key}`, { dailyBudgetUsd: Number(v) }), '予算を更新しました。'); }} className="block w-full text-violet-700 underline">予算</button>
                   <button onClick={() => run(a.key, () => api.post('/company/selftest', { agents: [a.key] }), `${a.name}の自己点検を開始しました。`)} className="block w-full text-violet-700 underline">自己点検</button>

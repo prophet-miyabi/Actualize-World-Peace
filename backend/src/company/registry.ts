@@ -24,8 +24,13 @@ export type AgentDef = {
   webSearch?: boolean;       // Anthropic のウェブ検索（サーバー側の道具）を使ってよいか
 };
 
+// モデルの使い分け（費用を抑えつつ判断の質を保つ）:
+//   強い（Opus）: 経営判断・委任・監査・法務 / 標準（Sonnet）: 調査・企画・実装依頼などの専門職 / 速い（Haiku）: 定型の応対
 const STRONG = process.env.COMPANY_MODEL_STRONG || process.env.CLAUDE_MODEL || 'claude-opus-5';
+const BALANCED = process.env.COMPANY_MODEL_BALANCED || 'claude-sonnet-5-5';
 const FAST = process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001';
+export const STRONG_MODEL = STRONG;
+export const COMPANY_MODELS = { strong: STRONG, balanced: BALANCED, fast: FAST };
 
 const COMMON_READ = ['company'];
 
@@ -55,7 +60,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['read_memory', 'write_memory', 'get_overview', 'list_tasks'],
     memoryRead: [...COMMON_READ, 'dept:product', 'dept:marketing', 'agent:research'],
     memoryWrite: ['dept:product', 'agent:research'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5, webSearch: true
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5, webSearch: true
   },
   {
     key: 'product', name: 'プロダクト', department: 'product', reportsTo: 'coo',
@@ -63,7 +68,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_metrics', 'get_overview', 'read_memory', 'write_memory', 'list_tasks', 'request_implementation', 'get_launch_plan'],
     memoryRead: [...COMMON_READ, 'dept:product', 'dept:data', 'dept:cs', 'dept:engineering', 'agent:product'],
     memoryWrite: ['dept:product', 'agent:product'],
-    maxAutoRisk: 'medium', model: STRONG, dailyBudgetUsd: 2
+    maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 2
   },
   {
     key: 'engineering', name: 'エンジニアリング', department: 'engineering', reportsTo: 'coo',
@@ -71,7 +76,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_launch_plan', 'request_implementation', 'list_open_errors', 'read_memory', 'write_memory', 'list_tasks'],
     memoryRead: [...COMMON_READ, 'dept:engineering', 'dept:product', 'dept:security', 'agent:engineering'],
     memoryWrite: ['dept:engineering', 'agent:engineering'],
-    maxAutoRisk: 'medium', model: STRONG, dailyBudgetUsd: 2
+    maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 2
   },
   {
     key: 'qa', name: 'QA', department: 'engineering', reportsTo: 'coo',
@@ -79,7 +84,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_launch_plan', 'list_open_errors', 'request_implementation', 'read_memory', 'write_memory', 'list_tasks', 'get_task'],
     memoryRead: [...COMMON_READ, 'dept:engineering', 'agent:qa'],
     memoryWrite: ['dept:engineering', 'agent:qa'],
-    maxAutoRisk: 'medium', model: STRONG, dailyBudgetUsd: 1
+    maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 1
   },
   {
     key: 'data', name: 'データ分析', department: 'data', reportsTo: 'coo',
@@ -87,7 +92,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_metrics', 'get_overview', 'get_costs', 'get_goals', 'read_memory', 'write_memory', 'list_tasks'],
     memoryRead: [...COMMON_READ, 'dept:data', 'dept:finance', 'agent:data'],
     memoryWrite: ['dept:data', 'agent:data'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5
   },
   {
     key: 'marketing', name: 'マーケティング', department: 'marketing', reportsTo: 'coo',
@@ -96,7 +101,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_metrics', 'read_memory', 'write_memory', 'draft_content', 'list_tasks', 'create_task'],
     memoryRead: [...COMMON_READ, 'dept:marketing', 'dept:product', 'dept:data', 'agent:marketing'],
     memoryWrite: ['dept:marketing', 'agent:marketing'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5, webSearch: true
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5, webSearch: true
   },
   {
     key: 'content', name: 'コンテンツ', department: 'marketing', reportsTo: 'marketing',
@@ -112,7 +117,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_metrics', 'read_memory', 'write_memory', 'request_implementation', 'create_task', 'list_tasks'],
     memoryRead: [...COMMON_READ, 'dept:growth', 'dept:marketing', 'dept:data', 'dept:product', 'agent:growth'],
     memoryWrite: ['dept:growth', 'agent:growth'],
-    maxAutoRisk: 'medium', model: STRONG, dailyBudgetUsd: 1.5
+    maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 1.5
   },
   {
     key: 'cs', name: 'カスタマーサクセス', department: 'cs', reportsTo: 'coo',
@@ -120,7 +125,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_metrics', 'get_support_signals', 'read_memory', 'write_memory', 'draft_content', 'create_task'],
     memoryRead: [...COMMON_READ, 'dept:cs', 'dept:product', 'agent:cs'],
     memoryWrite: ['dept:cs', 'agent:cs'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1
   },
   {
     key: 'finance', name: 'ファイナンス', department: 'finance', reportsTo: 'ceo',
@@ -128,7 +133,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_ledger', 'get_costs', 'get_metrics', 'get_plan_config', 'propose_plan_config', 'read_memory', 'write_memory'],
     memoryRead: [...COMMON_READ, 'dept:finance', 'dept:data', 'agent:finance'],
     memoryWrite: ['dept:finance', 'agent:finance'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5
   },
   {
     key: 'partnership', name: 'パートナーシップ', department: 'growth', reportsTo: 'coo',
@@ -136,7 +141,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['get_tool_catalog', 'propose_tool_catalog', 'read_memory', 'write_memory', 'list_tasks'],
     memoryRead: [...COMMON_READ, 'dept:growth', 'dept:finance', 'agent:partnership'],
     memoryWrite: ['dept:growth', 'agent:partnership'],
-    maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5, webSearch: true
+    maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5, webSearch: true
   },
   {
     key: 'security', name: 'セキュリティ', department: 'security', reportsTo: 'ceo',
@@ -144,7 +149,7 @@ export const AGENTS: AgentDef[] = [
     tools: ['list_open_errors', 'list_events', 'list_tasks', 'request_implementation', 'propose_flag', 'read_memory', 'write_memory'],
     memoryRead: [...COMMON_READ, 'dept:security', 'dept:engineering', 'agent:security'],
     memoryWrite: ['dept:security', 'agent:security'],
-    maxAutoRisk: 'medium', model: STRONG, dailyBudgetUsd: 1
+    maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 1
   },
   {
     key: 'legal', name: '法務・コンプライアンス', department: 'legal', reportsTo: 'ceo',

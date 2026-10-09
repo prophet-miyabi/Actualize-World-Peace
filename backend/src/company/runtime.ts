@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { describeAiError } from '../lib/aiUsage';
-import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, type AgentDef } from './registry';
+import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, STRONG_MODEL, type AgentDef } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 import { getCompanySettings, notifyApproval } from './settings';
 import { createAnthropic } from '../lib/anthropic';
@@ -13,6 +13,42 @@ import { createAnthropic } from '../lib/anthropic';
 export const MAX_ROUNDS = 12;
 const PRICES: Record<string, { in: number; out: number }> = { opus: { in: 5, out: 25 }, sonnet: { in: 3, out: 15 }, haiku: { in: 1, out: 5 } };
 export const SEARCH_COST_USD = 0.01;
+
+// プロンプトキャッシュ: 書き込みは入力単価の1.25倍、読み出しは0.1倍。
+// システムプロンプト・道具の定義・会話の履歴は毎回同じ前置きなので、キャッシュに乗せると入力の費用が大きく減る
+export function usageCostUsd(usage: any, model: string) {
+  const p = priceFor(model);
+  const plain = usage?.input_tokens ?? 0;
+  const write = usage?.cache_creation_input_tokens ?? 0;
+  const read = usage?.cache_read_input_tokens ?? 0;
+  const out = usage?.output_tokens ?? 0;
+  const searches = usage?.server_tool_use?.web_search_requests ?? 0;
+  return (plain * p.in + write * p.in * 1.25 + read * p.in * 0.1 + out * p.out) / 1_000_000 + searches * SEARCH_COST_USD;
+}
+export function inputTokensOf(usage: any) {
+  return (usage?.input_tokens ?? 0) + (usage?.cache_creation_input_tokens ?? 0) + (usage?.cache_read_input_tokens ?? 0);
+}
+const EPHEMERAL = { type: 'ephemeral' as const };
+export function cachedSystem(system: string): Anthropic.TextBlockParam[] {
+  return [{ type: 'text', text: system, cache_control: EPHEMERAL }];
+}
+export function cachedTools<T extends Record<string, any>>(tools: T[]): T[] {
+  if (tools.length === 0) return tools;
+  return tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: EPHEMERAL } : t));
+}
+// 最後のメッセージにだけキャッシュの区切りを付けた複製を返す（元の配列は変えない。区切りは最大4つまでなので毎回付け直す）
+export function cachedMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length === 0) return messages;
+  const last = messages[messages.length - 1];
+  const content: any[] = typeof last.content === 'string' ? [{ type: 'text', text: last.content }] : [...(last.content as any[])];
+  if (content.length === 0) return messages;
+  content[content.length - 1] = { ...content[content.length - 1], cache_control: EPHEMERAL };
+  return [...messages.slice(0, -1), { role: last.role, content }];
+}
+// モデルIDが存在しない（404）ときは強いモデルに切り替えて続ける
+export function isUnknownModelError(e: any) {
+  return e?.status === 404 && /model/i.test(String(e?.error?.error?.message ?? e?.message ?? ''));
+}
 
 export type TaskResult = { summary: string; facts: string[]; assumptions: string[]; artifacts: string[]; nextActions: string[]; blocked?: string };
 
@@ -144,15 +180,26 @@ export async function runTask(taskId: string): Promise<void> {
   }];
 
   const client = createAnthropic();
-  let inputTokens = 0, outputTokens = 0, toolCalls = 0, searches = 0;
+  let inputTokens = 0, outputTokens = 0, toolCalls = 0, costUsd = 0;
   let result: TaskResult | null = null;
   let pendingApproval = false;
+  const sys = cachedSystem(system);
+  const allTools = cachedTools([...toolDefs, ...serverTools]);
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const msg = await client.messages.create({ model: cfg.model, max_tokens: 4096, system, tools: [...toolDefs, ...serverTools], messages });
-      inputTokens += msg.usage.input_tokens + ((msg.usage as any).cache_read_input_tokens ?? 0) + ((msg.usage as any).cache_creation_input_tokens ?? 0);
+      let msg: Anthropic.Message;
+      try {
+        msg = await client.messages.create({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
+      } catch (e: any) {
+        if (!isUnknownModelError(e) || cfg.model === STRONG_MODEL) throw e;
+        await emitEvent('agent.model_fallback', agent.key, { from: cfg.model, to: STRONG_MODEL }, taskId);
+        cfg.model = STRONG_MODEL;
+        await prisma.agentRun.update({ where: { id: run.id }, data: { model: cfg.model } });
+        round--; continue;
+      }
+      inputTokens += inputTokensOf(msg.usage);
       outputTokens += msg.usage.output_tokens;
-      searches += (msg.usage as any).server_tool_use?.web_search_requests ?? 0;
+      costUsd += usageCostUsd(msg.usage, cfg.model);
       messages.push({ role: 'assistant', content: msg.content });
       const uses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
       if (msg.stop_reason !== 'tool_use' || uses.length === 0) break;
@@ -200,8 +247,8 @@ export async function runTask(taskId: string): Promise<void> {
       // finish_task を呼ばずに終わった: もう1回だけ、報告だけを求める
       try {
         messages.push({ role: 'user', content: '道具の呼び出しはここまでです。いまわかっていることで finish_task を呼び、報告してください。' });
-        const fin = await client.messages.create({ model: cfg.model, max_tokens: 2048, system, tools: [FINISH_TOOL], tool_choice: { type: 'tool', name: 'finish_task' }, messages });
-        inputTokens += fin.usage.input_tokens; outputTokens += fin.usage.output_tokens;
+        const fin = await client.messages.create({ model: cfg.model, max_tokens: 2048, system: sys, tools: [FINISH_TOOL], tool_choice: { type: 'tool', name: 'finish_task' }, messages: cachedMessages(messages) });
+        inputTokens += inputTokensOf(fin.usage); outputTokens += fin.usage.output_tokens; costUsd += usageCostUsd(fin.usage, cfg.model);
         const u = fin.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
         if (u) {
           const inp = u.input as any;
@@ -216,8 +263,6 @@ export async function runTask(taskId: string): Promise<void> {
       const txt = typeof last.content === 'string' ? last.content : (last.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
       result = { summary: txt.slice(0, 2000) || '（報告なし）', facts: [], assumptions: [], artifacts: [], nextActions: [] };
     }
-    const p = priceFor(cfg.model);
-    const costUsd = (inputTokens * p.in + outputTokens * p.out) / 1_000_000 + searches * SEARCH_COST_USD;
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'ok', finishedAt: new Date() } });
     // 自己点検は監査しない（点検そのものの費用を増やさないため）
     const isSelftest = task.title.startsWith('自己点検:');
@@ -228,8 +273,7 @@ export async function runTask(taskId: string): Promise<void> {
     });
     await emitEvent(pendingApproval ? 'task.awaiting_approval' : 'task.finished', agent.key, { title: task.title, costUsd, toolCalls, summary: result.summary.slice(0, 300) }, taskId);
   } catch (e: any) {
-    const p = priceFor(cfg.model);
-    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd: (inputTokens * p.in + outputTokens * p.out) / 1_000_000, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
+    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
     const retry = task.attempts < 2;
     await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });
     await emitEvent('task.error', agent.key, { error: String(e?.message ?? e).slice(0, 300), retry }, taskId);

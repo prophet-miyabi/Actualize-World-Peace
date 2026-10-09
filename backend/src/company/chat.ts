@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { describeAiError } from '../lib/aiUsage';
-import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER } from './registry';
+import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, STRONG_MODEL } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
-import { agentConfig, buildAgentContext, MAX_ROUNDS, monthlyCapUsd, priceFor, SEARCH_COST_USD, spentThisMonthUsd } from './runtime';
+import { agentConfig, buildAgentContext, cachedMessages, cachedSystem, cachedTools, inputTokensOf, isUnknownModelError, MAX_ROUNDS, monthlyCapUsd, spentThisMonthUsd, usageCostUsd } from './runtime';
 import { notifyApproval } from './settings';
 import { createAnthropic } from '../lib/anthropic';
 
@@ -54,15 +54,24 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
   const messages: Anthropic.MessageParam[] = history.slice(-30).map((m) => ({ role: m.role, content: m.content }));
   const run = await prisma.agentRun.create({ data: { agent: agent.key, taskId, model: cfg.model, status: 'ok' } });
   const client = createAnthropic();
-  let inputTokens = 0, outputTokens = 0, toolCalls = 0, searches = 0;
+  let inputTokens = 0, outputTokens = 0, toolCalls = 0, costUsd = 0;
+  const sys = cachedSystem(system);
+  const allTools = cachedTools([...toolDefs, ...serverTools]);
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const stream = client.messages.stream({ model: cfg.model, max_tokens: 4096, system, tools: [...toolDefs, ...serverTools], messages });
-      stream.on('text', (delta) => emit({ type: 'text', text: delta }));
-      const msg = await stream.finalMessage();
-      inputTokens += msg.usage.input_tokens + ((msg.usage as any).cache_read_input_tokens ?? 0) + ((msg.usage as any).cache_creation_input_tokens ?? 0);
+      let msg: Anthropic.Message;
+      try {
+        const stream = client.messages.stream({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
+        stream.on('text', (delta) => emit({ type: 'text', text: delta }));
+        msg = await stream.finalMessage();
+      } catch (e: any) {
+        if (!isUnknownModelError(e) || cfg.model === STRONG_MODEL) throw e;
+        cfg.model = STRONG_MODEL;
+        round--; continue;
+      }
+      inputTokens += inputTokensOf(msg.usage);
       outputTokens += msg.usage.output_tokens;
-      searches += (msg.usage as any).server_tool_use?.web_search_requests ?? 0;
+      costUsd += usageCostUsd(msg.usage, cfg.model);
       messages.push({ role: 'assistant', content: msg.content });
       const uses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
       if (msg.stop_reason !== 'tool_use' || uses.length === 0) break;
@@ -94,8 +103,6 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
       }
       messages.push({ role: 'user', content: results });
     }
-    const p = priceFor(cfg.model);
-    const costUsd = (inputTokens * p.in + outputTokens * p.out) / 1_000_000 + searches * SEARCH_COST_USD;
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'ok', finishedAt: new Date() } });
     await prisma.companyChat.update({ where: { id: chatId }, data: { costUsd: { increment: costUsd } } });
     emit({ type: 'done', costUsd });

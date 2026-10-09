@@ -2,7 +2,7 @@ import { Router } from 'express';
 import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
-import { AGENTS, isAgentKey } from '../company/registry';
+import { AGENTS, isAgentKey, COMPANY_MODELS } from '../company/registry';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { getCompanySettings, setCompanySettings } from '../company/settings';
@@ -64,7 +64,7 @@ router.get('/status', async (_req, res) => {
     configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
     monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },
     health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
-    models: { strong: process.env.COMPANY_MODEL_STRONG || process.env.CLAUDE_MODEL || 'claude-opus-5', fast: process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001' }
+    models: COMPANY_MODELS
   });
 });
 

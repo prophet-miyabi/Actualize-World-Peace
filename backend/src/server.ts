@@ -1,6 +1,7 @@
 // .envは他のどのモジュールよりも先に読み込む（JWT_SECRET等をimport時に参照するため）
 import 'dotenv/config';
 import { createAnthropic } from './lib/anthropic';
+import { COMPANY_MODELS } from './company/registry';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -61,24 +62,28 @@ app.use(express.json({ limit: '12mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // AIにつながっているかを外から確認するための公開エンドポイント（原因文は出さない。10分キャッシュで乱用を防ぐ）
-let aiProbe: { at: number; ok: boolean; reason?: string; detail?: string } | null = null;
+let aiProbe: { at: number; ok: boolean; reason?: string; detail?: string; badModels?: string[] } | null = null;
 app.get('/api/health/ai', async (_req, res) => {
   if (!aiProbe || Date.now() - aiProbe.at > 10 * 60_000) {
-    let ok = false; let reason: string | undefined; let detail: string | undefined;
+    let ok = false; let reason: string | undefined; let detail: string | undefined; let badModels: string[] | undefined;
     if (anthropicKeyProblem()) reason = 'key_format';
     else {
       try {
         await createAnthropic().messages.create({ model: process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001', max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
         ok = true;
+        // 会社で使う3段階のモデルIDが実在するか（トークンは消費しない）
+        for (const id of new Set(Object.values(COMPANY_MODELS))) {
+          try { await createAnthropic().models.retrieve(id); } catch (e: any) { if (e?.status === 404) (badModels ??= []).push(id); }
+        }
       } catch (e: any) {
         reason = aiErrorCategory(e);
         // Anthropic が返す説明文（設定の誤りを示す文章）。キーやIDらしき文字列は伏せる
         detail = String(e?.error?.error?.message ?? e?.message ?? '').replace(/sk-ant-[\w-]+/g, 'sk-ant-***').replace(/wrkspc_[\w-]+/g, 'wrkspc_***').slice(0, 300);
       }
     }
-    aiProbe = { at: Date.now(), ok, reason, detail };
+    aiProbe = { at: Date.now(), ok, reason, detail, badModels };
   }
-  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, reason: aiProbe.reason ?? null, detail: aiProbe.detail ?? null, workspaceIdSet: !!process.env.ANTHROPIC_WORKSPACE_ID, checkedAt: new Date(aiProbe.at).toISOString() });
+  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, reason: aiProbe.reason ?? null, detail: aiProbe.detail ?? null, badModels: aiProbe.badModels ?? [], workspaceIdSet: !!process.env.ANTHROPIC_WORKSPACE_ID, checkedAt: new Date(aiProbe.at).toISOString() });
 });
 
 app.use('/api/auth', authRoutes);

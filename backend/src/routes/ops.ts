@@ -9,6 +9,7 @@ import { createClaudeIssue, githubConfigured } from '../lib/github';
 import { runOpsChat, type ChatTurn } from '../agents/opsAgent';
 import { hitRateLimit } from '../lib/rateLimit';
 import { createAnthropic } from '../lib/anthropic';
+import { COMPANY_MODELS } from '../company/registry';
 
 // 運営者（管理者）専用: ダッシュボード・緊急コントロール・AIオペレーターとのチャット・提案の承認
 const router = Router();
@@ -84,7 +85,13 @@ router.get('/ai-check', authenticate, async (req: AuthRequest, res) => {
     const client = createAnthropic();
     const model = process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001';
     const msg = await client.messages.create({ model, max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
-    res.json({ ok: true, model: msg.model, strongModel: process.env.CLAUDE_MODEL || 'claude-opus-5' });
+    // 会社で使う3段階のモデルIDが実在するかも確かめる（モデル情報の取得はトークンを消費しない）
+    const bad: string[] = [];
+    for (const id of new Set(Object.values(COMPANY_MODELS))) {
+      try { await client.models.retrieve(id); } catch (e: any) { if (e?.status === 404) bad.push(id); }
+    }
+    if (bad.length) return res.json({ ok: false, stage: 'model', problem: `存在しないモデルIDが設定されています: ${bad.join(', ')}（Render の COMPANY_MODEL_STRONG / COMPANY_MODEL_BALANCED / COMPANY_MODEL_FAST を確認。実行時は強いモデルに自動で切り替えます）` });
+    res.json({ ok: true, model: msg.model, models: COMPANY_MODELS });
   } catch (e: any) {
     res.json({ ok: false, problem: describeAiError(e), stage: 'request', status: e?.status ?? null });
   }
