@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "./"
+  },
+  "include": [
+    "src/mcp/**/*",
+    "scripts/gen-claude-kit.ts"
+  ],
+  "exclude": []
+}

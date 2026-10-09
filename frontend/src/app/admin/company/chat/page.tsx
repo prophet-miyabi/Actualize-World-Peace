@@ -56,6 +56,13 @@ export default function CompanyChatPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [devToken, setDevToken] = useState('');
+  const [devBusy, setDevBusy] = useState(false);
+  const issueDevToken = async () => {
+    if (!confirm('Claude Code 用の管理者トークン（90日有効）を発行します。よろしいですか？')) return;
+    setDevBusy(true);
+    try { setDevToken((await api.post('/auth/devenv-token')).data.token); } catch (e: any) { setError(e?.response?.data?.error || '発行できませんでした。'); } finally { setDevBusy(false); }
+  };
   const [showList, setShowList] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -147,10 +154,25 @@ export default function CompanyChatPage() {
     <div className="px-4 py-6 md:px-8 max-w-3xl pb-44">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black">エージェントと話す</h1>
+          <h1 className="text-2xl font-black">AWP Intelligence</h1>
           <p className="text-sm text-gray-600 mt-1">指示を送ると、その場で道具を使って実行し、結果を報告します。お金・設定・公開に関わる操作は、この画面の承認ボタンを押したときだけ実行されます。</p>
         </div>
         <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AI企業の画面</Link>
+      </div>
+
+      {/* Claude Code（開発環境）から同じエージェント・道具を使うための接続。トークンは一度だけ表示する */}
+      <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="font-bold">Claude Code を AWP の開発環境兼管理画面にする</p>
+          <button onClick={issueDevToken} disabled={devBusy} className="rounded-full bg-violet-600 text-white px-3 py-1 font-bold disabled:opacity-40">{devBusy ? '発行中…' : 'Claude Code に接続（トークン発行）'}</button>
+        </div>
+        {devToken && (
+          <div className="mt-2 space-y-1">
+            <p>1. 下のトークンをコピーし、パソコンの <code>~/.claude/awp-admin-token</code> に1行で保存（90日有効。この画面を閉じると二度と見られません。チャットには貼らないでください）</p>
+            <textarea readOnly value={devToken} onFocus={(e) => e.currentTarget.select()} className="w-full border rounded p-2 text-[11px] font-mono bg-white" rows={3} />
+            <p>2. リポジトリ（webline-sync）を Claude Code で開くと、<code>.mcp.json</code> の <b>awp</b> サーバーと <code>.claude/agents</code> のエージェント（awp-intelligence など）が使えます。例: 「/awp-status」「AWP Intelligence に公開までの優先順位を聞いて」</p>
+          </div>
+        )}
       </div>
 
       <div className="mt-4"><AiHealthBanner /></div>

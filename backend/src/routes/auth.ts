@@ -255,4 +255,13 @@ router.delete('/account', authenticate, async (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
+// Claude Code（開発環境）から AWP を運営するための長期トークン（90日）。管理者のみ。
+// パスワード再設定で tokenVersion が進むと無効になる。値は一度しか表示しない
+router.post('/devenv-token', authenticate, async (req: AuthRequest, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { id: true, isAdmin: true, tokenVersion: true } });
+  if (!user?.isAdmin) return res.status(403).json({ error: '管理者のみ' });
+  const token = jwt.sign({ id: user.id, tv: user.tokenVersion, purpose: 'devenv' }, JWT_SECRET, { expiresIn: '90d' });
+  res.json({ token, expiresInDays: 90, savePath: '~/.claude/awp-admin-token' });
+});
+
 export default router;

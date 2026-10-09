@@ -9,5 +9,11 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/mcp/**",
+    "scripts/**"
+  ]
 }

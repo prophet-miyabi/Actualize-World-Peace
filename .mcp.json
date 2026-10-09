@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "awp": {
+      "command": "node",
+      "args": ["backend/node_modules/tsx/dist/cli.mjs", "backend/src/mcp/awp.ts"],
+      "env": {
+        "AWP_API_BASE": "https://awp-backend-sm9z.onrender.com",
+        "AWP_FRONTEND_BASE": "https://awp-frontend-bf17.onrender.com"
+      }
+    }
+  }
+}

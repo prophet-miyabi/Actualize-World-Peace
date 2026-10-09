@@ -93,7 +93,7 @@ export default function CompanyPage() {
       <div>
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-black">AI企業</h1>
-          <Link href="/admin/company/chat" className="shrink-0 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">💬 エージェントと話す</Link>
+          <Link href="/admin/company/chat" className="shrink-0 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">💬 AWP Intelligence</Link>
         </div>
         <p className="text-sm text-gray-600 mt-1">あなたが目標・設定・重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。</p>
         {!s.configured && <p className="mt-2 text-sm text-red-600">ANTHROPIC_API_KEY が未設定のため、エージェントは動きません。</p>}
@@ -250,7 +250,7 @@ export default function CompanyPage() {
       {tab === 'tasks' && (
         <section className="space-y-3">
           <form onSubmit={(e) => { e.preventDefault(); run('newtask', () => api.post('/company/tasks', newTask), '指示を出しました。').then(() => setNewTask({ assignee: 'ceo', title: '', instructions: '' })); }} className="bg-white border rounded-2xl p-4 space-y-2 text-sm">
-            <p className="font-bold">エージェントに指示する（バックグラウンドで実行。会話で指示したいときは「エージェントと話す」）</p>
+            <p className="font-bold">エージェントに指示する（バックグラウンドで実行。会話で指示したいときは「AWP Intelligence」）</p>
             <div className="flex gap-2">
               <select value={newTask.assignee} onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })} className="border rounded-lg px-2 py-2 text-sm">
                 {s.org.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
