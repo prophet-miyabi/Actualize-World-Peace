@@ -8,6 +8,7 @@ import { ALL_SETTING_KEYS, setFlag, type SettingKey } from '../lib/systemSetting
 import { createClaudeIssue, githubConfigured } from '../lib/github';
 import { runOpsChat, type ChatTurn } from '../agents/opsAgent';
 import { hitRateLimit } from '../lib/rateLimit';
+import { createAnthropic } from '../lib/anthropic';
 
 // 運営者（管理者）専用: ダッシュボード・緊急コントロール・AIオペレーターとのチャット・提案の承認
 const router = Router();
@@ -80,7 +81,7 @@ router.get('/ai-check', authenticate, async (req: AuthRequest, res) => {
   const problem = anthropicKeyProblem();
   if (problem) return res.json({ ok: false, problem, stage: 'key' });
   try {
-    const client = new Anthropic();
+    const client = createAnthropic();
     const model = process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001';
     const msg = await client.messages.create({ model, max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
     res.json({ ok: true, model: msg.model, strongModel: process.env.CLAUDE_MODEL || 'claude-opus-5' });

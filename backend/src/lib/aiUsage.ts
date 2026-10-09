@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { aiAllowanceUsd } from './plans';
+import { createAnthropic } from './anthropic';
 
 // AIの利用量の計測と、プランごとの月の利用枠の管理。
 // 利用者の操作から始まる処理を runAsUser() で包むと、その中で aiClient() を通したClaudeの呼び出しのトークン数を
@@ -38,6 +39,7 @@ export function anthropicKeyProblem(): string | null {
 export function describeAiError(e: any): string {
   const msg = String(e?.message ?? e ?? '');
   if (/ByteString/.test(msg)) return anthropicKeyProblem() ?? 'APIキーに使えない文字が含まれています';
+  if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'APIキーがワークスペースに紐づいていません。直し方は2つ: (A) Console の左上でワークスペース（Default など）を選んでから「キーを作成」し、そのキーを Render の ANTHROPIC_API_KEY に入れる / (B) Render に ANTHROPIC_WORKSPACE_ID を追加する（Console → 組織の設定 → ワークスペース → 使うワークスペースの ID。wrkspc_ で始まる）';
   if (e?.status === 401) return 'APIキーが無効です（Render の ANTHROPIC_API_KEY を確認してください）';
   if (e?.status === 429) return 'AIのレート制限に達しました。少し待ってからお試しください';
   if (e?.status === 402 || /credit balance/i.test(msg)) return 'AIのクレジット残高がありません（Console でクレジットを追加するか、Max プランのクレジットをリンクしてください）';
@@ -84,7 +86,7 @@ export async function recordAiCost(feature: string, model: string, costUsd: numb
 
 // 利用量を自動で記録する Claude クライアント（応答の usage を読み取る）
 export function aiClient() {
-  return new Anthropic({
+  return createAnthropic({
     fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
       const res = await fetch(url, init);
       const ctx = als.getStore();

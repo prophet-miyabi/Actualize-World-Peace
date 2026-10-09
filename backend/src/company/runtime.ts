@@ -4,6 +4,7 @@ import { describeAiError } from '../lib/aiUsage';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, type AgentDef } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 import { getCompanySettings, notifyApproval } from './settings';
+import { createAnthropic } from '../lib/anthropic';
 
 // エージェントの実行基盤（ハーネス）。1つのタスクにつき:
 //   システムプロンプト（会社の決まり + 役割 + 読めるメモリの一覧）→ Claude の道具ループ → finish_task で成果を構造化して保存。
@@ -142,7 +143,7 @@ export async function runTask(taskId: string): Promise<void> {
     content: `【タスク】${task.title}\n\n【指示】\n${task.instructions}${parent ? `\n\n【このタスクを作った上位タスク】${parent.title}（${parent.assignee}）` : ''}\n\n終わったら finish_task を呼んでください。`
   }];
 
-  const client = new Anthropic();
+  const client = createAnthropic();
   let inputTokens = 0, outputTokens = 0, toolCalls = 0, searches = 0;
   let result: TaskResult | null = null;
   let pendingApproval = false;

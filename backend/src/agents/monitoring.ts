@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod/v4';
 import prisma from '../prisma';
+import { createAnthropic } from '../lib/anthropic';
 
 // 監視・障害対応担当エージェント：記録されたエラー（backend/src/lib/errors.ts）を分析し、
 // 「原因と直し方」を人（運営者）に提示するところまでを担当する。
@@ -26,7 +27,7 @@ export async function diagnoseOpenErrors(): Promise<number> {
   });
   if (errors.length === 0) return 0;
 
-  const client = new Anthropic();
+  const client = createAnthropic();
   let diagnosed = 0;
 
   for (const error of errors) {

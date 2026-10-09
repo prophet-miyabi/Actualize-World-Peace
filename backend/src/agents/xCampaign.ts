@@ -4,6 +4,7 @@ import { z } from 'zod/v4';
 import prisma from '../prisma';
 import { reviewSocialDraft } from './compliance';
 import { captureError } from '../lib/errors';
+import { createAnthropic } from '../lib/anthropic';
 
 // X（旧Twitter）向けの週間集客キャンペーン立案エージェント。
 // 単発の投稿ではなく、「気づき（教育）」「共感（信頼構築）」「直接訴求（オファー）」の
@@ -76,7 +77,7 @@ async function requestCampaignPlan(input: XCampaignInput, reviewerFeedback: stri
     `LPのURL: ${input.lpUrl}`
   ].filter((line): line is string => Boolean(line)).join('\n');
 
-  const client = new Anthropic();
+  const client = createAnthropic();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 2048,

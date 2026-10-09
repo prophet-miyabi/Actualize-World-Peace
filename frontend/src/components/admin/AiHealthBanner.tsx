@@ -25,7 +25,7 @@ export default function AiHealthBanner() {
       <p className="font-bold">⚠ AIにつながっていません</p>
       <p className="mt-1 whitespace-pre-wrap">{state.problem}</p>
       <p className="mt-2 text-xs text-red-800">
-        直し方: Console（platform.claude.com）→ APIキー → 「キーを作成」→ 表示された完全なキーをコピー → Render の awp-backend → Environment → <code>ANTHROPIC_API_KEY</code> を貼り替えて Save Changes。再デプロイ後にこの表示が消えます。
+        上の原因に書かれた直し方に従ってください。キーの差し替えは Render の awp-backend → Environment → <code>ANTHROPIC_API_KEY</code> の行を編集して Save Changes。再デプロイ後にこの表示が消えます。
       </p>
       <button onClick={check} disabled={checking} className="mt-2 rounded-full border border-red-400 px-3 py-1 text-xs font-bold disabled:opacity-40">{checking ? '確認中…' : 'もう一度確認'}</button>
     </div>

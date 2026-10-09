@@ -9,6 +9,7 @@ import { buildDayPlan, currentBlock, formatPlan, getPlan } from '../crew/planner
 import { crewTick, log, postDayPlan, progressSummary, statusLabel } from '../crew/orchestrator';
 import { LAUNCH_DAY, seedCrewTasks } from '../crew/seed';
 import { jstNow, dayLabel, toHHMM } from '../crew/time';
+import { createAnthropic } from '../lib/anthropic';
 
 // ローンチ・クルーの窓口:
 // - POST /api/crew/discord/interactions … Discord のスラッシュコマンドとボタン（server.ts で生のBodyのまま受け取り、署名を検証）
@@ -82,7 +83,7 @@ async function askCrew(question: string): Promise<string> {
   const { day } = jstNow();
   const tasks = await prisma.crewTask.findMany({ orderBy: [{ planDay: 'asc' }, { key: 'asc' }] });
   const context = tasks.map((t) => `${t.key} [${statusLabel(t.status, t.reviewState)}] ${t.planDay} ${t.owner === 'user' ? 'あなた' : 'エージェント'}: ${t.title}${t.notes ? `（メモ: ${t.notes.slice(0, 200)}）` : ''}`).join('\n');
-  const client = new Anthropic();
+  const client = createAnthropic();
   const msg = await client.messages.create({
     model: ASK_MODEL,
     max_tokens: 800,

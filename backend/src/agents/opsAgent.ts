@@ -3,6 +3,7 @@ import prisma from '../prisma';
 import { buildOverview } from '../lib/opsOverview';
 import { FEATURE_CHECKLIST, STATUS_LABEL } from './statusData';
 import { ALL_SETTING_KEYS, SETTING_LABEL, type SettingKey } from '../lib/systemSettings';
+import { createAnthropic } from '../lib/anthropic';
 
 // AIオペレーター: 管理者画面のチャットで、運営者と対話しながらシステムの状況確認・課題整理・指示を行う。
 // 道具は「読む」ものと「提案を作る」ものだけ。システムの変更・コードの書き換え・新機能の実装は
@@ -155,7 +156,7 @@ export type OpsEvent =
 
 // 会話の続きを生成し、文字が届くたびに emit する（Server-Sent Events で画面へ流す）
 export async function runOpsChat(history: ChatTurn[], adminId: string, emit: (e: OpsEvent) => void) {
-  const client = new Anthropic();
+  const client = createAnthropic();
   const messages: Anthropic.MessageParam[] = history.map((t) => ({ role: t.role, content: t.content }));
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {

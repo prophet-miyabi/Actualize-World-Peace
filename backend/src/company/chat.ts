@@ -5,6 +5,7 @@ import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 import { agentConfig, buildAgentContext, MAX_ROUNDS, monthlyCapUsd, priceFor, SEARCH_COST_USD, spentThisMonthUsd } from './runtime';
 import { notifyApproval } from './settings';
+import { createAnthropic } from '../lib/anthropic';
 
 // 運営者とエージェントの会話（管理画面のチャット）。
 // エージェントは人間のオーナーと直接やり取りしながら、通常のタスクと同じ権限・同じリスク判定で道具を使って実行する。
@@ -52,7 +53,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
 
   const messages: Anthropic.MessageParam[] = history.slice(-30).map((m) => ({ role: m.role, content: m.content }));
   const run = await prisma.agentRun.create({ data: { agent: agent.key, taskId, model: cfg.model, status: 'ok' } });
-  const client = new Anthropic();
+  const client = createAnthropic();
   let inputTokens = 0, outputTokens = 0, toolCalls = 0, searches = 0;
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
