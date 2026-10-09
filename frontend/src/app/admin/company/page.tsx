@@ -9,6 +9,7 @@ type Agent = {
   key: string; name: string; department: string; reportsTo: string | null; mission: string; tools: string[]; maxAutoRisk: string; webSearch: boolean;
   model: string; defaultModel: string; enabled: boolean; dailyBudgetUsd: number; spentTodayUsd: number;
   stats30d: { done: number; failed: number; other: number }; lastRunAt: string | null;
+  managed: { id: string; version: number | null; syncedAt: string | null } | null;
   selftest: { status: string; costUsd: number; toolCalls: number; summary: string | null; error: string | null; at: string } | null;
 };
 type Goal = { id: string; title: string; description: string; kpis: Kpi[]; status: string };
@@ -24,6 +25,7 @@ type Status = {
   monthly: { spentUsd: number; capUsd: number };
   health: { lastTickAt: string | null; queued: number; running: number; awaitingApproval: number; verifying: number; failed24h: number; lastCeoDay: string | null };
   models: { strong: string; balanced: string; fast: string };
+  engine: { kind: 'managed' | 'messages'; environmentId: string | null; workspace: string };
 };
 
 const STATUS: Record<string, string> = { queued: '待機', running: '実行中', awaiting_approval: '承認待ち', verifying: '検証中', done: '完了', failed: '失敗', rejected: '却下', canceled: '取り消し' };
@@ -61,11 +63,11 @@ export default function CompanyPage() {
   useEffect(() => { if (tab === 'memory' && !memory) api.get('/company/memory').then((r) => setMemory(r.data.memory)).catch(() => {}); }, [tab, memory]);
   useEffect(() => { if (open) api.get(`/company/tasks/${open}`).then((r) => setDetail(r.data)).catch(() => setDetail(null)); else setDetail(null); }, [open]);
 
-  const run = async (name: string, fn: () => Promise<unknown>, ok: string) => {
+  const run = async (name: string, fn: () => Promise<unknown>, ok: string | ((r: any) => string)) => {
     setBusy(name);
     setError('');
     setMsg('');
-    try { await fn(); setMsg(ok); await load(); } catch (e: any) { setError(e?.response?.data?.error || '処理できませんでした。'); } finally { setBusy(''); }
+    try { const r = await fn(); setMsg(typeof ok === 'function' ? ok(r) : ok); await load(); } catch (e: any) { setError(e?.response?.data?.error || '処理できませんでした。'); } finally { setBusy(''); }
   };
 
   const filteredTasks = useMemo(() => (s?.tasks ?? []).filter((t) =>
@@ -274,7 +276,11 @@ export default function CompanyPage() {
                     {t.verification && <p className={`rounded-xl p-3 whitespace-pre-wrap ${t.verification.passed ? 'bg-green-50' : 'bg-red-50'}`}><span className="font-bold">監査:</span> {String(t.verification.findings ?? '').slice(0, 1200)}</p>}
                     {t.error && <p className="text-red-600">エラー: {t.error}</p>}
                     {detail?.children?.length > 0 && <p>子タスク: {detail.children.map((c: any) => `${c.title}（${agentName(c.assignee)}・${STATUS[c.status]}）`).join(' / ')}</p>}
-                    {detail?.task?.runs?.length > 0 && <p className="text-gray-500">実行: {detail.task.runs.map((r: any) => `${r.model} 道具${r.toolCalls}回 ${usd(r.costUsd)} ${r.status}${r.error ? `（${r.error.slice(0, 80)}）` : ''}`).join(' / ')}</p>}
+                    {detail?.task?.runs?.length > 0 && (
+                      <p className="text-gray-500">実行: {detail.task.runs.map((r: any, i: number) => (
+                        <span key={r.id}>{i > 0 ? ' / ' : ''}{r.model} 道具{r.toolCalls}回 {usd(r.costUsd)} {r.status}{r.error ? `（${r.error.slice(0, 80)}）` : ''}{r.consoleUrl && <> <a href={r.consoleUrl} target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">Console で見る</a></>}</span>
+                      ))}</p>
+                    )}
                     <div className="flex gap-2">
                       {['queued', 'failed', 'canceled'].includes(t.status) && <button onClick={() => run(t.id, () => api.post(`/company/tasks/${t.id}/run`), '実行を開始しました。')} className="rounded-full bg-gray-900 text-white px-4 py-1.5 font-bold">いますぐ実行</button>}
                       {['queued', 'awaiting_approval', 'verifying', 'failed'].includes(t.status) && <button onClick={() => run(t.id, () => api.post(`/company/tasks/${t.id}/cancel`), '取り消しました。')} className="rounded-full border px-4 py-1.5">取り消す</button>}
@@ -289,7 +295,18 @@ export default function CompanyPage() {
 
       {tab === 'org' && (
         <section className="space-y-2">
-          <p className="text-xs text-gray-500">モデル: 強い = {s.models.strong} / 速い = {s.models.fast}。予算は1日の上限（ドル）。「30日」は完了 / 失敗の件数。</p>
+          <div className="bg-violet-50 border border-violet-200 rounded-2xl p-3 text-xs text-violet-900 space-y-1">
+            <p className="font-bold">実行基盤: {s.engine.kind === 'managed' ? 'Claude Platform（Managed Agents）' : '自前ループ（Messages API）'}</p>
+            {s.engine.kind === 'managed' ? (
+              <p>各エージェントの定義（役割・決まり・道具）は Claude Platform に「版」として保存され、1タスク = 1セッションとして実行されます。全過程は Console（platform.claude.com → Managed Agents → Sessions）で追えます。{s.engine.environmentId ? `環境: ${s.engine.environmentId}` : '環境は最初のタスク実行時に自動で作られます。'}</p>
+            ) : (
+              <p>Render の COMPANY_ENGINE を外す（または managed にする）と Claude Platform に移行します。</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => run('sync', async () => (await api.post('/company/managed/sync', {})).data, (r: any) => { const c = r.results.filter((x: any) => x.status === 'created').length, u = r.results.filter((x: any) => x.status === 'updated').length, e = r.results.filter((x: any) => x.status === 'error'); return `同期しました（新規 ${c} / 更新 ${u} / 変更なし ${r.results.length - c - u - e.length}${e.length ? ` / 失敗 ${e.length}: ${e.map((x: any) => `${x.key} ${x.error}`).join('; ')}` : ''}）`; })} disabled={busy === 'sync'} className="rounded-full bg-violet-600 text-white px-3 py-1 font-bold disabled:opacity-40">Claude Platform に同期</button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">モデル: 強い = {s.models.strong} / 標準 = {s.models.balanced} / 速い = {s.models.fast}。予算は1日の上限（ドル）。「30日」は完了 / 失敗の件数。</p>
           {s.org.map((a) => (
             <div key={a.key} className="bg-white border rounded-2xl p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
@@ -297,7 +314,7 @@ export default function CompanyPage() {
                   <p className="font-black">{a.name} <span className="text-[11px] font-bold text-gray-500">{DEPT[a.department] ?? a.department}{a.reportsTo ? `・報告先 ${agentName(a.reportsTo)}` : '・独立'}</span></p>
                   <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.mission.split('\n')[0]}</p>
                   <p className="text-[11px] text-gray-500 mt-2">道具: {a.tools.join(', ')}{a.webSearch ? ', web_search' : ''}　｜　自動実行の上限: {a.maxAutoRisk}</p>
-                  <p className="text-[11px] text-gray-500">30日: 完了 {a.stats30d.done} / 失敗 {a.stats30d.failed} / 進行中 {a.stats30d.other}・最終実行 {when(a.lastRunAt)}</p>
+                  <p className="text-[11px] text-gray-500">30日: 完了 {a.stats30d.done} / 失敗 {a.stats30d.failed} / 進行中 {a.stats30d.other}・最終実行 {when(a.lastRunAt)}{a.managed ? `・Platform 版 v${a.managed.version ?? '?'}（${when(a.managed.syncedAt)} 同期）` : '・Platform 未同期（最初の実行時に自動同期）'}</p>
                   {a.selftest && (
                     <p className={`text-[11px] mt-1 rounded-lg px-2 py-1 ${a.selftest.status === 'done' ? 'bg-green-50 text-green-800' : a.selftest.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600'}`}>
                       🧪 自己点検 {STATUS[a.selftest.status]}（{when(a.selftest.at)}・道具{a.selftest.toolCalls}回・{usd(a.selftest.costUsd)}）{a.selftest.summary ? `：${a.selftest.summary}` : ''}{a.selftest.error ? `：${a.selftest.error}` : ''}

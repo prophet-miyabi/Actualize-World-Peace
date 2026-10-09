@@ -2,8 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { describeAiError } from '../lib/aiUsage';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, STRONG_MODEL, type AgentDef } from './registry';
-import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
-import { getCompanySettings, notifyApproval } from './settings';
+import { emitEvent, toolsForAgent, TOOL_BY_NAME } from './tools';
+import { getCompanySettings } from './settings';
 import { createAnthropic } from '../lib/anthropic';
 
 // エージェントの実行基盤（ハーネス）。1つのタスクにつき:
@@ -50,24 +50,10 @@ export function isUnknownModelError(e: any) {
   return e?.status === 404 && /model/i.test(String(e?.error?.error?.message ?? e?.message ?? ''));
 }
 
-export type TaskResult = { summary: string; facts: string[]; assumptions: string[]; artifacts: string[]; nextActions: string[]; blocked?: string };
-
-const FINISH_TOOL: Anthropic.Tool = {
-  name: 'finish_task',
-  description: '仕事を終えるときに必ず呼ぶ。成果を構造化して報告する',
-  input_schema: {
-    type: 'object',
-    properties: {
-      summary: { type: 'string', description: 'オーナーがそのまま読める日本語の要約（結論から。5行以内）' },
-      facts: { type: 'array', items: { type: 'string' }, description: '道具で確認した事実（出典や取得した数値つき）' },
-      assumptions: { type: 'array', items: { type: 'string' }, description: '推測・仮定' },
-      artifacts: { type: 'array', items: { type: 'string' }, description: '作った成果物（メモリのキー、実装タスクのキー、作ったタスクのIDなど）' },
-      nextActions: { type: 'array', items: { type: 'string' }, description: '次にやるべきこと（誰が）' },
-      blocked: { type: 'string', description: '人間の判断や承認で止まっている場合、その内容' }
-    },
-    required: ['summary', 'facts', 'assumptions', 'artifacts', 'nextActions']
-  }
-};
+import { FINISH_TOOL, parseFinish, type TaskResult } from './finish';
+import { handleToolUse, type ToolExecOpts } from './toolExec';
+import { ensureManagedAgent, managedEnabled, runManagedSession } from './managed';
+export type { TaskResult };
 
 export function priceFor(model: string) {
   const k = Object.keys(PRICES).find((p) => model.includes(p)) ?? 'opus';
@@ -152,7 +138,6 @@ export async function runTask(taskId: string): Promise<void> {
   const run = await prisma.agentRun.create({ data: { agent: agent.key, taskId, model: cfg.model, status: 'ok' } });
   await emitEvent('task.started', agent.key, { title: task.title }, taskId);
 
-  const ctx: ToolCtx = { agent, taskId, goalId: task.goalId };
   const tools = toolsForAgent(agent);
   const toolDefs: Anthropic.Tool[] = [...tools.map((t) => ({ name: t.name, description: `${t.description}（リスク: ${t.risk}）`, input_schema: t.input_schema })), FINISH_TOOL];
   const serverTools: any[] = agent.webSearch && process.env.COMPANY_WEB_SEARCH !== 'false' ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }] : [];
@@ -163,120 +148,131 @@ export async function runTask(taskId: string): Promise<void> {
     strategyText(),
     task.parentId ? prisma.companyTask.findUnique({ where: { id: task.parentId }, select: { title: true, assignee: true, result: true } }) : null
   ]);
+  // タスクごとに変わる状況（目標・戦略・メモリの一覧・日付）。自前ループでは system に、Platform では最初のメッセージに入れる
+  const situation = [
+    `【会社の目標】\n${goals.map((g) => `- ${g.title} / KPI: ${JSON.stringify(g.kpis)}`).join('\n') || '（未設定）'}`,
+    `\n【会社の戦略（company/strategy）】\n${strategy.slice(0, 6000)}`,
+    `\n【読めるメモリの一覧（必要なものは read_memory で全文を読む）】\n${mem || '（まだありません）'}`,
+    `\n今日は ${new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)}（JST）。`
+  ].join('\n');
   const system = [
     COMPANY_RULES,
     `\n【あなたの役割: ${agent.name}（${agent.department}）】\n${agent.mission}`,
     agent.outputRules ? `\n【出力の決まり】\n${agent.outputRules}` : '',
-    `\n【会社の目標】\n${goals.map((g) => `- ${g.title} / KPI: ${JSON.stringify(g.kpis)}`).join('\n') || '（未設定）'}`,
-    `\n【会社の戦略（company/strategy）】\n${strategy.slice(0, 6000)}`,
-    `\n【読めるメモリの一覧（必要なものは read_memory で全文を読む）】\n${mem || '（まだありません）'}`,
+    `\n${situation}`,
     `\n【権限】自動で実行できるのはリスク ${agent.maxAutoRisk} まで。それを超える道具は「人間の承認待ち」になり、結果はあとで届く。承認待ちになったら finish_task の blocked に書いて終える。`,
-    `\n今日は ${new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)}（JST）。道具の呼び出しは最大${MAX_ROUNDS}回。`
+    `道具の呼び出しは最大${MAX_ROUNDS}回。`
   ].join('\n');
+  const taskText = `【タスク】${task.title}\n\n【指示】\n${task.instructions}${parent ? `\n\n【このタスクを作った上位タスク】${parent.title}（${parent.assignee}）` : ''}\n\n終わったら finish_task を呼んでください。`;
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: taskText }];
+  const execOpts: ToolExecOpts = { agent, taskId, goalId: task.goalId, approvalLabel: task.title };
 
-  const messages: Anthropic.MessageParam[] = [{
-    role: 'user',
-    content: `【タスク】${task.title}\n\n【指示】\n${task.instructions}${parent ? `\n\n【このタスクを作った上位タスク】${parent.title}（${parent.assignee}）` : ''}\n\n終わったら finish_task を呼んでください。`
-  }];
-
-  const client = createAnthropic();
   let inputTokens = 0, outputTokens = 0, toolCalls = 0, costUsd = 0;
   let result: TaskResult | null = null;
   let pendingApproval = false;
-  const sys = cachedSystem(system);
-  const allTools = cachedTools([...toolDefs, ...serverTools]);
+  let engine: 'messages' | 'managed' = 'messages';
+  let sessionId: string | null = null;
   try {
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      let msg: Anthropic.Message;
+    // ---- 実行基盤1: Claude Platform（Managed Agents）。定義は版管理され、ループ・圧縮・予算は Platform が受け持つ ----
+    if (managedEnabled()) {
       try {
-        msg = await client.messages.create({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
-      } catch (e: any) {
-        if (!isUnknownModelError(e) || cfg.model === STRONG_MODEL) throw e;
-        await emitEvent('agent.model_fallback', agent.key, { from: cfg.model, to: STRONG_MODEL }, taskId);
-        cfg.model = STRONG_MODEL;
-        await prisma.agentRun.update({ where: { id: run.id }, data: { model: cfg.model } });
-        round--; continue;
-      }
-      inputTokens += inputTokensOf(msg.usage);
-      outputTokens += msg.usage.output_tokens;
-      costUsd += usageCostUsd(msg.usage, cfg.model);
-      messages.push({ role: 'assistant', content: msg.content });
-      const uses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
-      if (msg.stop_reason !== 'tool_use' || uses.length === 0) break;
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const u of uses) {
-        toolCalls++;
-        if (u.name === 'finish_task') {
-          const inp = u.input as any;
-          // 配列のはずの項目に文字列が来ても落ちないようにする
-          const arr = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x).slice(0, 500)).slice(0, 30);
-          result = {
-            summary: String(inp.summary ?? '').slice(0, 4000),
-            facts: arr(inp.facts), assumptions: arr(inp.assumptions), artifacts: arr(inp.artifacts), nextActions: arr(inp.nextActions),
-            blocked: inp.blocked ? String(inp.blocked).slice(0, 1000) : undefined
-          };
-          results.push({ type: 'tool_result', tool_use_id: u.id, content: '記録しました' });
-          continue;
-        }
-        const tool = TOOL_BY_NAME.get(u.name);
-        let content: string;
-        if (!tool || !agent.tools.includes(tool.name)) {
-          content = JSON.stringify({ error: `この道具（${u.name}）は使えません` });
-        } else if (RISK_ORDER[tool.risk] > RISK_ORDER[agent.maxAutoRisk]) {
-          const reason = String((u.input as any)?.reason ?? '').slice(0, 1000) || '（理由なし）';
-          const action = await prisma.companyAction.create({ data: { taskId, agent: agent.key, tool: tool.name, input: u.input as any, reason, risk: tool.risk } });
-          await emitEvent('action.requested', agent.key, { actionId: action.id, tool: tool.name, reason }, taskId);
-          void notifyApproval(agent.name, tool.name, reason, task.title);
-          pendingApproval = true;
-          content = JSON.stringify({ status: 'awaiting_human_approval', actionId: action.id, note: 'この操作は人間の承認が必要です。承認されると実行され、結果は新しいタスクとして届きます。finish_task の blocked に書いて終えてください' });
-        } else {
-          try {
-            const out = await tool.run(u.input, ctx);
-            content = JSON.stringify(out ?? null).slice(0, 60_000);
-            await emitEvent('tool.called', agent.key, { tool: tool.name }, taskId);
-          } catch (e: any) {
-            content = JSON.stringify({ error: String(e?.message ?? e).slice(0, 500) });
+        const m = await ensureManagedAgent(agent);
+        if (!m.id || !m.version) throw new Error('Managed Agent の同期に失敗しました');
+        const remaining = Math.max(0.5, Math.min(cfg.dailyBudgetUsd - (await spentTodayUsd(agent.key)), cap - (await spentThisMonthUsd())));
+        const r = await runManagedSession({
+          agent, managedAgentId: m.id, managedVersion: m.version,
+          title: `${agent.name}: ${task.title}`.slice(0, 120),
+          message: `${taskText}\n\n【状況】\n${situation}`,
+          budgetUsd: remaining,
+          metadata: { awp_task: taskId, awp_agent: agent.key },
+          onSessionCreated: async (id) => {
+            sessionId = id;
+            await prisma.agentRun.update({ where: { id: run.id }, data: { engine: 'managed', sessionId: id } });
+          },
+          onToolUse: async (name, input) => {
+            const h = await handleToolUse(name, input, execOpts);
+            return { content: h.content, isError: h.isError, result: h.result, pendingApproval: h.pendingApproval };
           }
-        }
-        results.push({ type: 'tool_result', tool_use_id: u.id, content });
+        });
+        engine = 'managed';
+        sessionId = r.sessionId; result = r.result; pendingApproval = r.pendingApproval;
+        toolCalls = r.toolCalls; inputTokens = r.inputTokens; outputTokens = r.outputTokens; costUsd = r.costUsd;
+        if (!result) result = { summary: r.lastText.slice(0, 2000) || `（報告なし: ${r.stopReason}${r.errors.length ? ' / ' + r.errors.join(' / ') : ''}）`, facts: [], assumptions: [], artifacts: [], nextActions: [] };
+        if (r.stopReason === 'budget_reached') await emitEvent('agent.session_budget_reached', agent.key, { sessionId: r.sessionId, budgetUsd: remaining }, taskId);
+        if (r.errors.length) await emitEvent('agent.session_warning', agent.key, { sessionId: r.sessionId, errors: r.errors.slice(0, 3) }, taskId);
+      } catch (e: any) {
+        // セッションが始まった後の失敗は、二重実行を避けるためそのまま失敗にする。始まる前（同期や作成の失敗）は自前ループに切り替える
+        if (sessionId) throw e;
+        await emitEvent('agent.engine_fallback', agent.key, { from: 'managed', to: 'messages', error: String(e?.error?.error?.message ?? e?.message ?? e).slice(0, 300) }, taskId);
       }
-      messages.push({ role: 'user', content: results });
-      if (result) break;
     }
-    if (!result) {
-      // finish_task を呼ばずに終わった: もう1回だけ、報告だけを求める
-      try {
-        messages.push({ role: 'user', content: '道具の呼び出しはここまでです。いまわかっていることで finish_task を呼び、報告してください。' });
-        const fin = await client.messages.create({ model: cfg.model, max_tokens: 2048, system: sys, tools: [FINISH_TOOL], tool_choice: { type: 'tool', name: 'finish_task' }, messages: cachedMessages(messages) });
-        inputTokens += inputTokensOf(fin.usage); outputTokens += fin.usage.output_tokens; costUsd += usageCostUsd(fin.usage, cfg.model);
-        const u = fin.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
-        if (u) {
-          const inp = u.input as any;
-          const arr = (v: unknown) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x).slice(0, 500)).slice(0, 30);
-          result = { summary: String(inp.summary ?? '').slice(0, 4000), facts: arr(inp.facts), assumptions: arr(inp.assumptions), artifacts: arr(inp.artifacts), nextActions: arr(inp.nextActions), blocked: inp.blocked ? String(inp.blocked).slice(0, 1000) : undefined };
+
+    // ---- 実行基盤2: 自前ループ（Messages API）。Platform が使えないときの退路 ----
+    if (engine === 'messages') {
+      const client = createAnthropic();
+      const sys = cachedSystem(system);
+      const allTools = cachedTools([...toolDefs, ...serverTools]);
+      for (let round = 0; round < MAX_ROUNDS; round++) {
+        let msg: Anthropic.Message;
+        try {
+          msg = await client.messages.create({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
+        } catch (e: any) {
+          if (!isUnknownModelError(e) || cfg.model === STRONG_MODEL) throw e;
+          await emitEvent('agent.model_fallback', agent.key, { from: cfg.model, to: STRONG_MODEL }, taskId);
+          cfg.model = STRONG_MODEL;
+          await prisma.agentRun.update({ where: { id: run.id }, data: { model: cfg.model } });
+          round--; continue;
         }
-      } catch { /* 下の素の要約に進む */ }
+        inputTokens += inputTokensOf(msg.usage);
+        outputTokens += msg.usage.output_tokens;
+        costUsd += usageCostUsd(msg.usage, cfg.model);
+        messages.push({ role: 'assistant', content: msg.content });
+        const uses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+        if (msg.stop_reason !== 'tool_use' || uses.length === 0) break;
+        const results: Anthropic.ToolResultBlockParam[] = [];
+        for (const u of uses) {
+          toolCalls++;
+          const h = await handleToolUse(u.name, u.input, execOpts);
+          if (h.result) result = h.result;
+          if (h.pendingApproval) pendingApproval = true;
+          results.push({ type: 'tool_result', tool_use_id: u.id, content: h.content });
+        }
+        messages.push({ role: 'user', content: results });
+        if (result) break;
+      }
+      if (!result) {
+        // finish_task を呼ばずに終わった: もう1回だけ、報告だけを求める
+        try {
+          messages.push({ role: 'user', content: '道具の呼び出しはここまでです。いまわかっていることで finish_task を呼び、報告してください。' });
+          const fin = await client.messages.create({ model: cfg.model, max_tokens: 2048, system: sys, tools: [FINISH_TOOL], tool_choice: { type: 'tool', name: 'finish_task' }, messages: cachedMessages(messages) });
+          inputTokens += inputTokensOf(fin.usage); outputTokens += fin.usage.output_tokens; costUsd += usageCostUsd(fin.usage, cfg.model);
+          const u = fin.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+          if (u) result = parseFinish(u.input);
+        } catch { /* 下の素の要約に進む */ }
+      }
+      if (!result) {
+        // それでも報告がない: 最後の文章を要約として残す
+        const last = messages[messages.length - 1];
+        const txt = typeof last.content === 'string' ? last.content : (last.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+        result = { summary: txt.slice(0, 2000) || '（報告なし）', facts: [], assumptions: [], artifacts: [], nextActions: [] };
+      }
     }
-    if (!result) {
-      // それでも報告がない: 最後の文章を要約として残す
-      const last = messages[messages.length - 1];
-      const txt = typeof last.content === 'string' ? last.content : (last.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
-      result = { summary: txt.slice(0, 2000) || '（報告なし）', facts: [], assumptions: [], artifacts: [], nextActions: [] };
-    }
-    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'ok', finishedAt: new Date() } });
+
+    const final: TaskResult = result ?? { summary: '（報告なし）', facts: [], assumptions: [], artifacts: [], nextActions: [] };
+    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, engine, sessionId, status: 'ok', finishedAt: new Date() } });
     // 自己点検は監査しない（点検そのものの費用を増やさないため）
     const isSelftest = task.title.startsWith('自己点検:');
-    const needsVerification = !isSelftest && ((RISK_ORDER[task.risk as keyof typeof RISK_ORDER] ?? 0) >= 1 || result.artifacts.length > 0);
+    const needsVerification = !isSelftest && ((RISK_ORDER[task.risk as keyof typeof RISK_ORDER] ?? 0) >= 1 || final.artifacts.length > 0);
     await prisma.companyTask.update({
       where: { id: taskId },
-      data: { status: pendingApproval ? 'awaiting_approval' : needsVerification && agent.key !== 'auditor' ? 'verifying' : 'done', result: result as any, costUsd: { increment: costUsd }, finishedAt: new Date() }
+      data: { status: pendingApproval ? 'awaiting_approval' : needsVerification && agent.key !== 'auditor' ? 'verifying' : 'done', result: final as any, costUsd: { increment: costUsd }, finishedAt: new Date() }
     });
-    await emitEvent(pendingApproval ? 'task.awaiting_approval' : 'task.finished', agent.key, { title: task.title, costUsd, toolCalls, summary: result.summary.slice(0, 300) }, taskId);
+    await emitEvent(pendingApproval ? 'task.awaiting_approval' : 'task.finished', agent.key, { title: task.title, costUsd, toolCalls, engine, sessionId, summary: final.summary.slice(0, 300) }, taskId);
   } catch (e: any) {
-    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
+    await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, engine, sessionId, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
     const retry = task.attempts < 2;
     await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });
-    await emitEvent('task.error', agent.key, { error: String(e?.message ?? e).slice(0, 300), retry }, taskId);
+    await emitEvent('task.error', agent.key, { error: String(e?.message ?? e).slice(0, 300), retry, engine, sessionId }, taskId);
   }
 }
 

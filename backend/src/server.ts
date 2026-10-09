@@ -62,10 +62,10 @@ app.use(express.json({ limit: '12mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // AIにつながっているかを外から確認するための公開エンドポイント（原因文は出さない。10分キャッシュで乱用を防ぐ）
-let aiProbe: { at: number; ok: boolean; reason?: string; detail?: string; badModels?: string[] } | null = null;
+let aiProbe: { at: number; ok: boolean; reason?: string; detail?: string; badModels?: string[]; managed?: string } | null = null;
 app.get('/api/health/ai', async (_req, res) => {
   if (!aiProbe || Date.now() - aiProbe.at > 10 * 60_000) {
-    let ok = false; let reason: string | undefined; let detail: string | undefined; let badModels: string[] | undefined;
+    let ok = false; let reason: string | undefined; let detail: string | undefined; let badModels: string[] | undefined; let managed: string | undefined;
     if (anthropicKeyProblem()) reason = 'key_format';
     else {
       try {
@@ -75,15 +75,17 @@ app.get('/api/health/ai', async (_req, res) => {
         for (const id of new Set(Object.values(COMPANY_MODELS))) {
           try { await createAnthropic().models.retrieve(id); } catch (e: any) { if (e?.status === 404) (badModels ??= []).push(id); }
         }
+        // Claude Platform（Managed Agents）が使えるか（一覧の取得はトークンを消費しない）
+        try { await createAnthropic().beta.agents.list({ limit: 1 } as any); managed = 'ok'; } catch (e: any) { managed = `unavailable:${e?.status ?? 'error'}`; }
       } catch (e: any) {
         reason = aiErrorCategory(e);
         // Anthropic が返す説明文（設定の誤りを示す文章）。キーやIDらしき文字列は伏せる
         detail = String(e?.error?.error?.message ?? e?.message ?? '').replace(/sk-ant-[\w-]+/g, 'sk-ant-***').replace(/wrkspc_[\w-]+/g, 'wrkspc_***').slice(0, 300);
       }
     }
-    aiProbe = { at: Date.now(), ok, reason, detail, badModels };
+    aiProbe = { at: Date.now(), ok, reason, detail, badModels, managed };
   }
-  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, reason: aiProbe.reason ?? null, detail: aiProbe.detail ?? null, badModels: aiProbe.badModels ?? [], workspaceIdSet: !!process.env.ANTHROPIC_WORKSPACE_ID, checkedAt: new Date(aiProbe.at).toISOString() });
+  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, reason: aiProbe.reason ?? null, detail: aiProbe.detail ?? null, badModels: aiProbe.badModels ?? [], managed: aiProbe.managed ?? null, engine: process.env.COMPANY_ENGINE || 'managed', workspaceIdSet: !!process.env.ANTHROPIC_WORKSPACE_ID, checkedAt: new Date(aiProbe.at).toISOString() });
 });
 
 app.use('/api/auth', authRoutes);

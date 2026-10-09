@@ -933,6 +933,8 @@ model AgentRun {
   toolCalls    Int         @default(0)
   status       String      // ok / error / budget
   error        String?
+  engine       String      @default("messages") // messages（自前ループ） / managed（Claude Platform のセッション）
+  sessionId    String?     // managed のとき: Claude Platform のセッションID（Console で全過程を追える）
   startedAt    DateTime    @default(now())
   finishedAt   DateTime?
 
@@ -945,6 +947,11 @@ model CompanyAgentConfig {
   enabled        Boolean @default(true)
   model          String?
   dailyBudgetUsd Float?
+  // Claude Platform（Managed Agents）側に同期したエージェント。hash が変わると新しい版を作る
+  managedAgentId  String?
+  managedVersion  Int?
+  managedHash     String?
+  managedSyncedAt DateTime?
   updatedAt      DateTime @updatedAt
 }
 

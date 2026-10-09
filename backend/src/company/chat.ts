@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { describeAiError } from '../lib/aiUsage';
-import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, STRONG_MODEL } from './registry';
-import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
+import { AGENT_BY_KEY, COMPANY_RULES, STRONG_MODEL } from './registry';
+import { toolsForAgent } from './tools';
 import { agentConfig, buildAgentContext, cachedMessages, cachedSystem, cachedTools, inputTokensOf, isUnknownModelError, MAX_ROUNDS, monthlyCapUsd, spentThisMonthUsd, usageCostUsd } from './runtime';
-import { notifyApproval } from './settings';
+import { handleToolUse } from './toolExec';
 import { createAnthropic } from '../lib/anthropic';
 
 // 運営者とエージェントの会話（管理画面のチャット）。
@@ -37,7 +37,6 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
     taskId = t.id;
     await prisma.companyChat.update({ where: { id: chatId }, data: { taskId } });
   }
-  const ctx: ToolCtx = { agent, taskId, goalId: null };
   const tools = toolsForAgent(agent);
   const toolDefs: Anthropic.Tool[] = tools.map((t) => ({ name: t.name, description: `${t.description}（リスク: ${t.risk}）`, input_schema: t.input_schema }));
   const serverTools: any[] = agent.webSearch && process.env.COMPANY_WEB_SEARCH !== 'false' ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }] : [];
@@ -79,27 +78,12 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
       for (const u of uses) {
         toolCalls++;
         emit({ type: 'tool', name: u.name });
-        const tool = TOOL_BY_NAME.get(u.name);
-        let content: string;
-        if (!tool || !agent.tools.includes(tool.name)) {
-          content = JSON.stringify({ error: `この道具（${u.name}）は使えません` });
-        } else if (RISK_ORDER[tool.risk] > RISK_ORDER[agent.maxAutoRisk]) {
-          const reason = String((u.input as any)?.reason ?? '').slice(0, 1000) || '（理由なし）';
-          const action = await prisma.companyAction.create({ data: { taskId, agent: agent.key, tool: tool.name, input: u.input as any, reason, risk: tool.risk } });
-          await emitEvent('action.requested', agent.key, { actionId: action.id, tool: tool.name, reason, viaChat: true }, taskId);
-          void notifyApproval(agent.name, tool.name, reason, `会話: ${chat.title}`);
-          emit({ type: 'action', id: action.id, tool: tool.name, reason });
-          content = JSON.stringify({ status: 'awaiting_human_approval', actionId: action.id, note: 'この操作は人間の承認が必要です。画面に承認ボタンが表示されています。承認を待っていることを伝えてください' });
-        } else {
-          try {
-            const out = await tool.run(u.input, ctx);
-            content = JSON.stringify(out ?? null).slice(0, 60_000);
-            await emitEvent('tool.called', agent.key, { tool: tool.name, viaChat: true }, taskId);
-          } catch (e: any) {
-            content = JSON.stringify({ error: String(e?.message ?? e).slice(0, 500) });
-          }
-        }
-        results.push({ type: 'tool_result', tool_use_id: u.id, content });
+        const h = await handleToolUse(u.name, u.input, {
+          agent, taskId, goalId: null, approvalLabel: `会話: ${chat.title}`, viaChat: true,
+          awaitingNote: 'この操作は人間の承認が必要です。画面に承認ボタンが表示されています。承認を待っていることを伝えてください',
+          onAction: (a) => emit({ type: 'action', id: a.id, tool: a.tool, reason: a.reason })
+        });
+        results.push({ type: 'tool_result', tool_use_id: u.id, content: h.content });
       }
       messages.push({ role: 'user', content: results });
     }

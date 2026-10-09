@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { describeAiError } from '../lib/aiUsage';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey, COMPANY_MODELS } from '../company/registry';
+import { consoleSessionUrl, managedEnabled, syncManagedAgents } from '../company/managed';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { getCompanySettings, setCompanySettings } from '../company/settings';
@@ -55,17 +57,32 @@ router.get('/status', async (_req, res) => {
   const org = AGENTS.map((a) => ({
     key: a.key, name: a.name, department: a.department, reportsTo: a.reportsTo, mission: a.mission, tools: a.tools, maxAutoRisk: a.maxAutoRisk, webSearch: !!a.webSearch,
     model: cfgBy[a.key]?.model || a.model, defaultModel: a.model, enabled: cfgBy[a.key]?.enabled ?? true, dailyBudgetUsd: cfgBy[a.key]?.dailyBudgetUsd ?? a.dailyBudgetUsd, spentTodayUsd: todayBy[a.key] ?? 0,
-    stats30d: statBy[a.key] ?? { done: 0, failed: 0, other: 0 }, lastRunAt: lastBy[a.key] ?? null, selftest: selfBy[a.key] ?? null
+    stats30d: statBy[a.key] ?? { done: 0, failed: 0, other: 0 }, lastRunAt: lastBy[a.key] ?? null, selftest: selfBy[a.key] ?? null,
+    managed: cfgBy[a.key]?.managedAgentId ? { id: cfgBy[a.key]!.managedAgentId, version: cfgBy[a.key]!.managedVersion, syncedAt: cfgBy[a.key]!.managedSyncedAt } : null
   }));
   const countBy = Object.fromEntries(counts.map((c) => [c.status, c._count._all]));
   const failed24h = await prisma.companyTask.count({ where: { status: 'failed', updatedAt: { gte: since24 } } });
   const ceoDay = await prisma.crewState.findUnique({ where: { key: 'company:ceoDay' } });
+  const managedEnv = await prisma.systemSetting.findUnique({ where: { key: 'company_managed_environment' } });
   res.json({
     configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
     monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },
     health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
-    models: COMPANY_MODELS
+    models: COMPANY_MODELS,
+    engine: { kind: managedEnabled() ? 'managed' : 'messages', environmentId: managedEnv?.value ?? null, workspace: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim() || 'default' }
   });
+});
+
+// Claude Platform（Managed Agents）へエージェント定義を同期する。変更があった分だけ新しい版になる
+router.post('/managed/sync', async (req: AuthRequest, res) => {
+  const keys = Array.isArray(req.body?.agents) ? req.body.agents.map(String).filter(isAgentKey) : undefined;
+  try {
+    const r = await syncManagedAgents(keys);
+    await emitEvent('managed.synced', 'owner', { environmentId: r.environmentId, results: r.results.map((x) => `${x.key}:${x.status}${x.version ? ' v' + x.version : ''}`) });
+    res.json(r);
+  } catch (e: any) {
+    res.status(500).json({ error: describeAiError(e) });
+  }
 });
 
 router.get('/settings', async (_req, res) => res.json({ settings: await getCompanySettings() }));
@@ -132,7 +149,8 @@ router.get('/tasks/:id', async (req, res) => {
   const t = await prisma.companyTask.findUnique({ where: { id: String(req.params.id) }, include: { actions: true, runs: true } });
   if (!t) return res.status(404).json({ error: '見つかりません' });
   const children = await prisma.companyTask.findMany({ where: { parentId: t.id }, select: { id: true, title: true, assignee: true, status: true } });
-  res.json({ task: t, children });
+  const runs = t.runs.map((r) => ({ ...r, consoleUrl: r.sessionId ? consoleSessionUrl(r.sessionId) : null }));
+  res.json({ task: { ...t, runs }, children });
 });
 
 router.get('/memory', async (req, res) => {
