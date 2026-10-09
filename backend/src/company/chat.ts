@@ -2,7 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
-import { agentConfig, buildAgentContext, COMPANY_MONTHLY_CAP_USD, MAX_ROUNDS, priceFor, SEARCH_COST_USD, spentThisMonthUsd } from './runtime';
+import { agentConfig, buildAgentContext, MAX_ROUNDS, monthlyCapUsd, priceFor, SEARCH_COST_USD, spentThisMonthUsd } from './runtime';
+import { notifyApproval } from './settings';
 
 // 運営者とエージェントの会話（管理画面のチャット）。
 // エージェントは人間のオーナーと直接やり取りしながら、通常のタスクと同じ権限・同じリスク判定で道具を使って実行する。
@@ -20,7 +21,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
   const agent = AGENT_BY_KEY.get(agentKey);
   if (!agent) throw new Error('エージェントが見つかりません');
   const cfg = await agentConfig(agent);
-  if ((await spentThisMonthUsd()) >= COMPANY_MONTHLY_CAP_USD) throw new Error('今月の会社のAI費用の上限に達しています');
+  if ((await spentThisMonthUsd()) >= (await monthlyCapUsd())) throw new Error('今月の会社のAI費用の上限に達しています');
 
   // 会話の中で作る操作・タスクの親になるタスク（会話ごとに1つ。追跡のため）
   const chat = await prisma.companyChat.findUnique({ where: { id: chatId } });
@@ -75,6 +76,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
           const reason = String((u.input as any)?.reason ?? '').slice(0, 1000) || '（理由なし）';
           const action = await prisma.companyAction.create({ data: { taskId, agent: agent.key, tool: tool.name, input: u.input as any, reason, risk: tool.risk } });
           await emitEvent('action.requested', agent.key, { actionId: action.id, tool: tool.name, reason, viaChat: true }, taskId);
+          void notifyApproval(agent.name, tool.name, reason, `会話: ${chat.title}`);
           emit({ type: 'action', id: action.id, tool: tool.name, reason });
           content = JSON.stringify({ status: 'awaiting_human_approval', actionId: action.id, note: 'この操作は人間の承認が必要です。画面に承認ボタンが表示されています。承認を待っていることを伝えてください' });
         } else {

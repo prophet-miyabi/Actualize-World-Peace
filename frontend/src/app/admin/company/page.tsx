@@ -1,46 +1,75 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import api from '@/lib/api';
 
-type Agent = { key: string; name: string; department: string; reportsTo: string | null; mission: string; tools: string[]; maxAutoRisk: string; webSearch: boolean; model: string; enabled: boolean; dailyBudgetUsd: number; spentTodayUsd: number };
-type Goal = { id: string; title: string; description: string; kpis: { key: string; label: string; target: number; unit: string; by: string }[]; status: string };
+type Kpi = { key: string; label: string; target: number; unit: string; by: string };
+type Agent = {
+  key: string; name: string; department: string; reportsTo: string | null; mission: string; tools: string[]; maxAutoRisk: string; webSearch: boolean;
+  model: string; defaultModel: string; enabled: boolean; dailyBudgetUsd: number; spentTodayUsd: number;
+  stats30d: { done: number; failed: number; other: number }; lastRunAt: string | null;
+  selftest: { status: string; costUsd: number; toolCalls: number; summary: string | null; error: string | null; at: string } | null;
+};
+type Goal = { id: string; title: string; description: string; kpis: Kpi[]; status: string };
 type Task = { id: string; title: string; assignee: string; createdBy: string; status: string; risk: string; result: any; verification: any; error: string | null; parentId: string | null; costUsd: number; runAt: string; createdAt: string; finishedAt: string | null };
-type Action = { id: string; taskId: string; agent: string; tool: string; input: any; reason: string; risk: string; createdAt: string; task: { title: string } };
+type Action = { id: string; taskId: string; agent: string; tool: string; input: any; reason: string; risk: string; status: string; result?: any; decidedAt?: string | null; createdAt: string; task: { title: string } };
+type Settings = { ceoHour: number; monthlyCapUsd: number; concurrency: number; discordApprovals: boolean };
 type Status = {
-  configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; tasks: Task[]; actions: Action[];
+  configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; tasks: Task[]; actions: Action[]; decided: Action[];
   events: { id: string; type: string; actor: string; payload: any; createdAt: string }[];
   costs: { companyAgents30d: { agent: string; runs: number; costUsd: number }[]; userFacingAi30d: { costUsd: number; calls: number } };
+  metrics: { totals: { users: number; publishedPages: number; activeUsers7d: number }; period: { signups: number; pages: number; posts: number; bookings: number; orders: number } };
+  settings: Settings; reports: { key: string; content: string; updatedAt: string }[];
   monthly: { spentUsd: number; capUsd: number };
-  metrics: { totals: { users: number; publishedPages: number; activeUsers7d: number }; period: { signups: number; pages: number; posts: number; bookings: number; orders: number; planSales: { yen: number }; confirmedRewards: { toPlatformYen: number } } };
+  health: { lastTickAt: string | null; queued: number; running: number; awaitingApproval: number; verifying: number; failed24h: number; lastCeoDay: string | null };
+  models: { strong: string; fast: string };
 };
 
 const STATUS: Record<string, string> = { queued: '待機', running: '実行中', awaiting_approval: '承認待ち', verifying: '検証中', done: '完了', failed: '失敗', rejected: '却下', canceled: '取り消し' };
 const STATUS_CLS: Record<string, string> = { queued: 'bg-gray-100 text-gray-600', running: 'bg-sky-100 text-sky-700', awaiting_approval: 'bg-amber-100 text-amber-700', verifying: 'bg-violet-100 text-violet-700', done: 'bg-green-100 text-green-700', failed: 'bg-red-100 text-red-700', rejected: 'bg-red-50 text-red-600', canceled: 'bg-gray-100 text-gray-400' };
 const DEPT: Record<string, string> = { executive: '経営', product: 'プロダクト', engineering: '開発', data: 'データ', marketing: 'マーケ', growth: 'グロース', cs: 'CS', finance: '財務', security: 'セキュリティ', legal: '法務', audit: '監査' };
+const ACTION_STATUS: Record<string, string> = { approved: '承認', executed: '実行済み', rejected: '却下', failed: '失敗' };
 const usd = (n: number) => `$${n.toFixed(2)}`;
+const when = (s: string | null | undefined) => (s ? new Date(s).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+const TABS = [['overview', '概要'], ['approvals', '承認'], ['tasks', 'タスク'], ['org', '組織'], ['reports', '報告'], ['memory', 'メモリ'], ['events', 'ログ']] as const;
+type Tab = (typeof TABS)[number][0];
 
-// AI企業の管理画面: 目標・組織・承認待ち・タスク・メモリ・費用。人間のオーナーはここで目標と重要な判断だけを行う
+// AI企業の運営コンソール。人間のオーナーはここで、目標・設定・承認・点検を行い、エージェントの働きを監督する
 export default function CompanyPage() {
   const [s, setS] = useState<Status | null>(null);
-  const [tab, setTab] = useState<'tasks' | 'org' | 'memory' | 'events'>('tasks');
+  const [tab, setTab] = useState<Tab>('overview');
   const [open, setOpen] = useState<string | null>(null);
   const [detail, setDetail] = useState<any>(null);
   const [memory, setMemory] = useState<{ scope: string; key: string; content: string; updatedBy: string; updatedAt: string }[] | null>(null);
   const [memOpen, setMemOpen] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState('');
   const [newTask, setNewTask] = useState({ assignee: 'ceo', title: '', instructions: '' });
+  const [taskFilter, setTaskFilter] = useState<{ status: string; assignee: string; q: string }>({ status: '', assignee: '', q: '' });
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [goalEdit, setGoalEdit] = useState<Goal | null>(null);
 
-  const load = useCallback(async () => setS((await api.get('/company/status')).data), []);
+  const load = useCallback(async () => {
+    const d = (await api.get('/company/status')).data as Status;
+    setS(d);
+    setSettings((cur) => cur ?? d.settings);
+  }, []);
   useEffect(() => { load().catch((e) => setError(e?.response?.status === 403 ? '管理者のみ利用できます。' : '読み込みに失敗しました。')); }, [load]);
+  useEffect(() => { const t = setInterval(() => load().catch(() => {}), 30_000); return () => clearInterval(t); }, [load]);
   useEffect(() => { if (tab === 'memory' && !memory) api.get('/company/memory').then((r) => setMemory(r.data.memory)).catch(() => {}); }, [tab, memory]);
   useEffect(() => { if (open) api.get(`/company/tasks/${open}`).then((r) => setDetail(r.data)).catch(() => setDetail(null)); else setDetail(null); }, [open]);
 
-  const run = async (fn: () => Promise<unknown>, ok: string) => {
+  const run = async (name: string, fn: () => Promise<unknown>, ok: string) => {
+    setBusy(name);
     setError('');
     setMsg('');
-    try { await fn(); setMsg(ok); await load(); } catch (e: any) { setError(e?.response?.data?.error || '処理できませんでした。'); }
+    try { await fn(); setMsg(ok); await load(); } catch (e: any) { setError(e?.response?.data?.error || '処理できませんでした。'); } finally { setBusy(''); }
   };
+
+  const filteredTasks = useMemo(() => (s?.tasks ?? []).filter((t) =>
+    (!taskFilter.status || t.status === taskFilter.status) && (!taskFilter.assignee || t.assignee === taskFilter.assignee) && (!taskFilter.q || t.title.includes(taskFilter.q))
+  ), [s, taskFilter]);
 
   if (!s) return <div className="p-6 text-sm text-gray-500">{error || '読み込み中…'}</div>;
   const goal = s.goals.find((g) => g.status === 'active');
@@ -49,105 +78,182 @@ export default function CompanyPage() {
     active7_rate: s.metrics.totals.users ? Math.round((s.metrics.totals.activeUsers7d / s.metrics.totals.users) * 100) : 0
   };
   const cost30 = s.costs.companyAgents30d.reduce((a, c) => a + c.costUsd, 0);
-  const agentName = (k: string) => s.org.find((a) => a.key === k)?.name ?? k;
+  const agentName = (k: string) => s.org.find((a) => a.key === k)?.name ?? (k === 'owner' || k === 'human' ? 'あなた' : k === 'system' ? '定期' : k);
+  const tickAge = s.health.lastTickAt ? Math.round((Date.now() - new Date(s.health.lastTickAt).getTime()) / 60_000) : null;
+  const selftestDone = s.org.filter((a) => a.selftest?.status === 'done').length;
 
   return (
-    <div className="px-4 py-6 md:px-8 max-w-4xl space-y-6">
+    <div className="px-4 py-6 md:px-8 max-w-4xl space-y-5">
       <div>
-        <h1 className="text-2xl font-black">AI企業</h1>
-        <p className="text-sm text-gray-600 mt-1">あなたが目標と重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。お金・設定・公開に関わる操作は、ここで承認したときだけ実行されます。</p>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-black">AI企業</h1>
+          <Link href="/admin/company/chat" className="shrink-0 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">💬 エージェントと話す</Link>
+        </div>
+        <p className="text-sm text-gray-600 mt-1">あなたが目標・設定・重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。</p>
         {!s.configured && <p className="mt-2 text-sm text-red-600">ANTHROPIC_API_KEY が未設定のため、エージェントは動きません。</p>}
-        <p className="mt-2 text-sm"><a href="/admin/company/chat" className="text-violet-700 font-bold underline">💬 エージェントと直接話して指示する →</a></p>
-        <div className="mt-3 flex items-center gap-3">
-          <button onClick={() => run(() => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AI企業を開始しました。毎朝8時（JST）にCEOの経営見直しが動きます。' : 'AI企業を停止しました。')}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button onClick={() => run('pause', () => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AI企業を開始しました。' : 'AI企業を停止しました。')}
             className={`rounded-full px-5 py-2 text-sm font-bold ${s.paused ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white' : 'border text-gray-700'}`}>
             {s.paused ? '▶ AI企業を開始する' : '⏸ 停止する'}
           </button>
-          <span className="text-xs text-gray-500">{s.paused ? '停止中（承認待ちの操作はそのまま残ります）' : '稼働中。費用はAPIの従量課金（Maxプランとは別）です'}</span>
+          <span className={`text-xs ${s.paused ? 'text-gray-500' : 'text-green-700 font-bold'}`}>{s.paused ? '停止中（承認待ちの操作はそのまま残ります）' : '稼働中'}</span>
+          {s.actions.length > 0 && <button onClick={() => setTab('approvals')} className="rounded-full bg-amber-400 text-white text-xs font-bold px-3 py-1.5">承認待ち {s.actions.length}</button>}
         </div>
       </div>
 
-      {s.actions.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-bold text-sm">🧑‍⚖️ あなたの承認待ち（{s.actions.length}）</h2>
-          {s.actions.map((a) => (
-            <div key={a.id} className="bg-white border-2 border-amber-300 rounded-2xl p-4 text-sm">
-              <p className="text-[11px] font-bold text-amber-700">{agentName(a.agent)} → {a.tool}（リスク: {a.risk}）</p>
-              <p className="font-bold mt-0.5">{a.task.title}</p>
-              <p className="mt-1 whitespace-pre-wrap">{a.reason}</p>
-              <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">操作の内容</summary><pre className="text-xs bg-gray-50 rounded-lg p-3 mt-1 overflow-x-auto">{JSON.stringify(a.input, null, 2)}</pre></details>
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => confirm('この操作を承認して実行しますか？') && run(() => api.post(`/company/actions/${a.id}/approve`), '承認して実行しました。')} className="rounded-full bg-violet-600 text-white font-bold px-5 py-2">承認して実行</button>
-                <button onClick={() => { const note = prompt('却下の理由（エージェントに伝わります）') ?? ''; run(() => api.post(`/company/actions/${a.id}/reject`, { note }), '却下しました。'); }} className="rounded-full border px-5 py-2 text-gray-600">却下</button>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <section className="bg-white border rounded-2xl p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-black">🎯 目標</h2>
-            <p className="text-sm font-bold mt-1">{goal?.title ?? '（未設定）'}</p>
-            {goal && <p className="text-xs text-gray-600 mt-1">{goal.description}</p>}
-          </div>
-          <button onClick={() => run(() => api.post('/company/tick'), 'CEOの日次見直しを開始しました（数分で結果が出ます）。')} className="shrink-0 rounded-full bg-gray-900 text-white text-xs font-bold px-4 py-2">いますぐ経営サイクルを回す</button>
-        </div>
-        {goal && (
-          <table className="mt-3 w-full text-xs">
-            <thead><tr className="text-gray-500"><th className="text-left font-normal py-1">KPI</th><th className="text-right font-normal">実績</th><th className="text-right font-normal">目標</th><th className="text-right font-normal">期限</th></tr></thead>
-            <tbody>
-              {goal.kpis.map((k) => (
-                <tr key={k.key} className="border-t">
-                  <td className="py-1.5">{k.label}</td>
-                  <td className="text-right font-bold">{actual[k.key] != null ? `${actual[k.key].toLocaleString('ja-JP')}${k.unit}` : '—'}</td>
-                  <td className="text-right">{k.target.toLocaleString('ja-JP')}{k.unit}</td>
-                  <td className="text-right text-gray-500">{k.by}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-          {[['30日の登録', s.metrics.period.signups], ['公開ページ', s.metrics.totals.publishedPages], ['7日アクティブ', s.metrics.totals.activeUsers7d]].map(([l, v]) => (
-            <div key={l as string} className="bg-gray-50 rounded-xl p-2"><p className="text-[10px] text-gray-500">{l}</p><p className="font-black">{(v as number).toLocaleString('ja-JP')}</p></div>
-          ))}
-        </div>
-        <p className="text-[11px] text-gray-500 mt-2">AI費用（30日）: 会社のエージェント {usd(cost30)} / 利用者向けAI {usd(s.costs.userFacingAi30d.costUsd)}（見積もり）</p>
-        <p className="text-[11px] text-gray-500">今月の会社のエージェントの費用 {usd(s.monthly.spentUsd)} / 上限 {usd(s.monthly.capUsd)}（上限に達すると来月まで休みます。COMPANY_MONTHLY_CAP_USD で変更）</p>
-      </section>
-
-      <div className="flex gap-1 text-xs">
-        {([['tasks', 'タスク'], ['org', '組織'], ['memory', 'メモリ'], ['events', 'ログ']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 font-bold ${tab === k ? 'bg-gray-900 text-white' : 'bg-white border'}`}>{l}</button>
+      <div className="flex gap-1 text-xs overflow-x-auto">
+        {TABS.map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)} className={`shrink-0 rounded-full px-4 py-1.5 font-bold ${tab === k ? 'bg-gray-900 text-white' : 'bg-white border'}`}>{l}{k === 'approvals' && s.actions.length > 0 ? `（${s.actions.length}）` : ''}</button>
         ))}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {msg && <p className="text-sm text-green-700">{msg}</p>}
 
+      {tab === 'overview' && (
+        <div className="space-y-4">
+          <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            {[
+              ['待機', s.health.queued], ['実行中', s.health.running], ['承認待ち', s.health.awaitingApproval], ['検証中', s.health.verifying],
+              ['24時間の失敗', s.health.failed24h], ['登録ユーザー', s.metrics.totals.users], ['7日アクティブ', s.metrics.totals.activeUsers7d], ['公開ページ', s.metrics.totals.publishedPages]
+            ].map(([l, v]) => (
+              <div key={l as string} className="bg-white border rounded-xl p-2"><p className="text-[10px] text-gray-500">{l}</p><p className="font-black text-lg">{(v as number).toLocaleString('ja-JP')}</p></div>
+            ))}
+          </section>
+          <p className="text-[11px] text-gray-500">
+            最後の巡回: {s.health.lastTickAt ? `${tickAge}分前` : 'まだ'}{tickAge !== null && tickAge > 3 && !s.paused ? '（⚠ 巡回が止まっている可能性）' : ''}・CEOの最後の日次見直し: {s.health.lastCeoDay ?? 'まだ'}・
+            今月の費用 {usd(s.monthly.spentUsd)} / 上限 {usd(s.monthly.capUsd)}・30日: 会社 {usd(cost30)} / 利用者向けAI {usd(s.costs.userFacingAi30d.costUsd)}
+          </p>
+
+          <section className="bg-white border rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-black">🎯 目標</h2>
+                <p className="text-sm font-bold mt-1">{goal?.title ?? '（未設定）'}</p>
+                {goal && <p className="text-xs text-gray-600 mt-1">{goal.description}</p>}
+              </div>
+              {goal && <button onClick={() => setGoalEdit(JSON.parse(JSON.stringify(goal)))} className="shrink-0 text-xs text-violet-700 underline">編集</button>}
+            </div>
+            {goal && (
+              <table className="mt-3 w-full text-xs">
+                <thead><tr className="text-gray-500"><th className="text-left font-normal py-1">KPI</th><th className="text-right font-normal">実績</th><th className="text-right font-normal">目標</th><th className="text-right font-normal">期限</th></tr></thead>
+                <tbody>
+                  {goal.kpis.map((k) => (
+                    <tr key={k.key} className="border-t">
+                      <td className="py-1.5">{k.label}</td>
+                      <td className="text-right font-bold">{actual[k.key] != null ? `${actual[k.key].toLocaleString('ja-JP')}${k.unit}` : '—'}</td>
+                      <td className="text-right">{k.target.toLocaleString('ja-JP')}{k.unit}</td>
+                      <td className="text-right text-gray-500">{k.by}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {goalEdit && (
+              <div className="mt-4 border-t pt-3 space-y-2 text-sm">
+                <input value={goalEdit.title} onChange={(e) => setGoalEdit({ ...goalEdit, title: e.target.value })} className="w-full border rounded-lg px-3 py-2 font-bold" />
+                <textarea value={goalEdit.description} onChange={(e) => setGoalEdit({ ...goalEdit, description: e.target.value })} rows={3} className="w-full border rounded-lg px-3 py-2" />
+                <p className="text-xs font-bold text-gray-500">KPI（キー / 名前 / 目標 / 単位 / 期限）</p>
+                {goalEdit.kpis.map((k, i) => (
+                  <div key={i} className="grid grid-cols-6 gap-1 text-xs">
+                    <input value={k.key} onChange={(e) => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)) })} className="border rounded px-2 py-1" />
+                    <input value={k.label} onChange={(e) => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} className="border rounded px-2 py-1 col-span-2" />
+                    <input type="number" value={k.target} onChange={(e) => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.map((x, j) => (j === i ? { ...x, target: Number(e.target.value) } : x)) })} className="border rounded px-2 py-1" />
+                    <input value={k.unit} onChange={(e) => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)) })} className="border rounded px-2 py-1" />
+                    <div className="flex gap-1"><input value={k.by} onChange={(e) => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.map((x, j) => (j === i ? { ...x, by: e.target.value } : x)) })} className="border rounded px-2 py-1 min-w-0" /><button onClick={() => setGoalEdit({ ...goalEdit, kpis: goalEdit.kpis.filter((_, j) => j !== i) })} className="text-gray-400">✕</button></div>
+                  </div>
+                ))}
+                <button onClick={() => setGoalEdit({ ...goalEdit, kpis: [...goalEdit.kpis, { key: '', label: '', target: 0, unit: '', by: '' }] })} className="text-xs text-violet-700 font-bold">＋ KPIを追加</button>
+                <div className="flex gap-2">
+                  <button onClick={() => run('goal', () => api.put(`/company/goals/${goalEdit.id}/edit`, goalEdit), '目標を保存しました。').then(() => setGoalEdit(null))} className="rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">保存</button>
+                  <button onClick={() => setGoalEdit(null)} className="rounded-full border text-xs px-4 py-2">やめる</button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="bg-white border rounded-2xl p-4 space-y-3">
+            <h2 className="font-black">⚙️ 運用の設定</h2>
+            {settings && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <label>CEOの日次見直し（時・JST）<input type="number" min={0} max={23} value={settings.ceoHour} onChange={(e) => setSettings({ ...settings, ceoHour: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
+                <label>月の費用上限（ドル）<input type="number" min={0} value={settings.monthlyCapUsd} onChange={(e) => setSettings({ ...settings, monthlyCapUsd: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
+                <label>同時実行数<input type="number" min={1} max={6} value={settings.concurrency} onChange={(e) => setSettings({ ...settings, concurrency: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
+                <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={settings.discordApprovals} onChange={(e) => setSettings({ ...settings, discordApprovals: e.target.checked })} />承認待ちをDiscordに通知</label>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button disabled={!!busy} onClick={() => run('settings', () => api.put('/company/settings', settings), '設定を保存しました。')} className="rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">設定を保存</button>
+              <button disabled={!!busy} onClick={() => run('daily', () => api.post('/company/cycle/daily'), 'CEOの日次見直しを開始しました（数分で結果が出ます）。')} className="rounded-full border text-xs font-bold px-4 py-2">日次サイクルを今すぐ</button>
+              <button disabled={!!busy} onClick={() => run('weekly', () => api.post('/company/cycle/weekly'), '週次（財務・データ・監査）を開始しました。')} className="rounded-full border text-xs font-bold px-4 py-2">週次サイクルを今すぐ</button>
+              <button disabled={!!busy} onClick={() => confirm('全エージェントに自己点検タスクを配ります（約$3〜5のAI費用）。よろしいですか？') && run('selftest', () => api.post('/company/selftest'), '自己点検を開始しました。「組織」タブで結果が順に表示されます。')} className="rounded-full border text-xs font-bold px-4 py-2">🧪 全エージェントを自己点検</button>
+            </div>
+            <p className="text-[11px] text-gray-500">自己点検の結果: {selftestDone}/{s.org.length} が合格（詳細は「組織」タブ）</p>
+          </section>
+        </div>
+      )}
+
+      {tab === 'approvals' && (
+        <div className="space-y-4">
+          <section className="space-y-3">
+            <h2 className="font-bold text-sm">🧑‍⚖️ あなたの承認待ち（{s.actions.length}）</h2>
+            {s.actions.length === 0 && <p className="text-sm text-gray-500 bg-white border rounded-2xl p-4">承認待ちの操作はありません</p>}
+            {s.actions.map((a) => (
+              <div key={a.id} className="bg-white border-2 border-amber-300 rounded-2xl p-4 text-sm">
+                <p className="text-[11px] font-bold text-amber-700">{agentName(a.agent)} → {a.tool}（リスク: {a.risk}）・{when(a.createdAt)}</p>
+                <p className="font-bold mt-0.5">{a.task.title}</p>
+                <p className="mt-1 whitespace-pre-wrap">{a.reason}</p>
+                <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">操作の内容</summary><pre className="text-xs bg-gray-50 rounded-lg p-3 mt-1 overflow-x-auto">{JSON.stringify(a.input, null, 2)}</pre></details>
+                <div className="flex gap-2 mt-3">
+                  <button disabled={!!busy} onClick={() => confirm('この操作を承認して実行しますか？') && run(a.id, () => api.post(`/company/actions/${a.id}/approve`), '承認して実行しました。')} className="rounded-full bg-violet-600 text-white font-bold px-5 py-2">承認して実行</button>
+                  <button disabled={!!busy} onClick={() => { const note = prompt('却下の理由（エージェントに伝わります）') ?? ''; run(a.id, () => api.post(`/company/actions/${a.id}/reject`, { note }), '却下しました。'); }} className="rounded-full border px-5 py-2 text-gray-600">却下</button>
+                </div>
+              </div>
+            ))}
+          </section>
+          {s.decided.length > 0 && (
+            <section>
+              <h2 className="font-bold text-sm mb-2">これまでの判断</h2>
+              <ul className="bg-white border rounded-2xl divide-y text-xs">
+                {s.decided.map((a) => (
+                  <li key={a.id} className="px-4 py-2 flex justify-between gap-3">
+                    <span className="min-w-0 truncate">{agentName(a.agent)} → {a.tool}：{a.task.title}</span>
+                    <span className="shrink-0 text-gray-500">{ACTION_STATUS[a.status] ?? a.status}・{when(a.decidedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )}
+
       {tab === 'tasks' && (
         <section className="space-y-3">
-          <form onSubmit={(e) => { e.preventDefault(); run(() => api.post('/company/tasks', newTask), '指示を出しました。').then(() => setNewTask({ assignee: 'ceo', title: '', instructions: '' })); }} className="bg-white border rounded-2xl p-4 space-y-2 text-sm">
-            <p className="font-bold">エージェントに指示する</p>
+          <form onSubmit={(e) => { e.preventDefault(); run('newtask', () => api.post('/company/tasks', newTask), '指示を出しました。').then(() => setNewTask({ assignee: 'ceo', title: '', instructions: '' })); }} className="bg-white border rounded-2xl p-4 space-y-2 text-sm">
+            <p className="font-bold">エージェントに指示する（バックグラウンドで実行。会話で指示したいときは「エージェントと話す」）</p>
             <div className="flex gap-2">
               <select value={newTask.assignee} onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })} className="border rounded-lg px-2 py-2 text-sm">
-                {s.org.filter((a) => a.key !== 'auditor').map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
+                {s.org.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
               </select>
               <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="題名" maxLength={120} className="flex-1 border rounded-lg px-3 py-2 text-base" required />
             </div>
             <textarea value={newTask.instructions} onChange={(e) => setNewTask({ ...newTask, instructions: e.target.value })} rows={3} placeholder="やってほしいこと（目的・期待する成果物）" maxLength={6000} className="w-full border rounded-lg px-3 py-2 text-base" required />
-            <button className="rounded-full bg-violet-600 text-white font-bold px-5 py-2">指示を出す</button>
+            <button disabled={!!busy} className="rounded-full bg-violet-600 text-white font-bold px-5 py-2">指示を出す</button>
           </form>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <select value={taskFilter.status} onChange={(e) => setTaskFilter({ ...taskFilter, status: e.target.value })} className="border rounded-lg px-2 py-1.5 bg-white"><option value="">すべての状態</option>{Object.entries(STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            <select value={taskFilter.assignee} onChange={(e) => setTaskFilter({ ...taskFilter, assignee: e.target.value })} className="border rounded-lg px-2 py-1.5 bg-white"><option value="">すべての担当</option>{s.org.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}</select>
+            <input value={taskFilter.q} onChange={(e) => setTaskFilter({ ...taskFilter, q: e.target.value })} placeholder="題名で検索" className="border rounded-lg px-2 py-1.5 flex-1 min-w-[8rem]" />
+          </div>
           <ul className="bg-white border rounded-2xl divide-y">
-            {s.tasks.map((t) => (
+            {filteredTasks.length === 0 && <li className="px-4 py-3 text-sm text-gray-400">該当するタスクはありません</li>}
+            {filteredTasks.map((t) => (
               <li key={t.id} className="px-4 py-3 text-sm">
                 <button onClick={() => setOpen(open === t.id ? null : t.id)} className="w-full text-left flex items-start justify-between gap-3">
                   <span className="min-w-0">
                     <span className="block font-bold truncate">{t.title}</span>
-                    <span className="block text-[11px] text-gray-500">{agentName(t.assignee)}・from {t.createdBy === 'human' || t.createdBy === 'owner' ? 'あなた' : t.createdBy === 'system' ? '定期' : agentName(t.createdBy)}・{new Date(t.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{t.costUsd ? `・${usd(t.costUsd)}` : ''}</span>
+                    <span className="block text-[11px] text-gray-500">{agentName(t.assignee)}・from {agentName(t.createdBy)}・{when(t.createdAt)}{t.costUsd ? `・${usd(t.costUsd)}` : ''}</span>
                   </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{STATUS[t.status] ?? t.status}{t.verification?.passed === false ? '（監査NG）' : ''}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{STATUS[t.status] ?? t.status}{t.verification?.passed === false ? '（監査NG）' : t.verification?.passed === true ? '（監査OK）' : ''}</span>
                 </button>
                 {open === t.id && (
                   <div className="mt-3 space-y-2 text-xs">
@@ -163,12 +269,13 @@ export default function CompanyPage() {
                         {t.result.blocked && <p className="text-amber-700"><span className="font-bold">止まっている:</span> {t.result.blocked}</p>}
                       </div>
                     )}
-                    {t.verification && <p className={`rounded-xl p-3 ${t.verification.passed ? 'bg-green-50' : 'bg-red-50'}`}><span className="font-bold">監査:</span> {String(t.verification.findings ?? '').slice(0, 800)}</p>}
+                    {t.verification && <p className={`rounded-xl p-3 whitespace-pre-wrap ${t.verification.passed ? 'bg-green-50' : 'bg-red-50'}`}><span className="font-bold">監査:</span> {String(t.verification.findings ?? '').slice(0, 1200)}</p>}
                     {t.error && <p className="text-red-600">エラー: {t.error}</p>}
                     {detail?.children?.length > 0 && <p>子タスク: {detail.children.map((c: any) => `${c.title}（${agentName(c.assignee)}・${STATUS[c.status]}）`).join(' / ')}</p>}
+                    {detail?.task?.runs?.length > 0 && <p className="text-gray-500">実行: {detail.task.runs.map((r: any) => `${r.model} 道具${r.toolCalls}回 ${usd(r.costUsd)} ${r.status}${r.error ? `（${r.error.slice(0, 80)}）` : ''}`).join(' / ')}</p>}
                     <div className="flex gap-2">
-                      {['queued', 'failed', 'canceled'].includes(t.status) && <button onClick={() => run(() => api.post(`/company/tasks/${t.id}/run`), '実行を開始しました。')} className="rounded-full bg-gray-900 text-white px-4 py-1.5 font-bold">いますぐ実行</button>}
-                      {['queued', 'awaiting_approval', 'verifying', 'failed'].includes(t.status) && <button onClick={() => run(() => api.post(`/company/tasks/${t.id}/cancel`), '取り消しました。')} className="rounded-full border px-4 py-1.5">取り消す</button>}
+                      {['queued', 'failed', 'canceled'].includes(t.status) && <button onClick={() => run(t.id, () => api.post(`/company/tasks/${t.id}/run`), '実行を開始しました。')} className="rounded-full bg-gray-900 text-white px-4 py-1.5 font-bold">いますぐ実行</button>}
+                      {['queued', 'awaiting_approval', 'verifying', 'failed'].includes(t.status) && <button onClick={() => run(t.id, () => api.post(`/company/tasks/${t.id}/cancel`), '取り消しました。')} className="rounded-full border px-4 py-1.5">取り消す</button>}
                     </div>
                   </div>
                 )}
@@ -180,21 +287,47 @@ export default function CompanyPage() {
 
       {tab === 'org' && (
         <section className="space-y-2">
+          <p className="text-xs text-gray-500">モデル: 強い = {s.models.strong} / 速い = {s.models.fast}。予算は1日の上限（ドル）。「30日」は完了 / 失敗の件数。</p>
           {s.org.map((a) => (
             <div key={a.key} className="bg-white border rounded-2xl p-4 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-black">{a.name} <span className="text-[11px] font-bold text-gray-500">{DEPT[a.department] ?? a.department}{a.reportsTo ? `・報告先 ${agentName(a.reportsTo)}` : '・独立'}</span></p>
-                  <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.mission}</p>
-                  <p className="text-[11px] text-gray-500 mt-2">道具: {a.tools.join(', ')}{a.webSearch ? ', web_search' : ''}　｜　自動実行の上限: {a.maxAutoRisk}　｜　モデル: {a.model}</p>
+                  <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.mission.split('\n')[0]}</p>
+                  <p className="text-[11px] text-gray-500 mt-2">道具: {a.tools.join(', ')}{a.webSearch ? ', web_search' : ''}　｜　自動実行の上限: {a.maxAutoRisk}</p>
+                  <p className="text-[11px] text-gray-500">30日: 完了 {a.stats30d.done} / 失敗 {a.stats30d.failed} / 進行中 {a.stats30d.other}・最終実行 {when(a.lastRunAt)}</p>
+                  {a.selftest && (
+                    <p className={`text-[11px] mt-1 rounded-lg px-2 py-1 ${a.selftest.status === 'done' ? 'bg-green-50 text-green-800' : a.selftest.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600'}`}>
+                      🧪 自己点検 {STATUS[a.selftest.status]}（{when(a.selftest.at)}・道具{a.selftest.toolCalls}回・{usd(a.selftest.costUsd)}）{a.selftest.summary ? `：${a.selftest.summary}` : ''}{a.selftest.error ? `：${a.selftest.error}` : ''}
+                    </p>
+                  )}
                 </div>
-                <div className="shrink-0 text-right text-xs">
+                <div className="shrink-0 text-right text-xs space-y-1">
                   <p>{usd(a.spentTodayUsd)} / {usd(a.dailyBudgetUsd)} 今日</p>
-                  <button onClick={() => run(() => api.put(`/company/agents/${a.key}`, { enabled: !a.enabled }), a.enabled ? '停止しました。' : '再開しました。')} className={`mt-1 rounded-full px-3 py-1 font-bold ${a.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{a.enabled ? '稼働中' : '停止中'}</button>
-                  <button onClick={() => { const v = prompt('1日の予算（ドル）', String(a.dailyBudgetUsd)); if (v !== null) run(() => api.put(`/company/agents/${a.key}`, { dailyBudgetUsd: Number(v) }), '予算を更新しました。'); }} className="block mt-1 text-violet-700 underline">予算</button>
+                  <button onClick={() => run(a.key, () => api.put(`/company/agents/${a.key}`, { enabled: !a.enabled }), a.enabled ? '停止しました。' : '再開しました。')} className={`rounded-full px-3 py-1 font-bold ${a.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>{a.enabled ? '稼働中' : '停止中'}</button>
+                  <select value={a.model} onChange={(e) => run(a.key, () => api.put(`/company/agents/${a.key}`, { model: e.target.value }), 'モデルを変更しました。')} className="block w-full border rounded px-1 py-0.5 text-[11px]">
+                    <option value={s.models.strong}>強い</option>
+                    <option value={s.models.fast}>速い</option>
+                    {![s.models.strong, s.models.fast].includes(a.model) && <option value={a.model}>{a.model}</option>}
+                  </select>
+                  <button onClick={() => { const v = prompt('1日の予算（ドル）', String(a.dailyBudgetUsd)); if (v !== null) run(a.key, () => api.put(`/company/agents/${a.key}`, { dailyBudgetUsd: Number(v) }), '予算を更新しました。'); }} className="block w-full text-violet-700 underline">予算</button>
+                  <button onClick={() => run(a.key, () => api.post('/company/selftest', { agents: [a.key] }), `${a.name}の自己点検を開始しました。`)} className="block w-full text-violet-700 underline">自己点検</button>
                 </div>
               </div>
             </div>
+          ))}
+        </section>
+      )}
+
+      {tab === 'reports' && (
+        <section className="space-y-3">
+          <p className="text-xs text-gray-500">CEOからあなたへの報告（Discord #🏢-AI企業 にも届きます）。</p>
+          {s.reports.length === 0 && <p className="text-sm text-gray-500 bg-white border rounded-2xl p-4">まだ報告はありません。日次サイクルが動くと、ここに並びます。</p>}
+          {s.reports.map((r) => (
+            <article key={r.key} className="bg-white border rounded-2xl p-4 text-sm">
+              <p className="text-[11px] text-gray-500">{r.key.replace('report-', '')}・{when(r.updatedAt)}</p>
+              <pre className="whitespace-pre-wrap font-sans mt-1">{r.content}</pre>
+            </article>
           ))}
         </section>
       )}
@@ -207,12 +340,12 @@ export default function CompanyPage() {
               <li key={`${m.scope}/${m.key}`} className="px-4 py-3">
                 <button onClick={() => setMemOpen(memOpen === `${m.scope}/${m.key}` ? null : `${m.scope}/${m.key}`)} className="w-full text-left flex justify-between gap-3">
                   <span className="truncate"><span className="text-violet-700 font-bold">{m.scope}</span> / {m.key}</span>
-                  <span className="text-[11px] text-gray-500 shrink-0">{m.updatedBy}・{new Date(m.updatedAt).toLocaleDateString('ja-JP')}</span>
+                  <span className="text-[11px] text-gray-500 shrink-0">{agentName(m.updatedBy)}・{new Date(m.updatedAt).toLocaleDateString('ja-JP')}</span>
                 </button>
                 {memOpen === `${m.scope}/${m.key}` && (
                   <div className="mt-2">
-                    <textarea defaultValue={m.content} id={`mem-${m.key}`} rows={14} className="w-full border rounded-xl px-3 py-2 text-xs font-mono" />
-                    <button onClick={() => { const el = document.getElementById(`mem-${m.key}`) as HTMLTextAreaElement; run(() => api.put('/company/memory', { scope: m.scope, key: m.key, content: el.value }), '保存しました。').then(() => setMemory(null)); }} className="mt-1 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-1.5">保存</button>
+                    <textarea defaultValue={m.content} id={`mem-${m.scope}-${m.key}`} rows={14} className="w-full border rounded-xl px-3 py-2 text-xs font-mono" />
+                    <button onClick={() => { const el = document.getElementById(`mem-${m.scope}-${m.key}`) as HTMLTextAreaElement; run('mem', () => api.put('/company/memory', { scope: m.scope, key: m.key, content: el.value }), '保存しました。').then(() => setMemory(null)); }} className="mt-1 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-1.5">保存</button>
                   </div>
                 )}
               </li>
@@ -225,7 +358,7 @@ export default function CompanyPage() {
         <ul className="bg-white border rounded-2xl divide-y text-xs">
           {s.events.map((e) => (
             <li key={e.id} className="px-4 py-2 flex gap-3">
-              <span className="text-gray-400 shrink-0 w-24">{new Date(e.createdAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="text-gray-400 shrink-0 w-24">{when(e.createdAt)}</span>
               <span className="min-w-0 break-words"><span className="font-bold">{agentName(e.actor)}</span> {e.type} {e.payload ? JSON.stringify(e.payload).slice(0, 160) : ''}</span>
             </li>
           ))}

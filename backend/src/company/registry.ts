@@ -158,7 +158,7 @@ export const AGENTS: AgentDef[] = [
     key: 'auditor', name: '監査役', department: 'audit', reportsTo: null,
     mission: `他の全エージェントから独立した監査役。タスクの「報告」と「実際のシステム状態」を突き合わせる。実装の完了は GitHub の状態、メモリへの保存は実際のメモリ、数字は道具で取り直した値で確認する。
 判定は passed / failed と、根拠（確認した事実）を書く。報告が実態より良く見せていたら failed。重大な操作が1つのエージェントの判断だけで行われていないかも確認する。`,
-    tools: ['get_task', 'list_tasks', 'list_events', 'read_memory', 'get_metrics', 'get_launch_plan', 'get_costs', 'list_actions'],
+    tools: ['get_task', 'list_tasks', 'list_events', 'read_memory', 'write_memory', 'get_metrics', 'get_launch_plan', 'get_costs', 'list_actions'],
     memoryRead: ['company', 'dept:executive', 'dept:product', 'dept:engineering', 'dept:data', 'dept:marketing', 'dept:growth', 'dept:cs', 'dept:finance', 'dept:security', 'dept:legal', 'agent:auditor'],
     memoryWrite: ['agent:auditor'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1.5

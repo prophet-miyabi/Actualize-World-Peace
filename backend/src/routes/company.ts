@@ -4,7 +4,9 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey } from '../company/registry';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
-import { agentConfig, COMPANY_MONTHLY_CAP_USD, executeAction, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
+import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
+import { getCompanySettings, setCompanySettings } from '../company/settings';
+import { ceoDailyCycle, weeklyCycle } from '../company/loop';
 import { companyTick } from '../company/loop';
 import { chatWithAgent, type ChatTurn } from '../company/chat';
 import { seedCompany } from '../company/seed';
@@ -20,23 +22,110 @@ router.use(async (req: AuthRequest, res, next) => {
 
 router.get('/status', async (_req, res) => {
   await seedCompany();
-  const [goals, tasks, actions, events, costs, metrics, paused, configs] = await Promise.all([
+  const since30 = new Date(Date.now() - 30 * 86_400_000);
+  const since24 = new Date(Date.now() - 86_400_000);
+  const [goals, tasks, actions, decided, events, costs, metrics, paused, configs, settings, reports, lastTick, counts, stats, lastRuns, selftests] = await Promise.all([
     prisma.companyGoal.findMany({ orderBy: { createdAt: 'desc' } }),
-    prisma.companyTask.findMany({ orderBy: { createdAt: 'desc' }, take: 80, select: { id: true, title: true, assignee: true, createdBy: true, status: true, risk: true, result: true, verification: true, error: true, parentId: true, costUsd: true, runAt: true, createdAt: true, finishedAt: true } }),
+    prisma.companyTask.findMany({ orderBy: { createdAt: 'desc' }, take: 120, select: { id: true, title: true, assignee: true, createdBy: true, status: true, risk: true, result: true, verification: true, error: true, parentId: true, costUsd: true, runAt: true, createdAt: true, finishedAt: true } }),
     prisma.companyAction.findMany({ where: { status: 'pending' }, orderBy: { createdAt: 'asc' }, include: { task: { select: { title: true } } } }),
-    prisma.companyEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 40 }),
+    prisma.companyAction.findMany({ where: { status: { not: 'pending' } }, orderBy: { decidedAt: 'desc' }, take: 20, include: { task: { select: { title: true } } } }),
+    prisma.companyEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 60 }),
     collectCosts(),
     collectMetrics(30),
     getFlag(SETTING_KEYS.pauseCompany),
-    prisma.companyAgentConfig.findMany()
+    prisma.companyAgentConfig.findMany(),
+    getCompanySettings(),
+    prisma.companyMemory.findMany({ where: { scope: 'dept:executive', key: { startsWith: 'report-' } }, orderBy: { updatedAt: 'desc' }, take: 10 }),
+    prisma.crewState.findUnique({ where: { key: 'company:lastTick' } }),
+    prisma.companyTask.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.companyTask.groupBy({ by: ['assignee', 'status'], _count: { _all: true }, where: { createdAt: { gte: since30 } } }),
+    prisma.agentRun.groupBy({ by: ['agent'], _max: { startedAt: true } }),
+    prisma.companyTask.findMany({ where: { title: { startsWith: '自己点検:' } }, orderBy: { createdAt: 'desc' }, take: 40, select: { assignee: true, status: true, costUsd: true, result: true, error: true, createdAt: true, runs: { select: { toolCalls: true } } } })
   ]);
   const cfgBy = Object.fromEntries(configs.map((c) => [c.key, c]));
   const todayBy = Object.fromEntries(costs.companyAgentsToday.map((c) => [c.agent, c.costUsd]));
+  const lastBy = Object.fromEntries(lastRuns.map((r) => [r.agent, r._max.startedAt]));
+  const statBy: Record<string, { done: number; failed: number; other: number }> = {};
+  for (const st of stats) {
+    const b = (statBy[st.assignee] ||= { done: 0, failed: 0, other: 0 });
+    if (st.status === 'done') b.done += st._count._all; else if (st.status === 'failed' || st.status === 'rejected') b.failed += st._count._all; else b.other += st._count._all;
+  }
+  const selfBy: Record<string, any> = {};
+  for (const t of selftests) if (!selfBy[t.assignee]) selfBy[t.assignee] = { status: t.status, costUsd: t.costUsd, toolCalls: t.runs.reduce((a, r) => a + r.toolCalls, 0), summary: (t.result as any)?.summary?.slice(0, 200) ?? null, error: t.error, at: t.createdAt };
   const org = AGENTS.map((a) => ({
     key: a.key, name: a.name, department: a.department, reportsTo: a.reportsTo, mission: a.mission, tools: a.tools, maxAutoRisk: a.maxAutoRisk, webSearch: !!a.webSearch,
-    model: cfgBy[a.key]?.model || a.model, enabled: cfgBy[a.key]?.enabled ?? true, dailyBudgetUsd: cfgBy[a.key]?.dailyBudgetUsd ?? a.dailyBudgetUsd, spentTodayUsd: todayBy[a.key] ?? 0
+    model: cfgBy[a.key]?.model || a.model, defaultModel: a.model, enabled: cfgBy[a.key]?.enabled ?? true, dailyBudgetUsd: cfgBy[a.key]?.dailyBudgetUsd ?? a.dailyBudgetUsd, spentTodayUsd: todayBy[a.key] ?? 0,
+    stats30d: statBy[a.key] ?? { done: 0, failed: 0, other: 0 }, lastRunAt: lastBy[a.key] ?? null, selftest: selfBy[a.key] ?? null
   }));
-  res.json({ configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, events, costs, metrics, monthly: { spentUsd: await spentThisMonthUsd(), capUsd: COMPANY_MONTHLY_CAP_USD } });
+  const countBy = Object.fromEntries(counts.map((c) => [c.status, c._count._all]));
+  const failed24h = await prisma.companyTask.count({ where: { status: 'failed', updatedAt: { gte: since24 } } });
+  const ceoDay = await prisma.crewState.findUnique({ where: { key: 'company:ceoDay' } });
+  res.json({
+    configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
+    monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },
+    health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
+    models: { strong: process.env.COMPANY_MODEL_STRONG || process.env.CLAUDE_MODEL || 'claude-opus-5', fast: process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001' }
+  });
+});
+
+router.get('/settings', async (_req, res) => res.json({ settings: await getCompanySettings() }));
+router.put('/settings', async (req: AuthRequest, res) => {
+  const settings = await setCompanySettings(req.body ?? {}, req.user!.id);
+  await emitEvent('settings.changed', 'owner', settings as any);
+  res.json({ settings });
+});
+
+// 目標の編集（KPIも）
+router.put('/goals/:id/edit', async (req: AuthRequest, res) => {
+  const g = await prisma.companyGoal.findUnique({ where: { id: String(req.params.id) } });
+  if (!g) return res.status(404).json({ error: '見つかりません' });
+  const title = String(req.body?.title ?? g.title).trim().slice(0, 200);
+  const description = String(req.body?.description ?? g.description).trim().slice(0, 4000);
+  const kpis = Array.isArray(req.body?.kpis)
+    ? req.body.kpis.slice(0, 20).map((k: any) => ({ key: String(k.key ?? '').slice(0, 40), label: String(k.label ?? '').slice(0, 60), target: Number(k.target) || 0, unit: String(k.unit ?? '').slice(0, 10), by: String(k.by ?? '').slice(0, 20) })).filter((k: any) => k.key && k.label)
+    : (g.kpis as any);
+  const updated = await prisma.companyGoal.update({ where: { id: g.id }, data: { title, description, kpis } });
+  await emitEvent('goal.edited', 'owner', { id: g.id, title });
+  res.json({ goal: updated });
+});
+
+// 経営サイクルを手動で動かす（日次／週次）
+router.post('/cycle/:kind', async (req: AuthRequest, res) => {
+  const day = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+  if (req.params.kind === 'daily') await ceoDailyCycle(day);
+  else if (req.params.kind === 'weekly') await weeklyCycle(day);
+  else return res.status(400).json({ error: 'daily か weekly' });
+  await emitEvent('cycle.manual', 'owner', { kind: req.params.kind, day });
+  void companyTick();
+  res.json({ ok: true });
+});
+
+// 自己点検: 全エージェントに小さなタスクを配り、道具が使えるか・報告できるかを確かめる（低リスクのみ）
+router.post('/selftest', async (req: AuthRequest, res) => {
+  const keys: string[] = Array.isArray(req.body?.agents) && req.body.agents.length ? req.body.agents.filter(isAgentKey) : AGENTS.map((a) => a.key);
+  const stamp = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 16).replace('T', ' ');
+  let created = 0;
+  for (const key of keys) {
+    const a = AGENTS.find((x) => x.key === key)!;
+    const readTool = a.tools.find((t) => t.startsWith('get_') || t === 'list_tasks' || t === 'list_events') ?? 'read_memory';
+    await prisma.companyTask.create({
+      data: {
+        assignee: key, createdBy: 'human', risk: 'low', title: `自己点検: ${a.name} ${stamp}`.slice(0, 120),
+        instructions: [
+          'これは自己点検です。次を順に行ってください。',
+          `1. 道具 ${readTool} を1回使って、実際のデータを1つ以上読む`,
+          '2. read_memory で company スコープの一覧を読む',
+          `3. write_memory(agent:${key}, selftest) に「点検日時・使った道具・自分の役割の一言」を保存する`,
+          '4. finish_task で報告する。facts には道具で取れた具体的な値を1つ以上、artifacts にはメモリのキーを書く',
+          '新しいタスクや実装依頼は作らないこと。'
+        ].join(String.fromCharCode(10))
+      }
+    });
+    created++;
+  }
+  await emitEvent('selftest.started', 'owner', { agents: keys });
+  void companyTick();
+  res.json({ ok: true, created });
 });
 
 router.get('/tasks/:id', async (req, res) => {

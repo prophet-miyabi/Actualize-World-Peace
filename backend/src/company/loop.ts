@@ -5,13 +5,12 @@ import { captureError } from '../lib/errors';
 import { emitEvent } from './tools';
 import { runTask } from './runtime';
 import { seedCompany } from './seed';
+import { getCompanySettings } from './settings';
 
 // AI企業の運営サイクル:
 // - 1分ごと: 実行待ちのタスクを（同時 CONCURRENCY 件まで）実行する。検証待ちのタスクには監査役のタスクを作る
 // - 毎日 08:00 JST: CEO の日次見直し（KPI・前日の成果・詰まり → 今日の重点を COO に委任）
 // - 毎週 月曜: ファイナンスとデータの週次報告、監査役による経営判断の監査
-const CONCURRENCY = Number(process.env.COMPANY_CONCURRENCY || 2);
-const CEO_HOUR = Number(process.env.COMPANY_CEO_HOUR || 8);
 
 function jst(now = new Date()) {
   const d = new Date(now.getTime() + 9 * 3600_000);
@@ -71,7 +70,7 @@ async function applyAuditVerdicts() {
   }
 }
 
-async function ceoDailyCycle(day: string) {
+export async function ceoDailyCycle(day: string) {
   const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
   if (!goal) return;
   await createIfAbsent({
@@ -89,7 +88,7 @@ async function ceoDailyCycle(day: string) {
   });
 }
 
-async function weeklyCycle(day: string) {
+export async function weeklyCycle(day: string) {
   const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
   await createIfAbsent({
     assignee: 'finance', createdBy: 'system', goalId: goal?.id ?? null, title: `週次の財務報告 ${day}`,
@@ -113,8 +112,10 @@ export async function companyTick(now = new Date()) {
     if (!process.env.ANTHROPIC_API_KEY) return;
     if (await getFlag(SETTING_KEYS.pauseCompany)) return;
     const { day, hour, weekday } = jst(now);
+    const settings = await getCompanySettings();
+    await setState('company:lastTick', new Date().toISOString());
 
-    if (hour >= CEO_HOUR && (await state('company:ceoDay')) !== day) {
+    if (hour >= settings.ceoHour && (await state('company:ceoDay')) !== day) {
       await setState('company:ceoDay', day);
       await ceoDailyCycle(day);
       if (weekday === 1) await weeklyCycle(day);
@@ -126,7 +127,7 @@ export async function companyTick(now = new Date()) {
     await queueAudits();
 
     const active = await prisma.companyTask.count({ where: { status: 'running' } });
-    const slots = CONCURRENCY - active;
+    const slots = settings.concurrency - active;
     if (slots > 0) {
       const due = await prisma.companyTask.findMany({ where: { status: 'queued', runAt: { lte: now } }, orderBy: [{ createdAt: 'asc' }], take: slots });
       await Promise.all(due.map((t) => runTask(t.id).catch((e) => console.error('company task failed', t.id, e?.message))));

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, type AgentDef } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
+import { getCompanySettings, notifyApproval } from './settings';
 
 // エージェントの実行基盤（ハーネス）。1つのタスクにつき:
 //   システムプロンプト（会社の決まり + 役割 + 読めるメモリの一覧）→ Claude の道具ループ → finish_task で成果を構造化して保存。
@@ -41,7 +42,9 @@ export async function agentConfig(agent: AgentDef) {
 }
 
 // 会社全体の今月のAI費用の上限（米ドル）。Max プランの月間APIクレジット（$200）を、利用者向けAIの分も残して使うための安全弁
-export const COMPANY_MONTHLY_CAP_USD = Number(process.env.COMPANY_MONTHLY_CAP_USD || 150);
+export async function monthlyCapUsd() {
+  return (await getCompanySettings()).monthlyCapUsd;
+}
 export async function spentThisMonthUsd() {
   const now = new Date(Date.now() + 9 * 3600_000);
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) - 9 * 3600_000);
@@ -93,10 +96,11 @@ export async function runTask(taskId: string): Promise<void> {
     await prisma.companyTask.update({ where: { id: taskId }, data: { runAt: new Date(Date.now() + 6 * 3600_000) } });
     return;
   }
-  if ((await spentThisMonthUsd()) >= COMPANY_MONTHLY_CAP_USD) {
+  const cap = await monthlyCapUsd();
+  if ((await spentThisMonthUsd()) >= cap) {
     // 会社全体の月の上限に達した: 来月まで休む（翌日に再確認）
     await prisma.companyTask.update({ where: { id: taskId }, data: { runAt: new Date(Date.now() + 24 * 3600_000) } });
-    await emitEvent('company.monthly_cap_reached', 'system', { taskId, capUsd: COMPANY_MONTHLY_CAP_USD });
+    await emitEvent('company.monthly_cap_reached', 'system', { taskId, capUsd: cap });
     return;
   }
   if ((await spentTodayUsd(agent.key)) >= cfg.dailyBudgetUsd) {
@@ -173,6 +177,7 @@ export async function runTask(taskId: string): Promise<void> {
           const reason = String((u.input as any)?.reason ?? '').slice(0, 1000) || '（理由なし）';
           const action = await prisma.companyAction.create({ data: { taskId, agent: agent.key, tool: tool.name, input: u.input as any, reason, risk: tool.risk } });
           await emitEvent('action.requested', agent.key, { actionId: action.id, tool: tool.name, reason }, taskId);
+          void notifyApproval(agent.name, tool.name, reason, task.title);
           pendingApproval = true;
           content = JSON.stringify({ status: 'awaiting_human_approval', actionId: action.id, note: 'この操作は人間の承認が必要です。承認されると実行され、結果は新しいタスクとして届きます。finish_task の blocked に書いて終えてください' });
         } else {
@@ -212,7 +217,9 @@ export async function runTask(taskId: string): Promise<void> {
     const p = priceFor(cfg.model);
     const costUsd = (inputTokens * p.in + outputTokens * p.out) / 1_000_000 + searches * SEARCH_COST_USD;
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, status: 'ok', finishedAt: new Date() } });
-    const needsVerification = (RISK_ORDER[task.risk as keyof typeof RISK_ORDER] ?? 0) >= 1 || result.artifacts.length > 0;
+    // 自己点検は監査しない（点検そのものの費用を増やさないため）
+    const isSelftest = task.title.startsWith('自己点検:');
+    const needsVerification = !isSelftest && ((RISK_ORDER[task.risk as keyof typeof RISK_ORDER] ?? 0) >= 1 || result.artifacts.length > 0);
     await prisma.companyTask.update({
       where: { id: taskId },
       data: { status: pendingApproval ? 'awaiting_approval' : needsVerification && agent.key !== 'auditor' ? 'verifying' : 'done', result: result as any, costUsd: { increment: costUsd }, finishedAt: new Date() }
