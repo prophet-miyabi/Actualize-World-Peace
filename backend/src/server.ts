@@ -35,7 +35,7 @@ import { startCrew } from './crew/orchestrator';
 import { startScheduler } from './social/scheduler';
 import { startAgentLoop } from './agents/loop';
 import { captureError } from './lib/errors';
-import { anthropicKeyProblem } from './lib/aiUsage';
+import { anthropicKeyProblem, aiErrorCategory } from './lib/aiUsage';
 
 const app = express();
 app.use(cors());
@@ -61,19 +61,20 @@ app.use(express.json({ limit: '12mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
 
 // AIにつながっているかを外から確認するための公開エンドポイント（原因文は出さない。10分キャッシュで乱用を防ぐ）
-let aiProbe: { at: number; ok: boolean } | null = null;
+let aiProbe: { at: number; ok: boolean; reason?: string } | null = null;
 app.get('/api/health/ai', async (_req, res) => {
   if (!aiProbe || Date.now() - aiProbe.at > 10 * 60_000) {
-    let ok = false;
-    if (!anthropicKeyProblem()) {
+    let ok = false; let reason: string | undefined;
+    if (anthropicKeyProblem()) reason = 'key_format';
+    else {
       try {
         await createAnthropic().messages.create({ model: process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001', max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
         ok = true;
-      } catch { ok = false; }
+      } catch (e) { reason = aiErrorCategory(e); }
     }
-    aiProbe = { at: Date.now(), ok };
+    aiProbe = { at: Date.now(), ok, reason };
   }
-  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, checkedAt: new Date(aiProbe.at).toISOString() });
+  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, reason: aiProbe.reason ?? null, workspaceIdSet: !!process.env.ANTHROPIC_WORKSPACE_ID, checkedAt: new Date(aiProbe.at).toISOString() });
 });
 
 app.use('/api/auth', authRoutes);

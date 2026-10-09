@@ -36,9 +36,24 @@ export function anthropicKeyProblem(): string | null {
 }
 
 // AIの呼び出しで起きたエラーを、運営者がそのまま読める日本語にする
+// 公開ヘルスチェック用: 原因を秘密を含まない分類だけで返す
+export function aiErrorCategory(e: any): string {
+  const msg = String(e?.error?.error?.message ?? e?.error?.message ?? e?.message ?? '');
+  if (anthropicKeyProblem()) return 'key_format';
+  if (/must be a valid workspace ID/i.test(msg)) return 'workspace_id_invalid';
+  if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'workspace_required';
+  if (e?.status === 401) return 'invalid_key';
+  if (e?.status === 402 || /credit balance/i.test(msg)) return 'no_credits';
+  if (e?.status === 403) return 'forbidden';
+  if (e?.status === 404) return 'model_not_found';
+  if (e?.status === 429) return 'rate_limited';
+  return 'other_' + (e?.status ?? 'unknown');
+}
+
 export function describeAiError(e: any): string {
   const msg = String(e?.message ?? e ?? '');
   if (/ByteString/.test(msg)) return anthropicKeyProblem() ?? 'APIキーに使えない文字が含まれています';
+  if (/must be a valid workspace ID/i.test(msg)) return 'Render の ANTHROPIC_WORKSPACE_ID が正しいワークスペースIDではありません（Console → 組織の設定 → ワークスペース の ID。wrkspc_ で始まる文字列をそのまま貼る）';
   if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'APIキーがワークスペースに紐づいていません。直し方は2つ: (A) Console の左上でワークスペース（Default など）を選んでから「キーを作成」し、そのキーを Render の ANTHROPIC_API_KEY に入れる / (B) Render に ANTHROPIC_WORKSPACE_ID を追加する（Console → 組織の設定 → ワークスペース → 使うワークスペースの ID。wrkspc_ で始まる）';
   if (e?.status === 401) return 'APIキーが無効です（Render の ANTHROPIC_API_KEY を確認してください）';
   if (e?.status === 429) return 'AIのレート制限に達しました。少し待ってからお試しください';
