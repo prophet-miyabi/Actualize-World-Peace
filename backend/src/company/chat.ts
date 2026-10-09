@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
+import { describeAiError } from '../lib/aiUsage';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 import { agentConfig, buildAgentContext, MAX_ROUNDS, monthlyCapUsd, priceFor, SEARCH_COST_USD, spentThisMonthUsd } from './runtime';
@@ -99,6 +100,6 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
     emit({ type: 'done', costUsd });
   } catch (e: any) {
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
-    emit({ type: 'error', message: String(e?.message ?? e).slice(0, 300) });
+    emit({ type: 'error', message: describeAiError(e) });
   }
 }

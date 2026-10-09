@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import AiHealthBanner from '@/components/admin/AiHealthBanner';
 
 type Action = { id: string; tool: string; reason: string; status?: string };
 type Msg = { role: 'user' | 'assistant'; content: string; tools?: string[]; actions?: Action[] };
@@ -148,6 +149,7 @@ export default function CompanyChatPage() {
         <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AI企業の画面</Link>
       </div>
 
+      <div className="mt-4"><AiHealthBanner /></div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <select value={agentKey} disabled={!!chatId} onChange={(e) => setAgentKey(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white">
           {agents.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}

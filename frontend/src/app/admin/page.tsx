@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import AiHealthBanner from '@/components/admin/AiHealthBanner';
 
 type Overview = {
   generatedAt: string;
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
   return (
     <div className="px-4 py-6 md:px-8 max-w-5xl">
       <h1 className="text-2xl font-black">ダッシュボード</h1>
+      <AiHealthBanner />
       <p className="text-xs text-gray-500 mt-1">{new Date(o.generatedAt).toLocaleString('ja-JP')} 時点</p>
 
       {paused && (

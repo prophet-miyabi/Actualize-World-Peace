@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
+import { describeAiError } from '../lib/aiUsage';
 import { AGENT_BY_KEY, COMPANY_RULES, RISK_ORDER, type AgentDef } from './registry';
 import { emitEvent, toolsForAgent, TOOL_BY_NAME, type ToolCtx } from './tools';
 import { getCompanySettings, notifyApproval } from './settings';
@@ -229,7 +230,7 @@ export async function runTask(taskId: string): Promise<void> {
     const p = priceFor(cfg.model);
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd: (inputTokens * p.in + outputTokens * p.out) / 1_000_000, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
     const retry = task.attempts < 2;
-    await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: String(e?.message ?? e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });
+    await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });
     await emitEvent('task.error', agent.key, { error: String(e?.message ?? e).slice(0, 300), retry }, taskId);
   }
 }

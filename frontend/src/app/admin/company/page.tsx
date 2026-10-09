@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import AiHealthBanner from '@/components/admin/AiHealthBanner';
 
 type Kpi = { key: string; label: string; target: number; unit: string; by: string };
 type Agent = {
@@ -91,6 +92,7 @@ export default function CompanyPage() {
         </div>
         <p className="text-sm text-gray-600 mt-1">あなたが目標・設定・重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。</p>
         {!s.configured && <p className="mt-2 text-sm text-red-600">ANTHROPIC_API_KEY が未設定のため、エージェントは動きません。</p>}
+        <div className="mt-3"><AiHealthBanner /></div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button onClick={() => run('pause', () => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AI企業を開始しました。' : 'AI企業を停止しました。')}
             className={`rounded-full px-5 py-2 text-sm font-bold ${s.paused ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white' : 'border text-gray-700'}`}>

@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import api from '@/lib/api';
+import AiHealthBanner from '@/components/admin/AiHealthBanner';
 
 type Turn = { role: 'user' | 'assistant'; content: string; tools?: string[] };
 type Proposal = {
@@ -126,6 +127,7 @@ export default function OpsPage() {
   return (
     <div className="px-4 py-6 md:px-8 max-w-3xl pb-40">
       <h1 className="text-2xl font-black">AIオペレーター</h1>
+      <AiHealthBanner />
       <p className="text-sm text-gray-600 mt-1">
         システムの状況確認・課題の整理・改善の提案をチャットで。設定変更やコードの実装は「提案」として作られ、あなたが承認したときだけ実行されます。
       </p>

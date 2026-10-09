@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import Anthropic from '@anthropic-ai/sdk';
 import prisma from '../prisma';
+import { anthropicKeyProblem, describeAiError } from '../lib/aiUsage';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { buildOverview } from '../lib/opsOverview';
 import { ALL_SETTING_KEYS, setFlag, type SettingKey } from '../lib/systemSettings';
@@ -66,9 +68,24 @@ router.post('/chat', authenticate, async (req: AuthRequest, res) => {
     send({ type: 'done' });
   } catch (e: any) {
     console.error('ops chat failed', e?.message);
-    send({ type: 'error', message: 'AIの応答に失敗しました。時間をおいてもう一度お試しください。' });
+    send({ type: 'error', message: `AIの応答に失敗しました: ${describeAiError(e)}` });
   } finally {
     res.end();
+  }
+});
+
+// ---- AI接続の確認（運営者が原因をすぐ特定できるように、実際に1回だけ小さな呼び出しをする） ----
+router.get('/ai-check', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdmin(req, res))) return;
+  const problem = anthropicKeyProblem();
+  if (problem) return res.json({ ok: false, problem, stage: 'key' });
+  try {
+    const client = new Anthropic();
+    const model = process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001';
+    const msg = await client.messages.create({ model, max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
+    res.json({ ok: true, model: msg.model, strongModel: process.env.CLAUDE_MODEL || 'claude-opus-5' });
+  } catch (e: any) {
+    res.json({ ok: false, problem: describeAiError(e), stage: 'request', status: e?.status ?? null });
   }
 });
 
