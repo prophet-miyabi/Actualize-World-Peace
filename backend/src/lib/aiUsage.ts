@@ -40,6 +40,7 @@ export function anthropicKeyProblem(): string | null {
 export function aiErrorCategory(e: any): string {
   const msg = String(e?.error?.error?.message ?? e?.error?.message ?? e?.message ?? '');
   if (anthropicKeyProblem()) return 'key_format';
+  if (/API usage limits|spend limit|usage limit/i.test(msg)) return 'spend_limit_reached';
   if (/must be a valid workspace ID/i.test(msg)) return 'workspace_id_invalid';
   if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'workspace_required';
   if (e?.status === 401) return 'invalid_key';
@@ -53,6 +54,7 @@ export function aiErrorCategory(e: any): string {
 export function describeAiError(e: any): string {
   const msg = String(e?.message ?? e ?? '');
   if (/ByteString/.test(msg)) return anthropicKeyProblem() ?? 'APIキーに使えない文字が含まれています';
+  if (/API usage limits|spend limit|usage limit/i.test(msg)) return 'Console で設定した月間の利用上限（Spend limit）に達しています。直し方: platform.claude.com → 組織の設定 → 制限（Limits）→ 月間上限を引き上げる。ワークスペース側にも上限がある場合は、組織の設定 → ワークスペース → 該当ワークスペース → 利用上限 も引き上げる。' + (msg.match(/regain access on ([^.]+)/)?.[0] ? '（Anthropic の案内: ' + msg.match(/regain access on ([^.]+)/)![0] + '）' : '');
   if (/must be a valid workspace ID/i.test(msg)) return 'Render の ANTHROPIC_WORKSPACE_ID が正しいワークスペースIDではありません（Console → 組織の設定 → ワークスペース の ID。wrkspc_ で始まる文字列をそのまま貼る）';
   if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'APIキーがワークスペースに紐づいていません。直し方は2つ: (A) Console の左上でワークスペース（Default など）を選んでから「キーを作成」し、そのキーを Render の ANTHROPIC_API_KEY に入れる / (B) Render に ANTHROPIC_WORKSPACE_ID を追加する（Console → 組織の設定 → ワークスペース → 使うワークスペースの ID。wrkspc_ で始まる）';
   if (e?.status === 401) return 'APIキーが無効です（Render の ANTHROPIC_API_KEY を確認してください）';
