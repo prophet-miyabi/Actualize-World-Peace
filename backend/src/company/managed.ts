@@ -44,7 +44,11 @@ export async function ensureEnvironment(client = createAnthropic()): Promise<str
 }
 
 // Platform に保存するエージェント定義。タスクごとに変わる情報（目標・戦略・メモリの一覧・日付）は最初のメッセージで渡す
-export function agentSpec(agent: AgentDef, model: string) {
+// COO はコーディネータ: 専門職をロスター（チーム）として持ち、1セッションの中で並列に委任できる（Managed Agents のマルチエージェント）
+export const COORDINATOR_KEY = 'coo';
+export const ROSTER_KEYS = ['research', 'product', 'engineering', 'qa', 'data', 'marketing', 'content', 'growth', 'cs', 'finance', 'partnership', 'security', 'legal'];
+
+export function agentSpec(agent: AgentDef, model: string, roster: { key: string; id: string }[] = []) {
   const custom = [...toolsForAgent(agent).map((t) => ({ type: 'custom' as const, name: t.name, description: `${t.description}（リスク: ${t.risk}）`, input_schema: t.input_schema as any })),
     { type: 'custom' as const, name: FINISH_TOOL.name, description: FINISH_TOOL.description!, input_schema: FINISH_TOOL.input_schema as any }];
   const tools: any[] = [...custom];
@@ -56,9 +60,12 @@ export function agentSpec(agent: AgentDef, model: string) {
     `\n【あなたの役割: ${agent.name}（${agent.department}）】\n${agent.mission}`,
     agent.outputRules ? `\n【出力の決まり】\n${agent.outputRules}` : '',
     `\n【権限】自動で実行できるのはリスク ${agent.maxAutoRisk} まで。それを超える道具は「人間の承認待ち」になり、結果はあとで届く。承認待ちになったら finish_task の blocked に書いて終える。`,
-    '\n【進め方】会社の目標・戦略・読めるメモリの一覧・今日の日付は、最初のメッセージに書かれている。道具は必要な分だけ使い、終わったら必ず finish_task を呼んで報告する。finish_task を呼ばずに終えてはいけない。'
+    '\n【進め方】会社の目標・戦略・読めるメモリの一覧・今日の日付は、最初のメッセージに書かれている。道具は必要な分だけ使い、終わったら必ず finish_task を呼んで報告する。finish_task を呼ばずに終えてはいけない。',
+    roster.length ? `\n【チーム】あなたはコーディネータ。list_agents に出る専門職（${roster.map((r) => AGENT_BY_KEY.get(r.key)?.name ?? r.key).join('・')}）へ、独立した調べもの・分析・下書きを send_to_agent で任せられる（複数を並列に可）。任せるときは1件ずつ「目的・期待する成果物・制約・報告の形」を書く。専門職はあなたの会話を見ていない。長く続く仕事や実装は create_task で正式なタスクにする。判断と統合は自分で行い、専門職の報告は事実と推測を分けて扱う。` : ''
   ].join('\n');
-  return { name: `AWP ${agent.name}`, description: agent.mission.slice(0, 2000), model, system, tools, metadata: { awp_agent: agent.key } };
+  const spec: any = { name: `AWP ${agent.name}`, description: agent.mission.slice(0, 2000), model, system, tools, metadata: { awp_agent: agent.key } };
+  if (roster.length) spec.multiagent = { type: 'coordinator', agents: roster.map((r) => r.id) };
+  return spec;
 }
 
 function specHash(spec: unknown) {
@@ -72,7 +79,9 @@ export async function syncManagedAgents(keys?: string[]): Promise<{ environmentI
   const client = createAnthropic();
   const environmentId = await ensureEnvironment(client);
   const results: SyncResult[] = [];
-  for (const agent of AGENTS.filter((a) => !keys || keys.includes(a.key))) {
+  // コーディネータ（COO）はロスターのIDが必要なので、専門職を先に同期する
+  const order = AGENTS.filter((a) => !keys || keys.includes(a.key)).sort((a, b) => (a.key === COORDINATOR_KEY ? 1 : 0) - (b.key === COORDINATOR_KEY ? 1 : 0));
+  for (const agent of order) {
     try {
       results.push(await ensureManagedAgent(agent, client));
     } catch (e: any) {
@@ -86,7 +95,17 @@ export async function syncManagedAgents(keys?: string[]): Promise<{ environmentI
 export async function ensureManagedAgent(agent: AgentDef, client = createAnthropic()): Promise<SyncResult> {
   const row = await prisma.companyAgentConfig.findUnique({ where: { key: agent.key } });
   const model = row?.model || agent.model;
-  const spec = agentSpec(agent, model);
+  let roster: { key: string; id: string }[] = [];
+  if (agent.key === COORDINATOR_KEY) {
+    // 専門職が未同期なら先に同期して、そのIDをロスターにする
+    for (const k of ROSTER_KEYS) {
+      const def = AGENT_BY_KEY.get(k);
+      if (!def) continue;
+      const r = await ensureManagedAgent(def, client);
+      if (r.id) roster.push({ key: k, id: r.id });
+    }
+  }
+  const spec = agentSpec(agent, model, roster);
   const hash = specHash(spec);
   if (row?.managedAgentId && row.managedHash === hash && row.managedVersion) {
     return { key: agent.key, status: 'unchanged', id: row.managedAgentId, version: row.managedVersion };
@@ -118,9 +137,9 @@ export type ManagedRunOpts = {
   message: string;                       // 最初のメッセージ（タスクと状況）
   budgetUsd: number;                     // このセッションの上限（Platform が強制）
   metadata?: Record<string, string>;
-  onToolUse: (name: string, input: any) => Promise<{ content: string; isError?: boolean; result?: TaskResult; pendingApproval?: boolean }>;
+  onToolUse: (name: string, input: any, agentKey?: string) => Promise<{ content: string; isError?: boolean; result?: TaskResult; pendingApproval?: boolean }>;
   onSessionCreated?: (sessionId: string) => Promise<void> | void;
-  onActivity?: (phase: 'thinking' | 'tool' | 'reporting', tool?: string) => void;
+  onActivity?: (phase: 'thinking' | 'tool' | 'reporting' | 'delegating', tool?: string) => void;
   timeoutMs?: number;
 };
 
@@ -153,6 +172,8 @@ export async function runManagedSession(o: ManagedRunOpts): Promise<ManagedRunOu
 
   const out: ManagedRunOutcome = { sessionId: session.id, result: null, pendingApproval: false, toolCalls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, stopReason: 'unknown', lastText: '', errors: [] };
   const seen = new Set<string>();
+  const threads = new Map<string, string>(); // スレッドID → 担当エージェントのキー（マルチエージェント）
+  const keyByName = new Map(AGENTS.map((a) => [`AWP ${a.name}`, a.key]));
   const deadline = Date.now() + (o.timeoutMs ?? 30 * 60_000);
   let nudged = false;
   let done = false;
@@ -166,10 +187,21 @@ export async function runManagedSession(o: ManagedRunOpts): Promise<ManagedRunOu
       seen.add(ev.id);
     }
     switch (ev.type) {
+      case 'session.thread_created': {
+        if (ev.session_thread_id && ev.agent_name) threads.set(ev.session_thread_id, keyByName.get(ev.agent_name) ?? ev.agent_name);
+        return false;
+      }
+      case 'agent.thread_message_sent': {
+        const to = ev.to_session_thread_id ? threads.get(ev.to_session_thread_id) : undefined;
+        o.onActivity?.('delegating', to ?? ev.to_agent_name ?? 'subagent');
+        return false;
+      }
       case 'agent.custom_tool_use': {
         out.toolCalls++;
+        const fromKey = ev.session_thread_id ? threads.get(ev.session_thread_id) : undefined;
         o.onActivity?.(ev.name === 'finish_task' ? 'reporting' : 'tool', ev.name);
-        const r = await o.onToolUse(ev.name, ev.input ?? {});
+        // 専門職のスレッドからの呼び出しは、その専門職の権限（道具の許可・リスク上限）で実行する
+        const r = await o.onToolUse(ev.name, ev.input ?? {}, fromKey && fromKey !== o.agent.key ? fromKey : undefined);
         if (r.result) out.result = r.result;
         if (r.pendingApproval) out.pendingApproval = true;
         await send([{ type: 'user.custom_tool_result', custom_tool_use_id: ev.id, content: [{ type: 'text', text: r.content }], is_error: !!r.isError }]);

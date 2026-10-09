@@ -192,8 +192,12 @@ export async function runTask(taskId: string): Promise<void> {
             await prisma.agentRun.update({ where: { id: run.id }, data: { engine: 'managed', sessionId: id } });
           },
           onActivity: (phase, tool) => updateActivity(taskId, phase, { tool }),
-          onToolUse: async (name, input) => {
-            const h = await handleToolUse(name, input, execOpts);
+          onToolUse: async (name, input, fromKey) => {
+            // マルチエージェント: 専門職のスレッドからの道具呼び出しは、その専門職の権限で実行する（finish_task はコーディネータのもの）
+            const sub = fromKey ? AGENT_BY_KEY.get(fromKey) : undefined;
+            const opts: ToolExecOpts = sub ? { ...execOpts, agent: sub, approvalLabel: `${task.title}（${sub.name} 経由）` } : execOpts;
+            if (sub && name === 'finish_task') return { content: JSON.stringify({ note: '専門職は finish_task を使わない。結果はコーディネータへのメッセージで返すこと' }), isError: true };
+            const h = await handleToolUse(name, input, opts);
             if (h.pendingApproval) updateActivity(taskId, 'waiting_approval');
             return { content: h.content, isError: h.isError, result: h.result, pendingApproval: h.pendingApproval };
           }

@@ -4,9 +4,9 @@ import { getCompanySettings } from './settings';
 // エージェントが「いま何をしているか」を、キャラクターの口調で管理画面と Discord に見せる。
 // 実行基盤（自前ループ / Claude Platform / 会話）のどれでも同じ呼び方で使う
 
-export type Phase = 'starting' | 'thinking' | 'tool' | 'reporting' | 'waiting_approval' | 'done' | 'failed';
+export type Phase = 'starting' | 'thinking' | 'tool' | 'delegating' | 'reporting' | 'waiting_approval' | 'done' | 'failed';
 
-type Voice = { emoji: string; starting: string; thinking: string; tool: string; reporting: string; done: string; blocked: string; failed: string };
+type Voice = { emoji: string; starting: string; thinking: string; tool: string; delegating: string; reporting: string; done: string; blocked: string; failed: string };
 
 // {task} = タスク名、{tool} = 道具の日本語名
 const DEFAULT_VOICE: Voice = {
@@ -14,6 +14,7 @@ const DEFAULT_VOICE: Voice = {
   starting: '「{task}」に取りかかります',
   thinking: '考え中…',
   tool: '{tool}を実行中',
+  delegating: '{tool}に任せています',
   reporting: '報告をまとめています',
   done: '「{task}」を終えました',
   blocked: '「{task}」は承認待ちで止めています',
@@ -22,7 +23,7 @@ const DEFAULT_VOICE: Voice = {
 
 const VOICES: Record<string, Partial<Voice>> = {
   ceo: { emoji: '🎯', starting: '「{task}」、経営の目で見ていきます', thinking: '方針を考えています…', tool: '{tool}で現状を確かめています', reporting: '判断をまとめています', done: '「{task}」の判断を出しました' },
-  coo: { emoji: '🗂️', starting: '「{task}」を段取りします', thinking: '誰に何を任せるか整理中…', tool: '{tool}を確認中', reporting: '委任の内容をまとめています', done: '「{task}」の段取りを終えました' },
+  coo: { emoji: '🗂️', starting: '「{task}」を段取りします', thinking: '誰に何を任せるか整理中…', tool: '{tool}を確認中', delegating: '{tool}に任せて、並行して進めています', reporting: '委任の内容をまとめています', done: '「{task}」の段取りを終えました' },
   research: { emoji: '🔭', starting: '「{task}」を調べ始めます', thinking: '情報を突き合わせています…', tool: '{tool}で調査中', reporting: '調査結果を整理しています', done: '「{task}」の調査を終えました' },
   product: { emoji: '🧩', starting: '「{task}」の企画に入ります', thinking: '利用者の導線を考えています…', tool: '{tool}を見ています', reporting: '企画をまとめています', done: '「{task}」の企画を出しました' },
   engineering: { emoji: '🛠️', starting: '「{task}」、実装の観点で見ます', thinking: '作り方を考えています…', tool: '{tool}を確認中', reporting: '実装依頼をまとめています', done: '「{task}」の実装依頼を出しました' },
@@ -54,8 +55,8 @@ export function voiceFor(agentKey: string) {
 export function phraseFor(agentKey: string, phase: Phase, ctx: { task?: string; tool?: string; blocked?: boolean }) {
   const v = voiceFor(agentKey);
   const task = (ctx.task ?? '').slice(0, 40);
-  const tool = ctx.tool ? (TOOL_JA[ctx.tool] ?? ctx.tool) : '';
-  const t = phase === 'starting' ? v.starting : phase === 'thinking' ? v.thinking : phase === 'tool' ? v.tool : phase === 'reporting' ? v.reporting
+  const tool = ctx.tool ? (TOOL_JA[ctx.tool] ?? AGENT_BY_KEY.get(ctx.tool)?.name ?? ctx.tool) : '';
+  const t = phase === 'starting' ? v.starting : phase === 'thinking' ? v.thinking : phase === 'tool' ? v.tool : phase === 'delegating' ? v.delegating : phase === 'reporting' ? v.reporting
     : phase === 'waiting_approval' ? v.blocked : phase === 'done' ? (ctx.blocked ? v.blocked : v.done) : v.failed;
   return t.replace('{task}', task).replace('{tool}', tool);
 }
@@ -125,7 +126,7 @@ function scheduleDiscordEdit(a: Activity & { discordMsgId?: string | null; disco
   a.discordTimer = setTimeout(() => {
     a.discordTimer = null;
     a.lastEditAt = Date.now();
-    const icon = a.phase === 'tool' ? '🔧' : a.phase === 'reporting' ? '📝' : a.phase === 'waiting_approval' ? '🧑‍⚖️' : '💭';
+    const icon = a.phase === 'tool' ? '🔧' : a.phase === 'delegating' ? '🤝' : a.phase === 'reporting' ? '📝' : a.phase === 'waiting_approval' ? '🧑‍⚖️' : '💭';
     void editDiscord(a, `${icon} ${a.text}${a.toolCalls ? `（道具${a.toolCalls}回）` : ''}\nタスク: ${a.task.slice(0, 120)}`).catch(() => {});
   }, wait);
 }
