@@ -1,3 +1,4 @@
+import { sweepActivity } from './activity';
 import prisma from '../prisma';
 import { Prisma } from '@prisma/client';
 import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
@@ -123,6 +124,7 @@ export async function companyTick(now = new Date()) {
 
     // 再起動などで途中のまま残った実行を戻す（20分を超えて running のもの）
     await recoverStaleRuns(20 * 60_000);
+    sweepActivity();
     await applyAuditVerdicts();
     await queueAudits();
 

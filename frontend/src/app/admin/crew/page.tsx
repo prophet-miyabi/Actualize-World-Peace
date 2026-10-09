@@ -18,6 +18,8 @@ type Status = {
 };
 
 const STATUS_LABEL: Record<string, string> = { todo: '未着手', doing: '進行中', waiting: '返事待ち', blocked: '詰まっている', review: 'レビュー', done: '完了', skipped: 'スキップ' };
+// エージェント担当のタスクは「誰が何をしているか」が分かる言い方にする
+const labelFor = (t: { status: string; owner: string; reviewState?: string | null }) => t.owner === 'agent' && t.status === 'doing' ? '🛠️ ソラが依頼 → Claude Code が実装中' : t.owner === 'agent' && t.status === 'review' ? (t.reviewState === 'passed' ? '✅ ケイ合格・あなたのマージ待ち' : t.reviewState === 'attention' ? '⚠ ケイ: 要確認' : '🔍 ケイがレビュー中') : (STATUS_LABEL[t.status] ?? t.status);
 const STATUS_CLS: Record<string, string> = {
   todo: 'bg-gray-100 text-gray-600', doing: 'bg-sky-100 text-sky-700', waiting: 'bg-amber-100 text-amber-700', blocked: 'bg-red-100 text-red-700',
   review: 'bg-violet-100 text-violet-700', done: 'bg-green-100 text-green-700', skipped: 'bg-gray-100 text-gray-400'
@@ -144,7 +146,7 @@ export default function CrewPage() {
                         <span className="text-sm font-bold">{t.title}</span>
                         <span className="block text-[11px] text-gray-500">{t.owner === 'user' ? 'あなた' : 'エージェント'}・{t.agents.map((a) => PERSONA[a] ?? a).join(' ')}・{t.estimateMin}分{t.dependsOn.length ? `・前提 ${t.dependsOn.join(',')}` : ''}</span>
                       </span>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{STATUS_LABEL[t.status] ?? t.status}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{labelFor(t)}</span>
                     </button>
                     {open === t.key && (
                       <div className="mt-3 space-y-2 text-sm">

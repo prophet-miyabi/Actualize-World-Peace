@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey, COMPANY_MODELS } from '../company/registry';
 import { consoleSessionUrl, managedEnabled, syncManagedAgents } from '../company/managed';
+import { listActivity } from '../company/activity';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { getCompanySettings, setCompanySettings } from '../company/settings';
@@ -69,6 +70,7 @@ router.get('/status', async (_req, res) => {
     monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },
     health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
     models: COMPANY_MODELS,
+    activity: listActivity(),
     engine: { kind: managedEnabled() ? 'managed' : 'messages', environmentId: managedEnv?.value ?? null, workspace: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim() || 'default' }
   });
 });

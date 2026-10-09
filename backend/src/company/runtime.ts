@@ -52,7 +52,8 @@ export function isUnknownModelError(e: any) {
 
 import { FINISH_TOOL, parseFinish, type TaskResult } from './finish';
 import { handleToolUse, type ToolExecOpts } from './toolExec';
-import { ensureManagedAgent, managedEnabled, runManagedSession } from './managed';
+import { consoleSessionUrl, ensureManagedAgent, managedEnabled, runManagedSession } from './managed';
+import { endActivity, startActivity, updateActivity } from './activity';
 export type { TaskResult };
 
 export function priceFor(model: string) {
@@ -137,6 +138,7 @@ export async function runTask(taskId: string): Promise<void> {
   await prisma.companyTask.update({ where: { id: taskId }, data: { status: 'running', startedAt: new Date(), attempts: { increment: 1 } } });
   const run = await prisma.agentRun.create({ data: { agent: agent.key, taskId, model: cfg.model, status: 'ok' } });
   await emitEvent('task.started', agent.key, { title: task.title }, taskId);
+  await startActivity({ taskId, agent: agent.key, task: task.title });
 
   const tools = toolsForAgent(agent);
   const toolDefs: Anthropic.Tool[] = [...tools.map((t) => ({ name: t.name, description: `${t.description}（リスク: ${t.risk}）`, input_schema: t.input_schema })), FINISH_TOOL];
@@ -189,8 +191,10 @@ export async function runTask(taskId: string): Promise<void> {
             sessionId = id;
             await prisma.agentRun.update({ where: { id: run.id }, data: { engine: 'managed', sessionId: id } });
           },
+          onActivity: (phase, tool) => updateActivity(taskId, phase, { tool }),
           onToolUse: async (name, input) => {
             const h = await handleToolUse(name, input, execOpts);
+            if (h.pendingApproval) updateActivity(taskId, 'waiting_approval');
             return { content: h.content, isError: h.isError, result: h.result, pendingApproval: h.pendingApproval };
           }
         });
@@ -214,6 +218,7 @@ export async function runTask(taskId: string): Promise<void> {
       const allTools = cachedTools([...toolDefs, ...serverTools]);
       for (let round = 0; round < MAX_ROUNDS; round++) {
         let msg: Anthropic.Message;
+        updateActivity(taskId, 'thinking');
         try {
           msg = await client.messages.create({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
         } catch (e: any) {
@@ -232,9 +237,10 @@ export async function runTask(taskId: string): Promise<void> {
         const results: Anthropic.ToolResultBlockParam[] = [];
         for (const u of uses) {
           toolCalls++;
+          updateActivity(taskId, u.name === 'finish_task' ? 'reporting' : 'tool', { tool: u.name });
           const h = await handleToolUse(u.name, u.input, execOpts);
           if (h.result) result = h.result;
-          if (h.pendingApproval) pendingApproval = true;
+          if (h.pendingApproval) { pendingApproval = true; updateActivity(taskId, 'waiting_approval'); }
           results.push({ type: 'tool_result', tool_use_id: u.id, content: h.content });
         }
         messages.push({ role: 'user', content: results });
@@ -268,7 +274,9 @@ export async function runTask(taskId: string): Promise<void> {
       data: { status: pendingApproval ? 'awaiting_approval' : needsVerification && agent.key !== 'auditor' ? 'verifying' : 'done', result: final as any, costUsd: { increment: costUsd }, finishedAt: new Date() }
     });
     await emitEvent(pendingApproval ? 'task.awaiting_approval' : 'task.finished', agent.key, { title: task.title, costUsd, toolCalls, engine, sessionId, summary: final.summary.slice(0, 300) }, taskId);
+    await endActivity(taskId, { status: pendingApproval ? 'waiting_approval' : 'done', summary: final.summary, costUsd, toolCalls, sessionUrl: sessionId ? consoleSessionUrl(sessionId) : null });
   } catch (e: any) {
+    await endActivity(taskId, { status: 'failed', summary: describeAiError(e), costUsd, toolCalls, sessionUrl: sessionId ? consoleSessionUrl(sessionId) : null });
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, engine, sessionId, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
     const retry = task.attempts < 2;
     await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });

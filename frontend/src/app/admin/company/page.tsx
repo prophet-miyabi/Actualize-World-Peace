@@ -15,7 +15,7 @@ type Agent = {
 type Goal = { id: string; title: string; description: string; kpis: Kpi[]; status: string };
 type Task = { id: string; title: string; assignee: string; createdBy: string; status: string; risk: string; result: any; verification: any; error: string | null; parentId: string | null; costUsd: number; runAt: string; createdAt: string; finishedAt: string | null };
 type Action = { id: string; taskId: string; agent: string; tool: string; input: any; reason: string; risk: string; status: string; result?: any; decidedAt?: string | null; createdAt: string; task: { title: string } };
-type Settings = { ceoHour: number; monthlyCapUsd: number; concurrency: number; discordApprovals: boolean };
+type Settings = { ceoHour: number; monthlyCapUsd: number; concurrency: number; discordApprovals: boolean; discordActivity: boolean };
 type Status = {
   configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; tasks: Task[]; actions: Action[]; decided: Action[];
   events: { id: string; type: string; actor: string; payload: any; createdAt: string }[];
@@ -26,6 +26,7 @@ type Status = {
   health: { lastTickAt: string | null; queued: number; running: number; awaitingApproval: number; verifying: number; failed24h: number; lastCeoDay: string | null };
   models: { strong: string; balanced: string; fast: string };
   engine: { kind: 'managed' | 'messages'; environmentId: string | null; workspace: string };
+  activity: { taskId: string; agent: string; agentName: string; emoji: string; task: string; phase: string; tool?: string; text: string; since: string; updatedAt: string; toolCalls: number }[];
 };
 
 const STATUS: Record<string, string> = { queued: '待機', running: '実行中', awaiting_approval: '承認待ち', verifying: '検証中', done: '完了', failed: '失敗', rejected: '却下', canceled: '取り消し' };
@@ -59,7 +60,9 @@ export default function CompanyPage() {
     setSettings((cur) => cur ?? d.settings);
   }, []);
   useEffect(() => { load().catch((e) => setError(e?.response?.status === 403 ? '管理者のみ利用できます。' : '読み込みに失敗しました。')); }, [load]);
-  useEffect(() => { const t = setInterval(() => load().catch(() => {}), 30_000); return () => clearInterval(t); }, [load]);
+  // 動いているエージェントがいる間は6秒ごと、いなければ30秒ごとに更新する
+  const active = (s?.activity?.length ?? 0) > 0;
+  useEffect(() => { const t = setInterval(() => load().catch(() => {}), active ? 6_000 : 30_000); return () => clearInterval(t); }, [load, active]);
   useEffect(() => { if (tab === 'memory' && !memory) api.get('/company/memory').then((r) => setMemory(r.data.memory)).catch(() => {}); }, [tab, memory]);
   useEffect(() => { if (open) api.get(`/company/tasks/${open}`).then((r) => setDetail(r.data)).catch(() => setDetail(null)); else setDetail(null); }, [open]);
 
@@ -112,6 +115,19 @@ export default function CompanyPage() {
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {msg && <p className="text-sm text-green-700">{msg}</p>}
+      {s.activity.length > 0 && (
+        <section className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-sm space-y-1">
+          <p className="text-xs font-bold text-violet-800">いま動いているエージェント</p>
+          {s.activity.map((a) => (
+            <p key={a.taskId} className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+              <span className="font-bold">{a.emoji} {a.agentName}</span>
+              <span className="text-violet-900">{a.text}</span>
+              <span className="text-[11px] text-gray-500">{a.phase === 'waiting_approval' ? '承認待ち' : `${Math.max(0, Math.round((Date.now() - new Date(a.since).getTime()) / 1000))}秒`}{a.toolCalls ? `・道具${a.toolCalls}回` : ''}</span>
+            </p>
+          ))}
+        </section>
+      )}
 
       {tab === 'overview' && (
         <div className="space-y-4">
@@ -183,6 +199,7 @@ export default function CompanyPage() {
                 <label>月の費用上限（ドル）<input type="number" min={0} value={settings.monthlyCapUsd} onChange={(e) => setSettings({ ...settings, monthlyCapUsd: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
                 <label>同時実行数<input type="number" min={1} max={6} value={settings.concurrency} onChange={(e) => setSettings({ ...settings, concurrency: Number(e.target.value) })} className="mt-1 w-full border rounded-lg px-3 py-2" /></label>
                 <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={settings.discordApprovals} onChange={(e) => setSettings({ ...settings, discordApprovals: e.target.checked })} />承認待ちをDiscordに通知</label>
+                <label className="flex items-end gap-2 pb-2"><input type="checkbox" checked={settings.discordActivity !== false} onChange={(e) => setSettings({ ...settings, discordActivity: e.target.checked })} />進行状況（考え中・実行中）をDiscordに出す</label>
               </div>
             )}
             <div className="flex flex-wrap gap-2">
@@ -314,6 +331,7 @@ export default function CompanyPage() {
                   <p className="font-black">{a.name} <span className="text-[11px] font-bold text-gray-500">{DEPT[a.department] ?? a.department}{a.reportsTo ? `・報告先 ${agentName(a.reportsTo)}` : '・独立'}</span></p>
                   <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.mission.split('\n')[0]}</p>
                   <p className="text-[11px] text-gray-500 mt-2">道具: {a.tools.join(', ')}{a.webSearch ? ', web_search' : ''}　｜　自動実行の上限: {a.maxAutoRisk}</p>
+                  {s.activity.filter((x) => x.agent === a.key).map((x) => <p key={x.taskId} className="text-xs text-violet-800 font-bold"><span className="inline-block w-2 h-2 rounded-full bg-violet-500 animate-pulse mr-1" />{x.text}</p>)}
                   <p className="text-[11px] text-gray-500">30日: 完了 {a.stats30d.done} / 失敗 {a.stats30d.failed} / 進行中 {a.stats30d.other}・最終実行 {when(a.lastRunAt)}{a.managed ? `・Platform 版 v${a.managed.version ?? '?'}（${when(a.managed.syncedAt)} 同期）` : '・Platform 未同期（最初の実行時に自動同期）'}</p>
                   {a.selftest && (
                     <p className={`text-[11px] mt-1 rounded-lg px-2 py-1 ${a.selftest.status === 'done' ? 'bg-green-50 text-green-800' : a.selftest.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600'}`}>

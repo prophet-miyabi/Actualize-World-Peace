@@ -6,13 +6,15 @@ export type CompanySettings = {
   monthlyCapUsd: number;  // 会社のエージェント全体の月のAI費用の上限
   concurrency: number;    // 同時に実行するタスク数
   discordApprovals: boolean; // 承認待ちを Discord #🏢-AI企業 に通知する
+  discordActivity: boolean;  // エージェントの進行状況（考え中・実行中）を Discord #🏢-AI企業 に出す
 };
 
 const DEFAULTS: CompanySettings = {
   ceoHour: Number(process.env.COMPANY_CEO_HOUR || 8),
   monthlyCapUsd: Number(process.env.COMPANY_MONTHLY_CAP_USD || 150),
   concurrency: Number(process.env.COMPANY_CONCURRENCY || 2),
-  discordApprovals: true
+  discordApprovals: true,
+  discordActivity: true
 };
 
 let cache: { value: CompanySettings; until: number } | null = null;
@@ -28,7 +30,8 @@ export async function getCompanySettings(): Promise<CompanySettings> {
         ceoHour: Number.isInteger(v.ceoHour) && v.ceoHour >= 0 && v.ceoHour <= 23 ? v.ceoHour : DEFAULTS.ceoHour,
         monthlyCapUsd: Number(v.monthlyCapUsd) >= 0 ? Number(v.monthlyCapUsd) : DEFAULTS.monthlyCapUsd,
         concurrency: Number.isInteger(v.concurrency) && v.concurrency >= 1 && v.concurrency <= 6 ? v.concurrency : DEFAULTS.concurrency,
-        discordApprovals: v.discordApprovals !== false
+        discordApprovals: v.discordApprovals !== false,
+        discordActivity: v.discordActivity !== false
       };
     } catch { /* 既定値 */ }
   }
@@ -42,7 +45,8 @@ export async function setCompanySettings(next: Partial<CompanySettings>, updated
     ceoHour: next.ceoHour !== undefined ? Math.min(23, Math.max(0, Math.floor(Number(next.ceoHour)))) : cur.ceoHour,
     monthlyCapUsd: next.monthlyCapUsd !== undefined ? Math.max(0, Number(next.monthlyCapUsd) || 0) : cur.monthlyCapUsd,
     concurrency: next.concurrency !== undefined ? Math.min(6, Math.max(1, Math.floor(Number(next.concurrency)) || 1)) : cur.concurrency,
-    discordApprovals: next.discordApprovals !== undefined ? !!next.discordApprovals : cur.discordApprovals
+    discordApprovals: next.discordApprovals !== undefined ? !!next.discordApprovals : cur.discordApprovals,
+    discordActivity: next.discordActivity !== undefined ? !!next.discordActivity : cur.discordActivity
   };
   await prisma.systemSetting.upsert({ where: { key: 'company_settings' }, update: { value: JSON.stringify(merged), updatedBy }, create: { key: 'company_settings', value: JSON.stringify(merged), updatedBy } });
   cache = null;

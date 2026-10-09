@@ -110,6 +110,36 @@ export async function say(persona: PersonaKey, ch: ChannelKey, content: string, 
   }
 }
 
+// 任意の表示名で発言し、メッセージIDを返す（あとで editAs で書き換えるため。AI企業のエージェントが使う）
+export async function sayAs(displayName: string, ch: ChannelKey, content: string, opts: { threadId?: string } = {}): Promise<string | null> {
+  if (!discordConfigured()) return null;
+  const hook = await webhookFor(ch);
+  if (!hook) return null;
+  const q = new URLSearchParams({ wait: 'true', ...(opts.threadId ? { thread_id: opts.threadId } : {}) });
+  const res = await fetch(`${API}/webhooks/${hook.id}/${hook.token}?${q}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: displayName.slice(0, 80), content: content.slice(0, 1990), allowed_mentions: { parse: [] } })
+  });
+  if (!res.ok) throw new Error(`Discord webhook → ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const j: any = await res.json().catch(() => null);
+  return j?.id ?? null;
+}
+
+// Webhook で送ったメッセージを書き換える（進行状況の更新に使う）
+export async function editAs(ch: ChannelKey, messageId: string, content: string, opts: { threadId?: string } = {}) {
+  if (!discordConfigured()) return;
+  const hook = await webhookFor(ch);
+  if (!hook) return;
+  const q = new URLSearchParams(opts.threadId ? { thread_id: opts.threadId } : {});
+  const res = await fetch(`${API}/webhooks/${hook.id}/${hook.token}/messages/${messageId}${q.toString() ? `?${q}` : ''}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: content.slice(0, 1990), allowed_mentions: { parse: [] } })
+  });
+  if (!res.ok) throw new Error(`Discord webhook edit → ${res.status}: ${(await res.text()).slice(0, 200)}`);
+}
+
 // ボタン付きのメッセージ（Botとして送る。ボタンの操作は Interactions Endpoint に届く）
 export async function postWithButtons(ch: ChannelKey, content: string, buttons: { id: string; label: string; style?: 1 | 2 | 3 | 4 }[]) {
   if (!discordConfigured()) return null;

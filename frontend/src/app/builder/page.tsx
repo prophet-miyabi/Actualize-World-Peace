@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import api from '@/lib/api';
+import Thinking from '@/components/Thinking';
 
 type Status = 'provided' | 'confirmed' | 'assumed' | 'default' | 'unconfirmed';
 type Fact = { key: string; value: string; status: Status };
@@ -155,7 +156,7 @@ export default function BuilderPage() {
                 </p>
               </div>
             ))}
-            {busy && <p className="text-xs text-gray-400 pl-2">考え中…</p>}
+            {busy && <Thinking className="pl-2" phases={['考え中', 'ページの構成を考えています', '文章を組み立てています', 'もう少しお待ちください']} />}
             {brief.copy && (
               <button onClick={() => setTab('check')} className="w-full rounded-2xl border-2 border-dashed border-violet-300 bg-violet-50 text-violet-700 text-sm font-bold py-3">
                 ここまでの内容を確認する →

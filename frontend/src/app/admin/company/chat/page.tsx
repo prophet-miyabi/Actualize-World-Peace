@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import Thinking from '@/components/Thinking';
 import AiHealthBanner from '@/components/admin/AiHealthBanner';
 
 type Action = { id: string; tool: string; reason: string; status?: string };
@@ -53,6 +54,7 @@ export default function CompanyChatPage() {
   const [actionStatus, setActionStatus] = useState<Record<string, string>>({});
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [showList, setShowList] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
@@ -111,7 +113,8 @@ export default function CompanyChatPage() {
           const line = ev.split('\n').find((l) => l.startsWith('data: '));
           if (!line) continue;
           const e = JSON.parse(line.slice(6));
-          if (e.type === 'text') update((t) => ({ ...t, content: t.content + e.text }));
+          if (e.type === 'text') { update((t) => ({ ...t, content: t.content + e.text })); setStatus(''); }
+          else if (e.type === 'status') setStatus(e.text);
           else if (e.type === 'tool') update((t) => ({ ...t, tools: [...(t.tools || []), e.name] }));
           else if (e.type === 'action') { update((t) => ({ ...t, actions: [...(t.actions || []), { id: e.id, tool: e.tool, reason: e.reason }] })); setActionStatus((s) => ({ ...s, [e.id]: 'pending' })); }
           else if (e.type === 'error') setError(e.message);
@@ -121,6 +124,7 @@ export default function CompanyChatPage() {
       setError(e?.message || 'エージェントの応答に失敗しました。');
     } finally {
       setBusy(false);
+      setStatus('');
       loadChats().catch(() => {});
     }
   };
@@ -193,7 +197,7 @@ export default function CompanyChatPage() {
                   {m.tools.map((name, j) => <span key={j} className="text-[10px] font-bold bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{TOOL_LABEL[name] || name}</span>)}
                 </div>
               )}
-              {m.content ? (m.role === 'assistant' ? <RichText text={m.content} /> : m.content) : (busy && i === msgs.length - 1 ? '考えて、動いています…' : '')}
+              {m.content ? (m.role === 'assistant' ? <RichText text={m.content} /> : m.content) : (busy && i === msgs.length - 1 ? <Thinking text={status} phases={['考えて、動いています', '道具で確かめています', 'まとめています']} /> : '')}
               {m.actions && m.actions.length > 0 && m.actions.map((a) => (
                 <div key={a.id} className="mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-gray-800">
                   <p className="text-[11px] font-bold text-amber-700">🧑‍⚖️ 承認が必要な操作: {TOOL_LABEL[a.tool] || a.tool}</p>

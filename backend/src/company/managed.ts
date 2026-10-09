@@ -120,6 +120,7 @@ export type ManagedRunOpts = {
   metadata?: Record<string, string>;
   onToolUse: (name: string, input: any) => Promise<{ content: string; isError?: boolean; result?: TaskResult; pendingApproval?: boolean }>;
   onSessionCreated?: (sessionId: string) => Promise<void> | void;
+  onActivity?: (phase: 'thinking' | 'tool' | 'reporting', tool?: string) => void;
   timeoutMs?: number;
 };
 
@@ -167,12 +168,19 @@ export async function runManagedSession(o: ManagedRunOpts): Promise<ManagedRunOu
     switch (ev.type) {
       case 'agent.custom_tool_use': {
         out.toolCalls++;
+        o.onActivity?.(ev.name === 'finish_task' ? 'reporting' : 'tool', ev.name);
         const r = await o.onToolUse(ev.name, ev.input ?? {});
         if (r.result) out.result = r.result;
         if (r.pendingApproval) out.pendingApproval = true;
         await send([{ type: 'user.custom_tool_result', custom_tool_use_id: ev.id, content: [{ type: 'text', text: r.content }], is_error: !!r.isError }]);
         return false;
       }
+      case 'span.model_request_start':
+        o.onActivity?.('thinking');
+        return false;
+      case 'agent.tool_use':
+        o.onActivity?.('tool', ev.name);
+        return false;
       case 'agent.message': {
         const txt = (ev.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
         if (txt) out.lastText = txt;

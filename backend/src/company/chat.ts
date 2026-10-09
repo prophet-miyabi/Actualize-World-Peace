@@ -5,12 +5,14 @@ import { AGENT_BY_KEY, COMPANY_RULES, STRONG_MODEL } from './registry';
 import { toolsForAgent } from './tools';
 import { agentConfig, buildAgentContext, cachedMessages, cachedSystem, cachedTools, inputTokensOf, isUnknownModelError, MAX_ROUNDS, monthlyCapUsd, spentThisMonthUsd, usageCostUsd } from './runtime';
 import { handleToolUse } from './toolExec';
+import { phraseFor } from './activity';
 import { createAnthropic } from '../lib/anthropic';
 
 // 運営者とエージェントの会話（管理画面のチャット）。
 // エージェントは人間のオーナーと直接やり取りしながら、通常のタスクと同じ権限・同じリスク判定で道具を使って実行する。
 // 高リスクの操作は承認待ち（CompanyAction）になり、画面に承認ボタンが出る。文字が届くたびに emit する（SSE）
 export type ChatEvent =
+  | { type: 'status'; phase: 'thinking' | 'tool' | 'reporting' | 'done'; text: string }
   | { type: 'text'; text: string }
   | { type: 'tool'; name: string }
   | { type: 'action'; id: string; tool: string; reason: string }
@@ -59,6 +61,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let msg: Anthropic.Message;
+      emit({ type: 'status', phase: 'thinking', text: phraseFor(agent.key, 'thinking', {}) });
       try {
         const stream = client.messages.stream({ model: cfg.model, max_tokens: 4096, system: sys, tools: allTools as any, messages: cachedMessages(messages) });
         stream.on('text', (delta) => emit({ type: 'text', text: delta }));
@@ -78,6 +81,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
       for (const u of uses) {
         toolCalls++;
         emit({ type: 'tool', name: u.name });
+        emit({ type: 'status', phase: 'tool', text: phraseFor(agent.key, 'tool', { tool: u.name }) });
         const h = await handleToolUse(u.name, u.input, {
           agent, taskId, goalId: null, approvalLabel: `会話: ${chat.title}`, viaChat: true,
           awaitingNote: 'この操作は人間の承認が必要です。画面に承認ボタンが表示されています。承認を待っていることを伝えてください',

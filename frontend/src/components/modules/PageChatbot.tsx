@@ -1,4 +1,5 @@
 'use client';
+import Thinking from '@/components/Thinking';
 import { useEffect, useRef, useState } from 'react';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
@@ -62,7 +63,7 @@ export default function PageChatbot({ slug, businessName, primary, onPrimary }: 
                 </p>
               </div>
             ))}
-            {busy && <p className="text-xs text-gray-400">考え中…</p>}
+            {busy && <Thinking phases={['考え中', 'ページの内容を見直しています', 'お返事をまとめています']} />}
             <div ref={bottom} />
           </div>
           <form onSubmit={send} className="flex gap-2 p-3 border-t" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
