@@ -1,5 +1,6 @@
 // .envは他のどのモジュールよりも先に読み込む（JWT_SECRET等をimport時に参照するため）
 import 'dotenv/config';
+import { createAnthropic } from './lib/anthropic';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -57,7 +58,23 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), stri
 app.use(express.json({ limit: '12mb' }));
 
 // 公開先（Render / Docker）が「起動しているか」を確認するためのエンドポイント
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || null }));
+
+// AIにつながっているかを外から確認するための公開エンドポイント（原因文は出さない。10分キャッシュで乱用を防ぐ）
+let aiProbe: { at: number; ok: boolean } | null = null;
+app.get('/api/health/ai', async (_req, res) => {
+  if (!aiProbe || Date.now() - aiProbe.at > 10 * 60_000) {
+    let ok = false;
+    if (!anthropicKeyProblem()) {
+      try {
+        await createAnthropic().messages.create({ model: process.env.COMPANY_MODEL_FAST || 'claude-haiku-4-5-20251001', max_tokens: 5, messages: [{ role: 'user', content: 'ping' }] });
+        ok = true;
+      } catch { ok = false; }
+    }
+    aiProbe = { at: Date.now(), ok };
+  }
+  res.status(aiProbe.ok ? 200 : 503).json({ ok: aiProbe.ok, checkedAt: new Date(aiProbe.at).toISOString() });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/lp', lpRoutes);
