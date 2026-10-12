@@ -3,7 +3,8 @@ import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
-import { metered } from '../lib/aiUsage';
+import { describeAiError, metered } from '../lib/aiUsage';
+import { captureError } from '../lib/errors';
 import { RESERVED_SLUGS } from './lp';
 import { publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
 import { FEATURES, getFeature } from '../features/catalog';
@@ -65,7 +66,11 @@ router.post('/sessions/:id/messages', metered('builder'), async (req: AuthReques
     }
   } catch (e: any) {
     console.error('builder turn failed', e?.message);
-    return res.status(502).json({ error: 'AIの応答に失敗しました。もう一度送ってみてね。' });
+    void captureError('builder_turn', e, { sessionId: s.id });
+    // 管理者には原因（キー・残高・上限など）をそのまま、利用者には状況だけを伝える
+    const detail = describeAiError(e);
+    const admin = await isAdminUser(req.user!.id);
+    return res.status(502).json({ error: admin ? `AIの応答に失敗しました: ${detail}` : 'AIがいま混み合っているか、一時的に使えません。少し待ってからもう一度送ってみてね。', code: 'AI_UNAVAILABLE' });
   }
   const updated = await prisma.builderSession.update({
     where: { id: s.id },

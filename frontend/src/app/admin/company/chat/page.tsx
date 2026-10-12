@@ -243,8 +243,8 @@ export default function CompanyChatPage() {
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
         {error && <p className="text-red-600 text-xs mb-2 max-w-3xl">{error}</p>}
         <div className="flex gap-2 max-w-3xl">
-          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={2} placeholder={`${agent?.name ?? 'エージェント'}に指示する（Ctrl+Enterで送信）`}
-            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(input); } }}
+          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={2} placeholder={`${agent?.name ?? 'エージェント'}に指示する（Enterで送信・Shift+Enterで改行）`}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(input); } }}
             className="flex-1 border rounded-2xl px-4 py-3 text-base resize-none" />
           <button disabled={busy || !input.trim()} className="rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold px-5 disabled:opacity-40">送信</button>
         </div>

@@ -168,7 +168,8 @@ export default function BuilderPage() {
             className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t px-4 py-3" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
             {error && <p className="text-red-600 text-xs mb-2 max-w-2xl mx-auto">{error}</p>}
             <div className="flex gap-2 max-w-2xl mx-auto">
-              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1} maxLength={1000} placeholder="メッセージを入力"
+              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1} maxLength={1000} placeholder="メッセージを入力（Enterで送信・Shift+Enterで改行）"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (!busy && input.trim()) (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit(); } }}
                 className="flex-1 border rounded-2xl px-4 py-3 text-base resize-none" />
               <button disabled={busy || !input.trim()} className="rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold px-5 disabled:opacity-40">送信</button>
             </div>
