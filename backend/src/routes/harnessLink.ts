@@ -78,7 +78,7 @@ router.put('/:kind', async (req: AuthRequest, res) => {
   const rawKey = String(req.body?.apiKey ?? '').trim();
   const apiKey = rawKey || (existing && existing.baseUrl === baseUrl ? open(existing.apiKeyEnc) : '');
   if (!apiKey || apiKey.length > 500) return res.status(400).json({ error: 'APIキーを入力してください' });
-  if (hitRateLimit(`harness-link:${req.user!.id}`, 30, 3600_000)) return res.status(429).json({ error: '時間をおいてお試しください' });
+  if (!(await isAdminUser(req.user!.id)) && hitRateLimit(`harness-link:${req.user!.id}`, 30, 3600_000)) return res.status(429).json({ error: '時間をおいてお試しください' });
 
   let accounts;
   try {

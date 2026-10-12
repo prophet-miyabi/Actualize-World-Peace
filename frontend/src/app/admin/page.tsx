@@ -13,6 +13,7 @@ type Overview = {
   emergency: { pause_agent_loop: boolean; pause_sns_posting: boolean; pause_crew?: boolean };
   config: { smsVerification: string; stripe: boolean; anthropic: boolean; imageAi: boolean; githubForAiDevelopment: boolean; customDomainBase: boolean };
   todos: { label: string; count: number; href: string }[];
+  readiness: { key: string; group: 'required' | 'recommended' | 'optional'; label: string; status: 'ok' | 'todo' | 'na'; detail: string; unlocks: string; where: string; href?: string }[];
 };
 
 const CONFIG_LABEL: Record<keyof Overview['config'], string> = {
@@ -94,21 +95,30 @@ export default function AdminDashboard() {
 
       <section className="mt-8 grid md:grid-cols-2 gap-4">
         <div className="bg-white border rounded-xl p-4">
-          <h2 className="font-bold mb-3">設定の状態</h2>
-          <ul className="space-y-2 text-sm">
-            {(Object.keys(CONFIG_LABEL) as (keyof Overview['config'])[]).map((k) => {
-              const v = o.config[k];
-              const ok = v === true || v === '有効';
-              return (
-                <li key={k} className="flex justify-between gap-3">
-                  <span>{CONFIG_LABEL[k]}</span>
-                  <span className={`text-xs font-bold rounded-full px-2 py-0.5 ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {typeof v === 'string' ? v : v ? '設定済み' : '未設定'}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <h2 className="font-bold mb-1">公開準備チェック</h2>
+          <p className="text-xs text-gray-500 mb-3">「準備中」と表示されている機能は、ここの未設定を埋めると使えるようになります。{(() => { const r = o.readiness.filter((x) => x.group === 'required'); return `必須 ${r.filter((x) => x.status === 'ok').length}/${r.length}`; })()}</p>
+          {(['required', 'recommended', 'optional'] as const).map((g) => (
+            <div key={g} className="mb-3">
+              <p className="text-[11px] font-bold text-gray-500 mb-1">{g === 'required' ? '必須（公開前に）' : g === 'recommended' ? '推奨' : '任意'}</p>
+              <ul className="space-y-2 text-sm">
+                {o.readiness.filter((x) => x.group === g).map((x) => (
+                  <li key={x.key} className="rounded-lg border p-2">
+                    <div className="flex justify-between gap-3">
+                      <span className="font-bold">{x.href ? <Link href={x.href} className="underline">{x.label}</Link> : x.label}</span>
+                      <span className={`shrink-0 text-xs font-bold rounded-full px-2 py-0.5 ${x.status === 'ok' ? 'bg-emerald-50 text-emerald-700' : x.status === 'na' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-700'}`}>{x.status === 'ok' ? '設定済み' : x.status === 'na' ? '不要' : '未設定'}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1">{x.detail}</p>
+                    {x.status !== 'ok' && x.status !== 'na' && (
+                      <>
+                        <p className="text-xs text-gray-500 mt-1">解放される機能: {x.unlocks}</p>
+                        <p className="text-xs text-violet-700 mt-0.5">設定場所: {x.where}</p>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <div className="rounded-xl p-4 text-white bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500">
           <h2 className="font-bold mb-1">AIオペレーターに聞く</h2>

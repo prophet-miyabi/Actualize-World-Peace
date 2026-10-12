@@ -3,6 +3,7 @@ import { anthropicKeyProblem } from './aiUsage';
 import { smsMode } from './sms';
 import { githubConfigured } from './github';
 import { getAllFlags } from './systemSettings';
+import { buildReadiness } from './readiness';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -47,8 +48,10 @@ export async function buildOverview() {
     { label: `AIのAPIキーの設定に問題: ${anthropicKeyProblem() ?? ''}`, count: anthropicKeyProblem() ? 1 : 0, href: '/admin/monitoring' }
   ].filter((t) => t.count > 0);
 
+  const readiness = await buildReadiness();
   return {
     generatedAt: new Date().toISOString(),
+    readiness,
     kpi: { users, newUsers7d, pages, newPages7d, ordersRequested, ordersInProgress, openErrors, pendingReviews, proposalsWaiting, affiliateClicks7d: clicks7d },
     emergency: flags,
     config,

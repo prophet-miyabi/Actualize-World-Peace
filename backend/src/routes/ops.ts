@@ -43,9 +43,7 @@ router.put('/emergency', authenticate, async (req: AuthRequest, res) => {
 router.post('/chat', authenticate, async (req: AuthRequest, res) => {
   if (!(await requireAdmin(req, res))) return;
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AIオペレーターは使えません。' });
-  if (hitRateLimit(`ops:chat:${req.user!.id}`, 40, 60 * 60 * 1000)) {
-    return res.status(429).json({ error: '1時間あたりの利用回数の上限に達しました。少し時間をおいてお試しください。' });
-  }
+  // 管理者専用の画面なので回数の上限は設けない（費用は会社のAI費用として記録される）
 
   const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
   const history: ChatTurn[] = raw
