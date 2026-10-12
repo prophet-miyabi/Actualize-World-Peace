@@ -105,7 +105,7 @@ export default function Wizard() {
             <div key={label} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-gradient-to-r from-fuchsia-500 to-violet-500' : 'bg-gray-200'}`} />
           ))}
         </div>
-        <p className="text-xs font-bold text-gray-500 mb-6">STEP {step + 1} / {STEPS.length}・{STEPS[step]}</p>
+        <p className="text-xs font-bold text-gray-500 mb-6">STEP {step + 1} / {STEPS.length}・{STEPS[step]}<span className="text-violet-700">{step + 1 < STEPS.length ? `・あと${STEPS.length - step - 1}ステップで公開` : '・これで公開できます'}</span></p>
 
         {step === 0 && (
           <div>

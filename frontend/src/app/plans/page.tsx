@@ -18,14 +18,26 @@ type Data = {
   payments: Payment[];
 };
 
-// 説明は実際の設定値から作る（倍率は管理画面で変えられるため、固定の文言にしない）
-function features(t: Tier, plans: Tier[]) {
+// プランは「何ができるようになるか」の束として見せる（AIの利用枠の金額・原価・分配率は出さない）。
+// 倍率は管理画面で変えられるので、AIの量の違いだけ実際の設定値から「約◯倍」で示す
+function pkg(t: Tier, plans: Tier[]) {
   const i = plans.findIndex((p) => p.key === t.key);
-  if (i === 0) return ['独自ドメインで公開（どのドメインでも）', 'LINEの自動応答・SNS連携などの有料機能'];
-  const prev = plans[i - 1];
-  const ratio = Math.round((t.aiYen / Math.max(1, prev.aiYen)) * 10) / 10;
-  return [`${prev.label}のすべて`, `AIの利用枠が${prev.label}の約${ratio}倍`];
+  const prev = i > 0 ? plans[i - 1] : null;
+  const ratio = prev ? Math.round((t.aiYen / Math.max(1, prev.aiYen)) * 10) / 10 : 1;
+  if (i === 0) return {
+    tagline: 'まず自分のドメインで公開したい人に',
+    items: ['自分のドメインで公開（どのドメインでも）', 'LINEの自動応答・SNS連携などの有料機能', 'AIを毎日の相棒に（ページ作り・文章・チャットボット）']
+  };
+  if (i === 1) return {
+    tagline: 'ページを毎週育てて、お客さまとのやり取りもAIに任せたい人に',
+    items: [`${prev!.label}のすべて`, `AIをたっぷり（${prev!.label}の約${ratio}倍）`, 'チャットボット・予約・商品を、AIと一緒に回せる余裕']
+  };
+  return {
+    tagline: '複数のページや本格的な発信を、AIと一緒に回したい人に',
+    items: [`${prev!.label}のすべて`, `AIを惜しみなく（${prev!.label}の約${ratio}倍）`, 'ページの作り直し・文章の書き直しを気にせず試せる']
+  };
 }
+const RECOMMENDED: Tier['key'] = 'standard';
 const STATUS: Record<string, string> = { pending: '振込待ち', confirmed: '支払い済み', canceled: '取り消し', expired: '期限切れ' };
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`;
 
@@ -48,7 +60,7 @@ export default function PlansPage() {
     setMsg('');
     try {
       await api.post('/plans/purchase', { plan: selected, months, method });
-      setMsg(method === 'cash' ? 'プランが有効になりました 🎉' : '申し込みました。下の振込先に、期限までにお振り込みください。');
+      setMsg(method === 'cash' ? 'プランが有効になりました 🎉 いい選択です。次は、自分のドメインでの公開か、AIチャットボットをオンにしてみましょう。' : '申し込みました。下の振込先に、期限までにお振り込みください。入金が確認でき次第、すぐ使えるようになります。');
       setSelected(null);
       await load();
     } catch (e: any) {
@@ -76,7 +88,7 @@ export default function PlansPage() {
         <Link href="/dashboard" className="text-sm text-violet-700 font-bold">← ホーム</Link>
         <div>
           <h1 className="text-2xl font-black">プラン</h1>
-          <p className="text-xs text-gray-500 mt-1">ページの作成・公開・SNS・ショップはずっと無料。もっとAIを使いたい人と、独自ドメインで公開したい人のための有料プランです。</p>
+          <p className="text-xs text-gray-500 mt-1">ページの作成・公開・SNS・ショップは<span className="font-bold">ずっと無料</span>。自分のドメインで公開したい人と、AIにもっと任せたい人のためのプランです。</p>
         </div>
 
         {d.isAdmin && (
@@ -85,31 +97,37 @@ export default function PlansPage() {
         <section className="rounded-3xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white p-5">
           <p className="text-xs opacity-90">いまのプラン</p>
           <p className="text-2xl font-black">{d.current.label}{d.current.until && d.current.plan !== 'free' ? <span className="text-sm font-bold">（{new Date(d.current.until).toLocaleDateString('ja-JP')}まで）</span> : ''}</p>
-          <p className="text-xs mt-3 opacity-90">今月のAIの利用</p>
+          <p className="text-xs mt-3 opacity-90">今月のAI</p>
           {d.quota.allowanceYen === null ? <p className="text-sm font-bold">管理者のため上限なし</p> : (
             <>
               <div className="mt-1 h-2 rounded-full bg-white/30 overflow-hidden"><div className="h-full bg-white" style={{ width: `${usedPct}%` }} /></div>
-              <p className="text-xs mt-1">約{yen(d.quota.usedYen)} / {yen(d.quota.allowanceYen)} {d.quota.exceeded && '（使い切りました）'}</p>
+              <p className="text-xs mt-1">{d.quota.exceeded ? '今月の分を使い切りました。来月また使えます（いますぐ使うなら、下のプランへ）' : usedPct >= 80 ? '残りわずか。来月まで少しゆっくりか、プランで余裕を' : usedPct >= 50 ? '半分ほど使いました' : 'まだたっぷり使えます'}</p>
             </>
           )}
         </section>
 
         <section className="space-y-3">
-          {d.plans.map((t) => (
-            <button key={t.key} onClick={() => setSelected(t.key)}
-              className={`w-full text-left bg-white rounded-2xl p-4 border-2 transition ${selected === t.key ? 'border-violet-500 shadow-md' : 'border-gray-100'}`}>
-              <div className="flex items-baseline justify-between">
-                <p className="font-black text-lg">{t.label}</p>
-                <p className="font-black text-xl">{yen(t.priceYen)}<span className="text-xs font-bold text-gray-500">/月</span></p>
-              </div>
-              <p className="text-xs text-violet-700 font-bold mt-1">AIの利用枠 約{yen(t.aiYen)}/月</p>
-              <ul className="text-xs text-gray-600 mt-2 space-y-0.5">{features(t, d.plans).map((f) => <li key={f}>・{f}</li>)}</ul>
-            </button>
-          ))}
+          {d.plans.map((t) => {
+            const p = pkg(t, d.plans);
+            const rec = t.key === RECOMMENDED;
+            const isCurrent = d.current.plan === t.key;
+            return (
+              <button key={t.key} onClick={() => setSelected(t.key)} aria-pressed={selected === t.key}
+                className={`relative w-full text-left bg-white rounded-2xl p-4 border-2 transition ${selected === t.key ? 'border-violet-500 shadow-md' : rec ? 'border-violet-200' : 'border-gray-100'}`}>
+                {rec && <span className="absolute -top-2.5 left-4 text-[11px] font-bold bg-violet-600 text-white rounded-full px-3 py-0.5">おすすめ</span>}
+                {isCurrent && <span className="absolute -top-2.5 right-4 text-[11px] font-bold bg-gray-900 text-white rounded-full px-3 py-0.5">いまのプラン</span>}
+                <div className="flex items-baseline justify-between">
+                  <p className="font-black text-lg">{t.label}</p>
+                  <p className="font-black text-xl">{yen(t.priceYen)}<span className="text-xs font-bold text-gray-500">/月</span></p>
+                </div>
+                <p className="text-xs text-violet-700 font-bold mt-1">{p.tagline}</p>
+                <ul className="text-xs text-gray-600 mt-2 space-y-0.5">{p.items.map((f) => <li key={f}>✓ {f}</li>)}</ul>
+              </button>
+            );
+          })}
           <p className="text-[11px] text-gray-500 leading-relaxed">
-            料金は Claude の Pro プラン（月額${d.basis.baseUsd}、1ドル={d.basis.usdJpy}円で換算）を基準にしています。
-            料金の<span className="font-bold">{d.basis.aiShare}%</span>をあなたのAIの利用枠（AIのトークンの消費にかかる費用）に充て、残り{100 - d.basis.aiShare}%がAWPの運営費です。
-            フリーでも毎月 約{yen(d.free.aiYen)} 分のAIが使えます。利用額は公開されているAIの料金からの見積もりです。
+            どのプランもAIの利用が含まれています。使いすぎる心配はいりません——上限に近づいたらお知らせし、止まることはあっても追加料金はかかりません。
+            支払いは銀行振込かキャッシュ。自動更新はなく、やめたいときは何もしなくて大丈夫です。
           </p>
         </section>
 

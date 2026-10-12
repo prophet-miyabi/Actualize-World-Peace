@@ -128,7 +128,7 @@ export default function Home() {
               やりたいことを、<br />スマホひとつで<br /><span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">世界へ。</span>
             </h1>
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              お店も、作品も、あなた自身も。一言入力するだけで、AIがホームページの文章とデザインをつくります。そのまま無料で公開して、予約やネットショップもかんたんに追加できます。
+              お店も、作品も、あなた自身も。質問に答えるだけで、AIが文章とデザインを用意し、あなたの手で仕上げて、そのまま無料で公開。予約・ネットショップ・AIの受付も、必要になったときに自分で足せます。
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Cta className="px-8 py-4 text-lg" />
