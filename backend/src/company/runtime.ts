@@ -88,9 +88,16 @@ async function memoryIndex(agent: AgentDef) {
   return rows.map((r) => `- ${r.scope} / ${r.key}（${r.updatedAt.toISOString().slice(0, 10)}）: ${r.content.replace(/\s+/g, ' ').slice(0, 80)}`).join('\n');
 }
 
+// ビジョン（北極星）と戦略を一つの文脈として渡す。ビジョンは短いので先頭に置く
 async function strategyText() {
-  const s = await prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'strategy' } } });
-  return s?.content ?? '（戦略メモはまだありません）';
+  const [v, s] = await Promise.all([
+    prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'vision' } } }),
+    prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'strategy' } } })
+  ]);
+  return `${v ? `【ビジョン（company/vision）】
+${v.content}
+
+` : ''}${s?.content ?? '（戦略メモはまだありません）'}`;
 }
 
 // システムプロンプトの共通部分（目標・戦略・読めるメモリの一覧）。タスク実行と会話の両方で使う

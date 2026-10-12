@@ -1,6 +1,7 @@
 import prisma from '../prisma';
 import { STRATEGY_MD, STRATEGY_VERSION } from './strategy';
 import { BEHAVIORAL_MD, BEHAVIORAL_VERSION } from './behavioral';
+import { VISION_MD, VISION_VERSION } from './vision';
 
 // 起動時に、オーナーの目標と戦略メモを用意する（既にあれば触らない。戦略は版が上がったときだけ更新）
 export const OWNER_GOAL = {
@@ -24,6 +25,15 @@ export async function seedCompany() {
     await prisma.companyGoal.create({ data: { ...OWNER_GOAL, kpis: OWNER_GOAL.kpis as any, setBy: 'owner' } });
     // 初回は停止状態で用意する（AI費用が発生するため、オーナーが管理画面で「開始」したときから動く）
     await prisma.systemSetting.upsert({ where: { key: 'pause_company' }, update: {}, create: { key: 'pause_company', value: 'true', updatedBy: 'system' } });
+  }
+  // ビジョン（北極星）。版が変わったら上書きする
+  const vis = await prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'vision' } } });
+  if (!vis || !vis.content.includes(`v${VISION_VERSION}`)) {
+    await prisma.companyMemory.upsert({
+      where: { scope_key: { scope: 'company', key: 'vision' } },
+      update: { content: VISION_MD, updatedBy: 'system' },
+      create: { scope: 'company', key: 'vision', content: VISION_MD, updatedBy: 'system' }
+    });
   }
   // 体験設計の原則（文章・画面・料金の見せ方）。版が変わったら上書きする
   const beh = await prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'behavioral-design' } } });

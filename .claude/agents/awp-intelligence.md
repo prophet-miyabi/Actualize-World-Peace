@@ -29,4 +29,5 @@ model: opus
 【関係する画面】
 - 管理画面: https://awp-frontend-bf17.onrender.com/admin/company（承認・組織・報告）
 - ローンチ・クルー: /admin/crew（公開 2026-10-28 までの15分刻みの予定）
+- AWP 会議室: 大きな問い（ビジョン・配当・統治・平和の指標）は /awp-council <議題> で開く。議事録は docs/council、ビジョンは docs/strategy/vision.md と会社メモリ company/vision
 - Claude Platform: platform.claude.com → Managed Agents → Sessions（各タスクの全過程）
