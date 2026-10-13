@@ -136,5 +136,5 @@ export function startAgentLoop() {
   started = true;
   void tick().catch((e) => console.error('agent loop initial tick failed', e?.message));
   setInterval(() => { tick().catch((e) => console.error('agent loop tick failed', e?.message)); }, INTERVAL_MS);
-  console.log(`AIエージェント（マーケティング・コンプライアンス審査・成長分析）の定期実行を開始しました（${INTERVAL_MS / 3600000}時間ごと）`);
+  console.log(`AWPエージェント（マーケティング・コンプライアンス審査・成長分析）の定期実行を開始しました（${INTERVAL_MS / 3600000}時間ごと）`);
 }

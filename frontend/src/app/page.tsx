@@ -10,7 +10,7 @@ import Logo from '@/components/Logo';
 
 const TITLE = 'AWP | やりたいことを、スマホひとつで世界へ';
 const DESCRIPTION =
-  'お店も、作品も、あなた自身も。一言入力するだけで、AIがホームページの文章とデザインを作成。そのまま無料で公開して、予約やネットショップなどのツールもかんたんに追加できます。AWPは Actualize World Peace の略です。';
+  'お店も、作品も、あなた自身も。一言入力するだけで、AWPがホームページの文章とデザインを作成。そのまま無料で公開して、予約やネットショップなどのツールもかんたんに追加できます。AWPは Actualize World Peace の略です。';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -43,8 +43,8 @@ const PROBLEMS = [
 // 新しく始める人が「これならできそう」と思える順に並べる：作成 → 公開 → 収益化の入口 → 育てる → 安心
 const FEATURES = [
   {
-    title: 'AIが文章とデザインをつくる',
-    body: '一言入力するだけで、キャッチコピーと魅力の文章をAIが作成。配色・書体・レイアウトも、あなたの雰囲気に合わせて整えます。',
+    title: 'AWPが文章とデザインをつくる',
+    body: '一言入力するだけで、キャッチコピーと魅力の文章をAWPが作成。配色・書体・レイアウトも、あなたの雰囲気に合わせて整えます。',
     tag: 'AI',
     assetKey: 'feature_ai_design'
   },
@@ -88,7 +88,7 @@ const FEATURES = [
 
 const STEPS = [
   { title: 'アカウントをつくる', body: 'メールアドレスとパスワードだけで、無料で登録できます。' },
-  { title: 'なにをはじめるか選ぶ', body: 'お店・ビジネスか、クリエイター活動か。選んで一言入力すれば、AIが文章とデザインをつくります。' },
+  { title: 'なにをはじめるか選ぶ', body: 'お店・ビジネスか、クリエイター活動か。選んで一言入力すれば、AWPが文章とデザインをつくります。' },
   { title: 'そのまま無料で公開', body: 'AWPのURL（/ページ名）ですぐに公開されます。独自ドメインでの公開もできます。' },
   { title: '提携ツールを追加', body: '予約・ネットショップ・問い合わせフォームなどのツールを、あなた名義のアカウントで導入して、ページに追加できます。' }
 ];
@@ -128,7 +128,7 @@ export default function Home() {
               やりたいことを、<br />スマホひとつで<br /><span className="bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 bg-clip-text text-transparent">世界へ。</span>
             </h1>
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              お店も、作品も、あなた自身も。質問に答えるだけで、AIが文章とデザインを用意し、あなたの手で仕上げて、そのまま無料で公開。予約・ネットショップ・AIの受付も、必要になったときに自分で足せます。
+              お店も、作品も、あなた自身も。質問に答えるだけで、AWPが文章とデザインを用意し、あなたの手で仕上げて、そのまま無料で公開。予約・ネットショップ・AWPの受付も、必要になったときに自分で足せます。
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Cta className="px-8 py-4 text-lg" />
@@ -168,7 +168,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <p className="text-blue-700 font-bold text-center text-sm tracking-widest mb-3">FEATURES</p>
           <h2 className="text-2xl sm:text-3xl font-black text-center mb-4">AWPでできること</h2>
-          <p className="text-gray-600 text-center mb-12">むずかしいところは、AIにおまかせ。</p>
+          <p className="text-gray-600 text-center mb-12">むずかしいところは、AWPにおまかせ。</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-2xl border hover:shadow-md transition overflow-hidden">
@@ -219,7 +219,7 @@ export default function Home() {
             <ul className="text-left text-sm text-gray-700 space-y-3 my-8">
               {[
                 '複数ページの作成・公開',
-                'AIによる文章・デザインの作成と作り直し',
+                'AWPによる文章・デザインの作成と作り直し',
                 '機能の追加',
                 '予約・ネットショップなどの提携ツールの追加',
                 '独自ドメインでの公開',
@@ -229,7 +229,7 @@ export default function Home() {
               ))}
             </ul>
             <Cta className="w-full py-4 text-center" />
-            <p className="text-xs text-gray-500 mt-4">LINE自動応答・SNSの自動投稿・AIエージェントによる運用などの上位機能は準備中です。</p>
+            <p className="text-xs text-gray-500 mt-4">LINE自動応答・SNSの自動投稿・AWPエージェントによる運用などの上位機能は準備中です。</p>
           </div>
         </div>
       </section>

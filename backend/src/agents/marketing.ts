@@ -5,7 +5,7 @@ import type { Platform } from '../social/types';
 // LPに登録済みの事実だけを使い、各SNSの流儀に合わせた投稿文を1本作る。
 // 与えられていない実績・数字・限定オファーは書かせない（事実でない表示は景品表示法に触れるおそれがあるため）。
 // 実際にSNSへ投稿するかどうかは、店主がダッシュボードで承認してから決める（このエージェントは下書きまで）。
-// 生成にはCloudflare Workers AI（無料枠が大きい）を使い、高頻度・複数プラットフォーム分の実行に耐えられるようにする。
+// 生成にはCloudflare Workers AWP（無料枠が大きい）を使い、高頻度・複数プラットフォーム分の実行に耐えられるようにする。
 
 export const SNS_PLATFORMS = ['x', 'instagram', 'facebook', 'tiktok'] as const satisfies readonly Platform[];
 export type SnsPlatform = (typeof SNS_PLATFORMS)[number];

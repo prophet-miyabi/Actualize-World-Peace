@@ -118,7 +118,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'get_costs', risk: 'low',
-    description: 'AI費用（会社のエージェント別・今日と30日、利用者向けAIの機能別・30日）',
+    description: 'intelligence 費用（会社のエージェント別・今日と30日、利用者向けAWPの機能別・30日）',
     input_schema: { type: 'object', properties: {} },
     run: () => collectCosts()
   },
@@ -242,7 +242,7 @@ export const TOOLS: ToolDef[] = [
       const acceptance = [text(i.acceptance, 6000), '- スマホ幅（375px）で表示が崩れないこと', '- 既存の機能を壊さないこと', '- 秘密情報をコミットしないこと', '- 事実でない表示を作らないこと'].join('\n');
       const est = Math.min(480, Math.max(30, Number(i.estimateMin) || 90));
       await prisma.crewTask.create({
-        data: { key, title, area: 'dev', epic: `AI企業: ${ctx.agent.name}`, owner: 'agent', agents: ['sora', 'kei'], estimateMin: est, remainingMin: est, priority: Math.min(3, Math.max(0, Number(i.priority) || 1)), planDay: jstDay(new Date()), acceptance, notes: `依頼元: ${ctx.agent.key} / タスク ${ctx.taskId}` }
+        data: { key, title, area: 'dev', epic: `AWP企業: ${ctx.agent.name}`, owner: 'agent', agents: ['sora', 'kei'], estimateMin: est, remainingMin: est, priority: Math.min(3, Math.max(0, Number(i.priority) || 1)), planDay: jstDay(new Date()), acceptance, notes: `依頼元: ${ctx.agent.key} / タスク ${ctx.taskId}` }
       });
       await emitEvent('implementation.requested', ctx.agent.key, { key, title }, ctx.taskId);
       return { ok: true, key, note: 'ローンチ・クルーが順に GitHub の課題にします。進み具合は get_launch_plan で確認できます' };

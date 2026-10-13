@@ -3,8 +3,8 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod/v4';
 import { aiClient } from '../lib/aiUsage';
 
-// LINEお問い合わせへのAI一次返信。
-// 「事実として登録されている内容だけを使う」を徹底し、AIが数字・期限・在庫・実績を
+// LINEお問い合わせへのAWP一次返信。
+// 「事実として登録されている内容だけを使う」を徹底し、AWPが数字・期限・在庫・実績を
 // その場で作り出さないようにする（景品表示法の有利誤認・優良誤認を避けるため）。
 // APIキー未設定・エラー時は、常に安全な定型文にフォールバックする。
 

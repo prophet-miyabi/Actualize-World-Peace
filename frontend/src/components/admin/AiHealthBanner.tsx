@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 
-// 管理画面のAIを使うページの上に出す。実際に1回だけ小さな呼び出しをして、つながらない場合は原因と直し方をそのまま表示する
+// 管理画面のAWPを使うページの上に出す。実際に1回だけ小さな呼び出しをして、つながらない場合は原因と直し方をそのまま表示する
 export default function AiHealthBanner() {
   const [state, setState] = useState<{ ok: boolean; problem?: string; model?: string; stage?: string } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -12,7 +12,7 @@ export default function AiHealthBanner() {
     try {
       setState((await api.get('/ops/ai-check')).data);
     } catch (e: any) {
-      setState({ ok: false, problem: e?.response?.data?.error || 'AI接続の確認に失敗しました' });
+      setState({ ok: false, problem: e?.response?.data?.error || 'intelligence 接続の確認に失敗しました' });
     } finally {
       setChecking(false);
     }
@@ -22,7 +22,7 @@ export default function AiHealthBanner() {
   if (!state || state.ok) return null;
   return (
     <div className="mb-4 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-sm text-red-900">
-      <p className="font-bold">⚠ AIにつながっていません</p>
+      <p className="font-bold">⚠ intelligence につながっていません</p>
       <p className="mt-1 whitespace-pre-wrap">{state.problem}</p>
       <p className="mt-2 text-xs text-red-800">
         上の原因に書かれた直し方に従ってください。キーの差し替えは Render の awp-backend → Environment → <code>ANTHROPIC_API_KEY</code> の行を編集して Save Changes。再デプロイ後にこの表示が消えます。

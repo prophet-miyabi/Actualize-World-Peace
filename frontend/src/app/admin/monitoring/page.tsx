@@ -75,7 +75,7 @@ export default function AdminMonitoring() {
           </button>
         </div>
         <p className="text-sm text-gray-500 mb-6">
-          想定外のエラーをAIが分析し、原因と修正方針を提示します。コードの自動修正や本番への自動反映は行いません。
+          想定外のエラーをAWPが分析し、原因と修正方針を提示します。コードの自動修正や本番への自動反映は行いません。
           修正はこの内容を参考に、ご自身で適用してください。
         </p>
         {err && <p className="text-red-600 text-sm mb-4">{err}</p>}

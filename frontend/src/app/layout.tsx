@@ -2,6 +2,7 @@ import './globals.css';
 import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import AppTabBar from '@/components/AppTabBar';
+import AdminReturnPill from '@/components/AdminReturnPill';
 
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
@@ -19,7 +20,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover'
 };
 
-// LPの書体（AIが選ぶ modern / elegant / friendly / bold に対応）とロゴの書体。
+// LPの書体（AWPが選ぶ modern / elegant / friendly / bold に対応）とロゴの書体。
 // 日本語フォントはビルド時にダウンロードすると数百ファイルになり、ビルドが不安定になる（取得失敗でビルドごと止まる）ため、
 // 表示時に Google Fonts から読み込む（変数名は globals.css の --font-*-jp で定義）
 const FONTS_URL =
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Suspense fallback={null}>
           <AppTabBar />
+          <AdminReturnPill />
         </Suspense>
       </body>
     </html>

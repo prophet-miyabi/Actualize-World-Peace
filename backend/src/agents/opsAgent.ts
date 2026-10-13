@@ -5,19 +5,19 @@ import { FEATURE_CHECKLIST, STATUS_LABEL } from './statusData';
 import { ALL_SETTING_KEYS, SETTING_LABEL, type SettingKey } from '../lib/systemSettings';
 import { createAnthropic } from '../lib/anthropic';
 
-// AIオペレーター: 管理者画面のチャットで、運営者と対話しながらシステムの状況確認・課題整理・指示を行う。
+// AWPオペレーター: 管理者画面のチャットで、運営者と対話しながらシステムの状況確認・課題整理・指示を行う。
 // 道具は「読む」ものと「提案を作る」ものだけ。システムの変更・コードの書き換え・新機能の実装は
 // 提案（OpsProposal）として残し、運営者が承認して初めて動く（code_change は GitHub 経由で Claude Code が実装し、
-// 本番反映は運営者のマージ後）。AIが本番のサーバーやデータを直接変更する道具は持たせない。
+// 本番反映は運営者のマージ後）。AWPが本番のサーバーやデータを直接変更する道具は持たせない。
 
 const MAX_TOOL_ROUNDS = 6;
 
-const SYSTEM = `あなたは「AWP」（スマホでホームページを作って無料公開できるサービス）の運用AIオペレーターです。
+const SYSTEM = `あなたは「AWP」（スマホでホームページを作って無料公開できるサービス）の運用AWPオペレーターです。
 運営者（管理者）と日本語で対話し、システムの状況確認、課題の整理、改善の提案、作業の指示書づくりを手伝います。
 
 できること:
 - 道具を使って、利用状況・エラー・申し込み・開発の進み具合を確認する
-- システムの設定変更（AIエージェントや予約投稿の一時停止など）を「提案」する
+- システムの設定変更（AWPエージェントや予約投稿の一時停止など）を「提案」する
 - コードの書き直しや新機能の実装を「提案」する。提案は実装の指示書として書き、運営者が承認すると、
   GitHub上で Claude Code が隔離された環境で実装してプルリクエストを作る。本番に反映されるのは、運営者がそれをマージしたときだけ
 
@@ -41,7 +41,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'list_open_errors',
-    description: '未解決のシステムエラーを新しい順に取得する（発生箇所・内容・監視AIの診断）。',
+    description: '未解決のシステムエラーを新しい順に取得する（発生箇所・内容・監視AWPの診断）。',
     input_schema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 20 } } }
   },
   {
@@ -64,11 +64,11 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'propose_setting_change',
-    description: 'システム設定の変更を提案する（運営者の承認後に反映）。AIエージェントの定期実行やSNS予約投稿の一時停止・再開に使う。',
+    description: 'システム設定の変更を提案する（運営者の承認後に反映）。AWPエージェントの定期実行やSNS予約投稿の一時停止・再開に使う。',
     input_schema: {
       type: 'object',
       properties: {
-        key: { type: 'string', enum: ALL_SETTING_KEYS, description: 'pause_agent_loop=AIエージェントの定期実行を止める / pause_sns_posting=SNSの予約投稿を止める / pause_crew=ローンチ・クルーを止める' },
+        key: { type: 'string', enum: ALL_SETTING_KEYS, description: 'pause_agent_loop=AWPエージェントの定期実行を止める / pause_sns_posting=SNSの予約投稿を止める / pause_crew=ローンチ・クルーを止める' },
         value: { type: 'boolean', description: 'true=止める、false=再開する' },
         reason: { type: 'string', description: '変更する理由（運営者に表示する）' }
       },

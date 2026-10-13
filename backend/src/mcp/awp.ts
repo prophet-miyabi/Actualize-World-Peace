@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // AWP を Claude Code から運営・開発するための MCP サーバー（stdio）。
 // Claude Code（このアプリ）が AWP の管理画面兼開発環境になる: ここで定義した道具を通して、
-// AI企業の状況・タスク・承認・メモリ・設定・ローンチ・クルー・本番の健全性を、会話の中から直接操作できる。
+// AWP企業の状況・タスク・承認・メモリ・設定・ローンチ・クルー・本番の健全性を、会話の中から直接操作できる。
 //
 // 認証: 管理者が管理画面（AWP Intelligence）で発行した「開発環境トークン」を
 //   ~/.claude/awp-admin-token（1行）または環境変数 AWP_ADMIN_TOKEN に置く。リポジトリには入れない。
@@ -51,16 +51,16 @@ const server = new McpServer({ name: 'awp', version: '1.0.0' });
 // ---- 健全性（認証不要） ----
 server.registerTool('awp_health', {
   title: 'AWP の本番の健全性',
-  description: '本番のバックエンドが起動しているか、デプロイ中のコミット、AI接続（Anthropic）の可否、Claude Platform の利用可否を返す。認証不要'
+  description: '本番のバックエンドが起動しているか、デプロイ中のコミット、intelligence 接続（Anthropic）の可否、Claude Platform の利用可否を返す。認証不要'
 }, async () => guard(async () => {
   const [h, ai] = await Promise.all([api('GET', '/health'), fetch(`${BASE}/api/health/ai`).then((r) => r.json())]);
   return { backend: h, ai, frontend: FRONT };
 }));
 
-// ---- AI企業: 状況 ----
+// ---- AWP企業: 状況 ----
 server.registerTool('awp_company_status', {
-  title: 'AI企業の状況',
-  description: 'AI企業の全体像: 目標とKPI、いま動いているエージェント（口調つき進行状況）、承認待ち、タスクの件数、今月のAI費用と上限、組織（各エージェントの稼働・モデル・予算）、直近の報告。長いので section で絞れる',
+  title: 'AWP企業の状況',
+  description: 'AWP企業の全体像: 目標とKPI、いま動いているエージェント（口調つき進行状況）、承認待ち、タスクの件数、今月の intelligence 費用と上限、組織（各エージェントの稼働・モデル・予算）、直近の報告。長いので section で絞れる',
   inputSchema: { section: z.enum(['summary', 'activity', 'approvals', 'org', 'tasks', 'reports', 'events', 'costs', 'all']).default('summary').describe('返す部分') }
 }, async ({ section }) => guard(async () => {
   const s = await api('GET', '/company/status');
@@ -87,7 +87,7 @@ server.registerTool('awp_company_status', {
 // ---- タスク ----
 server.registerTool('awp_tasks', {
   title: 'タスク一覧',
-  description: 'AI企業のタスクを状態・担当で絞って一覧する',
+  description: 'AWP企業のタスクを状態・担当で絞って一覧する',
   inputSchema: { status: z.string().optional().describe('queued / running / awaiting_approval / verifying / done / failed / cancelled'), assignee: z.string().optional().describe('エージェントのキー（ceo, coo, research, …）'), limit: z.number().int().min(1).max(200).default(50) }
 }, async ({ status, assignee, limit }) => guard(async () => {
   const s = await api('GET', '/company/status');
@@ -103,7 +103,7 @@ server.registerTool('awp_task', {
 
 server.registerTool('awp_create_task', {
   title: 'タスクを作る',
-  description: 'エージェントにタスクを割り当てる。作ったタスクは AI企業のループが拾って（Claude Platform のセッションとして）実行する。実行はバックグラウンドで、結果は awp_task で確認する',
+  description: 'エージェントにタスクを割り当てる。作ったタスクは AWP企業のループが拾って（Claude Platform のセッションとして）実行する。実行はバックグラウンドで、結果は awp_task で確認する',
   inputSchema: {
     assignee: z.string().describe('ceo / coo / research / product / engineering / qa / data / marketing / content / growth / cs / finance / partnership / security / legal / auditor'),
     title: z.string().max(120),
@@ -149,11 +149,11 @@ server.registerTool('awp_set_goal', {
   inputSchema: { title: z.string().max(200), kpis: z.record(z.any()).optional(), deadline: z.string().optional() }
 }, async (args) => guard(() => api('POST', '/company/goals', args)));
 server.registerTool('awp_settings', {
-  title: 'AI企業の設定を見る／変える',
-  description: 'CEOの日次時刻・月のAI費用上限・同時実行数・Discord 通知。引数なしで現在値',
+  title: 'AWP企業の設定を見る／変える',
+  description: 'CEOの日次時刻・月の intelligence 費用上限・同時実行数・Discord 通知。引数なしで現在値',
   inputSchema: { ceoHour: z.number().int().min(0).max(23).optional(), monthlyCapUsd: z.number().min(0).optional(), concurrency: z.number().int().min(1).max(6).optional(), discordApprovals: z.boolean().optional(), discordActivity: z.boolean().optional() }
 }, async (args) => guard(() => Object.keys(args).length ? api('PUT', '/company/settings', args) : api('GET', '/company/settings')));
-server.registerTool('awp_pause', { title: 'AI企業を一時停止／再開', description: 'paused=true で全エージェントを止める、false で再開', inputSchema: { paused: z.boolean() } },
+server.registerTool('awp_pause', { title: 'AWP企業を一時停止／再開', description: 'paused=true で全エージェントを止める、false で再開', inputSchema: { paused: z.boolean() } },
   async ({ paused }) => guard(() => api('POST', '/company/pause', { paused })));
 server.registerTool('awp_cycle', { title: '日次／週次サイクルを今すぐ', description: 'CEOの日次見直し（daily）または週次の財務・指標（weekly）を今すぐ開始する', inputSchema: { kind: z.enum(['daily', 'weekly']) } },
   async ({ kind }) => guard(() => api('POST', `/company/cycle/${kind}`)));
@@ -179,7 +179,7 @@ server.registerTool('awp_council', { title: 'AWP 会議室の記録', descriptio
     if (part === 'tasks') return c.tasks;
     return { openQuestions: c.openQuestions, sessions: c.sessions.map((x: any) => ({ key: x.key, title: x.title, updatedAt: x.updatedAt })).slice(0, 10), running: c.tasks.filter((t: any) => ['queued', 'running'].includes(t.status)), activity: c.activity };
   }));
-server.registerTool('awp_council_open', { title: 'AWP 会議室を開く', description: '議題を渡すと、議長（AI企業）が5人の博士と会議を開き、議事録を council/* に残す。本番のAIが止まっているときは待機になる', inputSchema: { topic: z.string().min(4).max(200) } },
+server.registerTool('awp_council_open', { title: 'AWP 会議室を開く', description: '議題を渡すと、議長（AWP企業）が5人の博士と会議を開き、議事録を council/* に残す。本番の intelligence が止まっているときは待機になる', inputSchema: { topic: z.string().min(4).max(200) } },
   async ({ topic }) => guard(() => api('POST', '/company/council/open', { topic })));
 
 // ---- ローンチ・クルー ----

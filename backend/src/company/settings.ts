@@ -1,12 +1,12 @@
 import prisma from '../prisma';
 
-// AI企業の運用設定（管理画面から変更できる）。環境変数は初期値としてだけ使う
+// AWP企業の運用設定（管理画面から変更できる）。環境変数は初期値としてだけ使う
 export type CompanySettings = {
   ceoHour: number;        // CEOの日次見直しの時刻（JST, 0-23）
-  monthlyCapUsd: number;  // 会社のエージェント全体の月のAI費用の上限
+  monthlyCapUsd: number;  // 会社のエージェント全体の月の intelligence 費用の上限
   concurrency: number;    // 同時に実行するタスク数
-  discordApprovals: boolean; // 承認待ちを Discord #🏢-AI企業 に通知する
-  discordActivity: boolean;  // エージェントの進行状況（考え中・実行中）を Discord #🏢-AI企業 に出す
+  discordApprovals: boolean; // 承認待ちを Discord #🏢-AWP企業 に通知する
+  discordActivity: boolean;  // エージェントの進行状況（考え中・実行中）を Discord #🏢-AWP企業 に出す
 };
 
 const DEFAULTS: CompanySettings = {
@@ -53,7 +53,7 @@ export async function setCompanySettings(next: Partial<CompanySettings>, updated
   return merged;
 }
 
-// 承認待ちができたことを Discord（#🏢-AI企業）に知らせる
+// 承認待ちができたことを Discord（#🏢-AWP企業）に知らせる
 export async function notifyApproval(agentName: string, tool: string, reason: string, taskTitle: string) {
   const s = await getCompanySettings();
   if (!s.discordApprovals) return;

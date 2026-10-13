@@ -25,7 +25,7 @@ export async function chatWithAgent(agentKey: string, history: ChatTurn[], chatI
   const agent = AGENT_BY_KEY.get(agentKey);
   if (!agent) throw new Error('エージェントが見つかりません');
   const cfg = await agentConfig(agent);
-  if ((await spentThisMonthUsd()) >= (await monthlyCapUsd())) throw new Error('今月の会社のAI費用の上限に達しています');
+  if ((await spentThisMonthUsd()) >= (await monthlyCapUsd())) throw new Error('今月の会社の intelligence 費用の上限に達しています');
 
   // 会話の中で作る操作・タスクの親になるタスク（会話ごとに1つ。追跡のため）
   const chat = await prisma.companyChat.findUnique({ where: { id: chatId } });

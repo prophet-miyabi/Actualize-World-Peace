@@ -7,8 +7,8 @@ import { buildReadiness } from './readiness';
 
 const DAY = 24 * 60 * 60 * 1000;
 
-// 管理者画面のダッシュボードと、AIオペレーターの両方が使うシステムの現況。
-// 個人を特定できる情報（メールアドレス・電話番号・氏名）は含めない（AIに送るため）
+// 管理者画面のダッシュボードと、AWPオペレーターの両方が使うシステムの現況。
+// 個人を特定できる情報（メールアドレス・電話番号・氏名）は含めない（AWPに送るため）
 export async function buildOverview() {
   const since7 = new Date(Date.now() - 7 * DAY);
   const [
@@ -42,10 +42,10 @@ export async function buildOverview() {
 
   const todos: { label: string; count: number; href: string }[] = [
     { label: '未対応のHarness申し込み', count: ordersRequested, href: '/admin/harness' },
-    { label: '承認待ちのAIの提案', count: proposalsWaiting, href: '/admin/ops' },
+    { label: '承認待ちのAWPの提案', count: proposalsWaiting, href: '/admin/ops' },
     { label: '未解決のエラー', count: openErrors, href: '/admin/monitoring' },
     { label: '料金未設定のHarnessメニュー', count: unpricedAddons, href: '/admin/harness' },
-    { label: `AIのAPIキーの設定に問題: ${anthropicKeyProblem() ?? ''}`, count: anthropicKeyProblem() ? 1 : 0, href: '/admin/monitoring' }
+    { label: `intelligence のAPIキーの設定に問題: ${anthropicKeyProblem() ?? ''}`, count: anthropicKeyProblem() ? 1 : 0, href: '/admin/monitoring' }
   ].filter((t) => t.count > 0);
 
   const readiness = await buildReadiness();

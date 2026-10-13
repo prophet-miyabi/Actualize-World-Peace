@@ -38,7 +38,7 @@ export async function runDesignJob(lpId: string, description?: string) {
     source = 'preset';
   }
 
-  // 画像生成AI（Cloudflare Workers AIを優先、なければGemini）が画像を作り、
+  // 画像生成 intelligence（Cloudflare Workers AWPを優先、なければGemini）が画像を作り、
   // Claudeが実際に画像を見て審査・配色を調整する。
   // 不合格なら指摘を添えて1回だけ作り直し、それでも不合格なら画像は使わない（質の低い画像を公開しない）。
   let image: { data: Buffer; mimeType: string } | null = null;

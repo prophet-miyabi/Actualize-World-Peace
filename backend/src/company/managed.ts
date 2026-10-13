@@ -36,7 +36,7 @@ export async function ensureEnvironment(client = createAnthropic()): Promise<str
   }
   const env = await client.beta.environments.create({
     name: 'AWP AI company',
-    description: 'AWP（Actualize World Peace）のAI企業のエージェントが動く環境。道具はAWPのサーバー側で実行するため、ネットワークは閉じている',
+    description: 'AWP（Actualize World Peace）のAWP企業のエージェントが動く環境。道具はAWPのサーバー側で実行するため、ネットワークは閉じている',
     config: { type: 'cloud', networking: { type: 'limited' } }
   });
   await prisma.systemSetting.upsert({ where: { key: ENV_SETTING_KEY }, update: { value: env.id }, create: { key: ENV_SETTING_KEY, value: env.id } });

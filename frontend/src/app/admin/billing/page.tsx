@@ -78,19 +78,19 @@ export default function AdminBillingPage() {
 
       <section className="bg-white border rounded-2xl p-4 space-y-3">
         <h2 className="font-bold">料金の設定</h2>
-        <p className="text-xs text-gray-500">月額 = 基準（Claude Pro の月額・ドル）× 倍率 × 為替。料金の78%を利用者のAI利用枠、22%を運営の取り分にします。</p>
+        <p className="text-xs text-gray-500">月額 = 基準（Claude Pro の月額・ドル）× 倍率 × 為替。料金の78%を利用者の intelligence 利用枠、22%を運営の取り分にします。</p>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label>基準（ドル/月）<input className={input} type="number" step="0.01" value={config.baseUsd} onChange={(e) => setConfig({ ...config, baseUsd: Number(e.target.value) })} /></label>
           <label>為替（円/ドル）<input className={input} type="number" value={config.usdJpy} onChange={(e) => setConfig({ ...config, usdJpy: Number(e.target.value) })} /></label>
           {(['lite', 'standard', 'pro'] as const).map((k) => (
             <label key={k}>{prices?.[k].label}の倍率<input className={input} type="number" step="0.1" value={config.multipliers[k]} onChange={(e) => setConfig({ ...config, multipliers: { ...config.multipliers, [k]: Number(e.target.value) } })} /></label>
           ))}
-          <label>フリーのAI利用枠（ドル/月）<input className={input} type="number" step="0.1" value={config.freeAiUsd} onChange={(e) => setConfig({ ...config, freeAiUsd: Number(e.target.value) })} /></label>
+          <label>フリーの intelligence 利用枠（ドル/月）<input className={input} type="number" step="0.1" value={config.freeAiUsd} onChange={(e) => setConfig({ ...config, freeAiUsd: Number(e.target.value) })} /></label>
         </div>
         {prices && (
           <ul className="text-sm bg-gray-50 rounded-xl p-3 space-y-1">
             {(['lite', 'standard', 'pro'] as const).map((k) => (
-              <li key={k}>{prices[k].label}: {yen(prices[k].priceYen)}/月（AI枠 {yen(prices[k].aiYen)}・運営 {yen(prices[k].platformYen)}）</li>
+              <li key={k}>{prices[k].label}: {yen(prices[k].priceYen)}/月（AWP枠 {yen(prices[k].aiYen)}・運営 {yen(prices[k].platformYen)}）</li>
             ))}
           </ul>
         )}

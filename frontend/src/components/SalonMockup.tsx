@@ -1,7 +1,7 @@
 import SiteAssetImage from './SiteAssetImage';
 
 // トップページのスマホ見本。AWPで作れるページの完成度を一目で伝えるための、架空の美容院サイト。
-// 写真は管理画面（/admin/assets）でAI生成したものを使い、未生成のあいだは
+// 写真は管理画面（/admin/assets）でAWP生成したものを使い、未生成のあいだは
 // グラデーションとぼかしで「やわらかい光のサロン写真」の雰囲気を描く。
 // 店名・場所・料金は架空。評価や口コミ件数のような実績の表示は入れない。
 const serif = { fontFamily: 'var(--font-serif-jp)' };

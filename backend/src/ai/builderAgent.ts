@@ -3,10 +3,10 @@ import { z } from 'zod/v4';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { aiClient } from '../lib/aiUsage';
 
-// 対話で作るページビルダーのAI。ユーザーと会話しながら、ページに載せる事実を項目ごとに聞き取る。
-// AIは事実の「出どころ」を必ず付ける（provided=本人が言った / assumed=推測 / unconfirmed=不明）。
-// 「確定（confirmed）」はAIには付けさせず、本人が確認画面で押したときだけサーバーが付ける。
-// 公開に使うのは confirmed と default だけなので、AIの推測や聞き違いがそのまま公開されることはない。
+// 対話で作るページビルダーのAWP。ユーザーと会話しながら、ページに載せる事実を項目ごとに聞き取る。
+// AWPは事実の「出どころ」を必ず付ける（provided=本人が言った / assumed=推測 / unconfirmed=不明）。
+// 「確定（confirmed）」はAWPには付けさせず、本人が確認画面で押したときだけサーバーが付ける。
+// 公開に使うのは confirmed と default だけなので、AWPの推測や聞き違いがそのまま公開されることはない。
 
 export const FACT_KEYS = ['businessName', 'what', 'target', 'area', 'strength1', 'strength2', 'strength3', 'price', 'hours', 'contact', 'achievements', 'offer'] as const;
 export type FactKey = (typeof FACT_KEYS)[number];
@@ -53,7 +53,7 @@ const TurnSchema = z.object({
   facts: z.array(z.object({
     key: z.enum(FACT_KEYS),
     value: z.string().describe('ユーザーの言葉をできるだけそのまま。推測の場合は推測した内容'),
-    status: z.enum(['provided', 'assumed', 'unconfirmed']).describe('provided=ユーザーが今回または過去の発言ではっきり言った / assumed=AIの推測 / unconfirmed=聞いたがわからない')
+    status: z.enum(['provided', 'assumed', 'unconfirmed']).describe('provided=ユーザーが今回または過去の発言ではっきり言った / assumed=AWPの推測 / unconfirmed=聞いたがわからない')
   })).describe('今回の発言で新しくわかった、または変わった項目だけ。変化がなければ空配列'),
   copy: z.object({
     heroTitle: z.string().describe('キャッチコピー（30文字程度）'),
@@ -111,7 +111,7 @@ export async function runBuilderTurn(history: ChatMessage[], brief: Brief): Prom
   return response.parsed_output ?? null;
 }
 
-// AIの出力を台帳に反映する。本人が確定した項目は、内容が変わったときだけ「本人が言った」に戻す
+// AWPの出力を台帳に反映する。本人が確定した項目は、内容が変わったときだけ「本人が言った」に戻す
 export function mergeTurn(brief: Brief, turn: TurnResult): Brief {
   const next: Brief = { ...brief, facts: [...brief.facts] };
   if (turn.purpose !== 'unknown' && next.purpose.status !== 'confirmed') next.purpose = { value: turn.purpose, status: 'provided' };
@@ -138,7 +138,7 @@ export function mergeTurn(brief: Brief, turn: TurnResult): Brief {
 }
 
 // 公開前の最終チェック: キャッチコピー・強みに、確定した事実にない数字や強い表現が入っていないか。
-// AIの判断に頼らず機械的に確認する（見つかったら本人に直してもらう）
+// AWPの判断に頼らず機械的に確認する（見つかったら本人に直してもらう）
 const CLAIM_PATTERNS = [/\d+(?:[.,]\d+)?/g, /No\.?\s?1|ナンバーワン|ナンバー1/gi, /日本一|世界一|地域一番|業界初|業界唯一|唯一|最高|最安|最大|最多|最上級/g, /限定|先着|今だけ|残りわずか/g, /満足度|受賞|認定|保証|絶対|必ず|治る|痩せる/g];
 
 export function unsupportedClaims(text: string, factsText: string): string[] {

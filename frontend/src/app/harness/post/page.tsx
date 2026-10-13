@@ -17,7 +17,7 @@ const localNow = (addMin: number) => {
 };
 
 // 自分のX Harness / IG Harnessとつないで、AWPから投稿を予約する。
-// AIの下書きは、ページに登録済みの事実だけで作り、審査AIのチェック結果も表示する
+// AWPの下書きは、ページに登録済みの事実だけで作り、審査AWPのチェック結果も表示する
 export default function HarnessPostPage() {
   const [links, setLinks] = useState<LinkInfo[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -141,14 +141,14 @@ export default function HarnessPostPage() {
           <section className="bg-white border rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-black">投稿をつくる</h2>
-              <button onClick={draft} disabled={!!busy} className="rounded-full bg-violet-50 text-violet-700 text-xs font-bold px-3 py-2">{busy === 'draft' ? '作成中…' : '✨ AIに下書きしてもらう'}</button>
+              <button onClick={draft} disabled={!!busy} className="rounded-full bg-violet-50 text-violet-700 text-xs font-bold px-3 py-2">{busy === 'draft' ? '作成中…' : '✨ AWPに下書きしてもらう'}</button>
             </div>
             <textarea className={input} rows={6} value={text} onChange={(e) => { setText(e.target.value); setReview(null); }} maxLength={kind === 'x' ? 280 : 2200}
               placeholder={kind === 'x' ? 'Xに投稿する文章（280文字まで）' : 'Instagramのキャプション（画像はページのメイン画像を使います）'} />
             <p className="text-[11px] text-gray-400 text-right">{text.length}/{kind === 'x' ? 280 : 2200}</p>
             {review && (
               <p className={`text-xs rounded-xl p-3 ${review.approved ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>
-                {review.approved ? '✅ 審査AI: 問題なし' : '⚠ 審査AI: 見直しをおすすめ'} — {review.reason}
+                {review.approved ? '✅ 審査AWP: 問題なし' : '⚠ 審査AWP: 見直しをおすすめ'} — {review.reason}
               </p>
             )}
             <label className="block text-sm font-bold">投稿する日時<input type="datetime-local" className={input} value={when} min={localNow(1)} onChange={(e) => setWhen(e.target.value)} /></label>

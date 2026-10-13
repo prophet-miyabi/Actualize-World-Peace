@@ -35,7 +35,7 @@ function ScaledPreview({ background, children }: { background: string; children:
 }
 
 // 「作る前に、自分のページがどう仕上がるか一目でわかる」ためのギャラリー。
-// 入力済みの名前・キャッチコピー・強みをそのまま使い、実際の見本デザインで見せる（AI呼び出しなし・即時）。
+// 入力済みの名前・キャッチコピー・強みをそのまま使い、実際の見本デザインで見せる（AWP呼び出しなし・即時）。
 export default function TemplateGallery({ businessName, heroTitle, strengths, purpose, value, onChange }: {
   businessName: string;
   heroTitle: string;

@@ -20,7 +20,7 @@ const TOOL_LABEL: Record<string, string> = {
   propose_code_change: '実装の提案を作成'
 };
 const STATUS_LABEL: Record<Proposal['status'], string> = { awaiting_approval: '承認待ち', approved: '承認済み', rejected: '却下', failed: '失敗' };
-// AIの返答によく出る **太字** と ## 見出し だけを読みやすく表示する（HTMLとしては解釈しない）
+// AWPの返答によく出る **太字** と ## 見出し だけを読みやすく表示する（HTMLとしては解釈しない）
 function RichText({ text }: { text: string }) {
   return (
     <>
@@ -38,7 +38,7 @@ function RichText({ text }: { text: string }) {
 
 const QUICK = ['今のシステムの状況を教えて', '公開までの課題を整理して', '未解決のエラーを確認して', 'Harnessの申し込み状況は？'];
 
-// AIオペレーター: 運営者とAIが対話して、状況確認・課題整理・提案を行う。返答は少しずつ（ストリーミングで）表示する。
+// AWPオペレーター: 運営者とAWPが対話して、状況確認・課題整理・提案を行う。返答は少しずつ（ストリーミングで）表示する。
 // 設定変更やコード変更は提案として作られ、この画面の「承認」を押したときだけ実行される
 export default function OpsPage() {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -79,7 +79,7 @@ export default function OpsPage() {
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'AIに接続できませんでした。');
+        throw new Error(data.error || 'AWPに接続できませんでした。');
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -101,7 +101,7 @@ export default function OpsPage() {
         }
       }
     } catch (e: any) {
-      setError(e?.message || 'AIの応答に失敗しました。');
+      setError(e?.message || 'AWPの応答に失敗しました。');
     } finally {
       setBusy(false);
       loadProposals().catch(() => {});
@@ -126,7 +126,7 @@ export default function OpsPage() {
 
   return (
     <div className="px-4 py-6 md:px-8 max-w-3xl pb-40">
-      <h1 className="text-2xl font-black">AIオペレーター</h1>
+      <h1 className="text-2xl font-black">AWPオペレーター</h1>
       <AiHealthBanner />
       <p className="text-sm text-gray-600 mt-1">
         システムの状況確認・課題の整理・改善の提案をチャットで。設定変更やコードの実装は「提案」として作られ、あなたが承認したときだけ実行されます。
@@ -213,7 +213,7 @@ export default function OpsPage() {
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
         {error && <p className="text-red-600 text-xs mb-2 max-w-3xl">{error}</p>}
         <div className="flex gap-2 max-w-3xl">
-          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1} placeholder="AIオペレーターに話しかける"
+          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={1} placeholder="AWPオペレーターに話しかける"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(input); } }}
             className="flex-1 border rounded-2xl px-4 py-3 text-base resize-none" />
           <button disabled={busy || !input.trim()} className="rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white font-bold px-5 disabled:opacity-40">

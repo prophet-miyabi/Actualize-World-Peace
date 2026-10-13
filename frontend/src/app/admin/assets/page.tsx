@@ -5,7 +5,7 @@ import api from '@/lib/api';
 type Asset = { key: string; prompt: string; mimeType: string; updatedAt: string };
 
 // アプリ自体の外装（マーケティングLPやウィザードの装飾画像）を、
-// 導入済みの画像生成AI（Cloudflare Workers AI / Gemini）でその場で作り、差し替えるための管理画面。
+// 導入済みの画像生成 intelligence（Cloudflare Workers AI / Gemini）でその場で作り、差し替えるための管理画面。
 // 管理者だけが使う（一般の顧客には表示・提供しない）。
 // prompt があるスロットは、選ぶと推奨の指示文も入る（スマホ見本の美容院サイト用の写真など）
 const PRESET_SLOTS: { key: string; label: string; prompt?: string }[] = [
@@ -80,7 +80,7 @@ export default function AdminAssets() {
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">アプリの外装画像を生成</h1>
         <p className="text-gray-500 mb-8 text-sm">
-          導入済みの画像生成AIで、マーケティングLPやウィザードの装飾画像を作成・差し替えます（顧客のLP画像とは別管理です）。
+          導入済みの画像生成 intelligenceで、マーケティングLPやウィザードの装飾画像を作成・差し替えます（顧客のLP画像とは別管理です）。
         </p>
 
         <form onSubmit={generate} className="bg-white p-6 rounded-2xl border shadow-sm mb-8 space-y-4">

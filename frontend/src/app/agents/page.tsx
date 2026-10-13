@@ -32,7 +32,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 const roleLabel = (role: string) => ROLE_LABEL[role] || role;
 
-// 役割ごとのAIエージェントが自動で作った成果物を確認する画面。
+// 役割ごとのAWPエージェントが自動で作った成果物を確認する画面。
 // 「作成・分析・審査」はエージェントが自動で行う。SNS投稿の実行は、
 // 自動承認をオンにしている場合は審査済みの下書きが自動で投稿予約され、
 // オフの場合はここで人が承認する。
@@ -52,7 +52,7 @@ export default function Agents() {
 
   useEffect(() => { load().catch(() => setError('読み込みに失敗しました。')); }, [load]);
 
-  // 複数プラットフォーム分のAI呼び出しがあり数十秒かかるため、開始だけ依頼して裏側で待つ
+  // 複数プラットフォーム分のAWP呼び出しがあり数十秒かかるため、開始だけ依頼して裏側で待つ
   const runNow = async () => {
     setRunning(true);
     setError('');
@@ -108,7 +108,7 @@ export default function Agents() {
       <div className="max-w-2xl mx-auto">
         <Link href="/dashboard" className="text-sm text-gray-500">← ダッシュボードへ戻る</Link>
         <div className="flex items-center justify-between mt-2 mb-1">
-          <h1 className="text-2xl font-bold">AIエージェント</h1>
+          <h1 className="text-2xl font-bold">AWPエージェント</h1>
           <button onClick={runNow} disabled={running} className="text-sm font-bold text-blue-600 disabled:text-gray-400">
             {running ? '実行中...' : '今すぐ実行 →'}
           </button>
@@ -213,7 +213,7 @@ export default function Agents() {
                 <div key={t.id} className="bg-white border rounded-xl p-4 text-sm flex items-center justify-between gap-3">
                   <div>
                     <span className="text-xs font-bold text-gray-500">{roleLabel(t.role)}</span>
-                    {t.autoApproved && <span className="text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 ml-2">AI自動承認</span>}
+                    {t.autoApproved && <span className="text-xs font-bold text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 ml-2">AWP自動承認</span>}
                     <p className="text-gray-700 mt-1 line-clamp-1">
                       {t.kind === 'sns_post_draft' ? t.output.text
                         : t.kind === 'x_weekly_campaign' ? t.output.scenario

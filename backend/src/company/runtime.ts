@@ -66,7 +66,7 @@ export async function agentConfig(agent: AgentDef) {
   return { enabled: c?.enabled ?? true, model: c?.model || agent.model, dailyBudgetUsd: c?.dailyBudgetUsd ?? agent.dailyBudgetUsd };
 }
 
-// 会社全体の今月のAI費用の上限（米ドル）。Max プランの月間APIクレジット（$200）を、利用者向けAIの分も残して使うための安全弁
+// 会社全体の今月の intelligence 費用の上限（米ドル）。Max プランの月間APIクレジット（$200）を、利用者向けAWPの分も残して使うための安全弁
 export async function monthlyCapUsd() {
   return (await getCompanySettings()).monthlyCapUsd;
 }

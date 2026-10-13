@@ -18,30 +18,30 @@ type Data = {
   payments: Payment[];
 };
 
-// プランは「何ができるようになるか」の束として見せる（AIの利用枠の金額・原価・分配率は出さない）。
-// 倍率は管理画面で変えられるので、AIの量の違いだけ実際の設定値から「約◯倍」で示す
+// プランは「何ができるようになるか」の束として見せる（intelligence の利用枠の金額・原価・分配率は出さない）。
+// 倍率は管理画面で変えられるので、intelligence の量の違いだけ実際の設定値から「約◯倍」で示す
 function pkg(t: Tier, plans: Tier[]) {
   const i = plans.findIndex((p) => p.key === t.key);
   const prev = i > 0 ? plans[i - 1] : null;
   const ratio = prev ? Math.round((t.aiYen / Math.max(1, prev.aiYen)) * 10) / 10 : 1;
   if (i === 0) return {
     tagline: 'まず自分のドメインで公開したい人に',
-    items: ['自分のドメインで公開（どのドメインでも）', 'LINEの自動応答・SNS連携などの有料機能', 'AIを毎日の相棒に（ページ作り・文章・チャットボット）']
+    items: ['自分のドメインで公開（どのドメインでも）', 'LINEの自動応答・SNS連携などの有料機能', 'AWPを毎日の相棒に（ページ作り・文章・チャットボット）']
   };
   if (i === 1) return {
-    tagline: 'ページを毎週育てて、お客さまとのやり取りもAIに任せたい人に',
-    items: [`${prev!.label}のすべて`, `AIをたっぷり（${prev!.label}の約${ratio}倍）`, 'チャットボット・予約・商品を、AIと一緒に回せる余裕']
+    tagline: 'ページを毎週育てて、お客さまとのやり取りもAWPに任せたい人に',
+    items: [`${prev!.label}のすべて`, `intelligence をたっぷり（${prev!.label}の約${ratio}倍）`, 'チャットボット・予約・商品を、AWPと一緒に回せる余裕']
   };
   return {
-    tagline: '複数のページや本格的な発信を、AIと一緒に回したい人に',
-    items: [`${prev!.label}のすべて`, `AIを惜しみなく（${prev!.label}の約${ratio}倍）`, 'ページの作り直し・文章の書き直しを気にせず試せる']
+    tagline: '複数のページや本格的な発信を、AWPと一緒に回したい人に',
+    items: [`${prev!.label}のすべて`, `intelligence を惜しみなく（${prev!.label}の約${ratio}倍）`, 'ページの作り直し・文章の書き直しを気にせず試せる']
   };
 }
 const RECOMMENDED: Tier['key'] = 'standard';
 const STATUS: Record<string, string> = { pending: '振込待ち', confirmed: '支払い済み', canceled: '取り消し', expired: '期限切れ' };
 const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`;
 
-// 有料プラン: 料金の78%をあなたのAIの利用枠に、22%をAWPの運営に。支払いは銀行振込かキャッシュ（決済手数料なし）
+// 有料プラン: 料金の78%をあなたの intelligence の利用枠に、22%をAWPの運営に。支払いは銀行振込かキャッシュ（決済手数料なし）
 export default function PlansPage() {
   const [d, setD] = useState<Data | null>(null);
   const [selected, setSelected] = useState<Tier['key'] | null>(null);
@@ -60,7 +60,7 @@ export default function PlansPage() {
     setMsg('');
     try {
       await api.post('/plans/purchase', { plan: selected, months, method });
-      setMsg(method === 'cash' ? 'プランが有効になりました 🎉 いい選択です。次は、自分のドメインでの公開か、AIチャットボットをオンにしてみましょう。' : '申し込みました。下の振込先に、期限までにお振り込みください。入金が確認でき次第、すぐ使えるようになります。');
+      setMsg(method === 'cash' ? 'プランが有効になりました 🎉 いい選択です。次は、自分のドメインでの公開か、AWPチャットボットをオンにしてみましょう。' : '申し込みました。下の振込先に、期限までにお振り込みください。入金が確認でき次第、すぐ使えるようになります。');
       setSelected(null);
       await load();
     } catch (e: any) {
@@ -88,16 +88,16 @@ export default function PlansPage() {
         <Link href="/dashboard" className="text-sm text-violet-700 font-bold">← ホーム</Link>
         <div>
           <h1 className="text-2xl font-black">プラン</h1>
-          <p className="text-xs text-gray-500 mt-1">ページの作成・公開・SNS・ショップは<span className="font-bold">ずっと無料</span>。自分のドメインで公開したい人と、AIにもっと任せたい人のためのプランです。</p>
+          <p className="text-xs text-gray-500 mt-1">ページの作成・公開・SNS・ショップは<span className="font-bold">ずっと無料</span>。自分のドメインで公開したい人と、AWPにもっと任せたい人のためのプランです。</p>
         </div>
 
         {d.isAdmin && (
-          <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3">管理者としてログイン中：料金・AIの利用枠・1日の回数制限はすべて通過できます。Harnessの申し込みも支払い不要になります。</p>
+          <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3">管理者としてログイン中：料金・ intelligence の利用枠・1日の回数制限はすべて通過できます。Harnessの申し込みも支払い不要になります。</p>
         )}
         <section className="rounded-3xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white p-5">
           <p className="text-xs opacity-90">いまのプラン</p>
           <p className="text-2xl font-black">{d.current.label}{d.current.until && d.current.plan !== 'free' ? <span className="text-sm font-bold">（{new Date(d.current.until).toLocaleDateString('ja-JP')}まで）</span> : ''}</p>
-          <p className="text-xs mt-3 opacity-90">今月のAI</p>
+          <p className="text-xs mt-3 opacity-90">今月の intelligence</p>
           {d.quota.allowanceYen === null ? <p className="text-sm font-bold">管理者のため上限なし</p> : (
             <>
               <div className="mt-1 h-2 rounded-full bg-white/30 overflow-hidden"><div className="h-full bg-white" style={{ width: `${usedPct}%` }} /></div>
@@ -126,7 +126,7 @@ export default function PlansPage() {
             );
           })}
           <p className="text-[11px] text-gray-500 leading-relaxed">
-            どのプランもAIの利用が含まれています。使いすぎる心配はいりません——上限に近づいたらお知らせし、止まることはあっても追加料金はかかりません。
+            どのプランも intelligence の利用が含まれています。使いすぎる心配はいりません——上限に近づいたらお知らせし、止まることはあっても追加料金はかかりません。
             支払いは銀行振込かキャッシュ。自動更新はなく、やめたいときは何もしなくて大丈夫です。
           </p>
         </section>

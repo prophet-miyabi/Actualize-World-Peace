@@ -136,13 +136,13 @@ router.delete('/admin/addons/:id', authenticate, async (req: AuthRequest, res) =
 // 標準メニューのたたき台を追加する。料金は未設定・非表示で作るので、運営者が料金を決めて有効にするまでユーザーには出ない
 const STANDARD_MENU = [
   { key: 'line-install', harness: 'line', isInstall: true, name: 'L Harness の導入', description: 'LINE公式アカウントの顧客管理・ステップ配信・予約フォームを使えるように、あなたのCloudflareに L Harness を設置します。' },
-  { key: 'line-bot', harness: 'line', isInstall: false, name: 'LINE AIボットの導入', description: 'お客様からのLINEのメッセージに、AIが自動で返信するボットを設定します。' },
+  { key: 'line-bot', harness: 'line', isInstall: false, name: 'LINE AWPボットの導入', description: 'お客様からのLINEのメッセージに、AWPが自動で返信するボットを設定します。' },
   { key: 'x-install', harness: 'x', isInstall: true, name: 'X Harness の導入', description: 'X（旧Twitter）の予約投稿・リサーチ・エンゲージメントを管理できるように、X Harness を設置します。' },
-  { key: 'x-auto-posts', harness: 'x', isInstall: false, name: 'X投稿の自動作成', description: 'あなたの事業・活動に合わせた投稿をAIが作成し、予約投稿まで自動で行う仕組みを設定します。' },
-  { key: 'x-auto-articles', harness: 'x', isInstall: false, name: '記事の自動作成', description: 'テーマに沿った長めの記事をAIが作成し、Xで発信できるようにする仕組みを設定します。' },
+  { key: 'x-auto-posts', harness: 'x', isInstall: false, name: 'X投稿の自動作成', description: 'あなたの事業・活動に合わせた投稿をAWPが作成し、予約投稿まで自動で行う仕組みを設定します。' },
+  { key: 'x-auto-articles', harness: 'x', isInstall: false, name: '記事の自動作成', description: 'テーマに沿った長めの記事をAWPが作成し、Xで発信できるようにする仕組みを設定します。' },
   { key: 'ig-install', harness: 'instagram', isInstall: true, name: 'IG Harness の導入', description: 'Instagramのコメント自動返信・DM自動化を使えるように、IG Harness を設置します。' },
   { key: 'ig-bot', harness: 'instagram', isInstall: false, name: 'Instagram自動返信ボットの導入', description: 'コメントへの自動返信やDMの自動送信を行うボットを設定します。' },
-  { key: 'ig-auto-posts', harness: 'instagram', isInstall: false, name: 'Instagram投稿の自動作成', description: 'あなたの事業・活動に合わせた投稿文をAIが作成し、投稿を自動化する仕組みを設定します。' }
+  { key: 'ig-auto-posts', harness: 'instagram', isInstall: false, name: 'Instagram投稿の自動作成', description: 'あなたの事業・活動に合わせた投稿文をAWPが作成し、投稿を自動化する仕組みを設定します。' }
 ];
 
 router.post('/admin/addons/seed', authenticate, async (req: AuthRequest, res) => {

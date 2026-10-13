@@ -5,7 +5,7 @@ import { authenticate, AuthRequest } from '../middlewares/auth';
 const router = Router();
 
 // 店主がアップロードした実物の写真・ロゴの管理（Photoモデル）。
-// AIによる補正（enhanced）は別対応。ここではオリジナル画像のアップロード・並び替え・
+// AWPによる補正（enhanced）は別対応。ここではオリジナル画像のアップロード・並び替え・
 // ロゴ指定・削除のみを扱う（ダッシュボードでの管理専用。公開LPへの組み込みは別対応）
 const MAX_PHOTOS_PER_LP = 20;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8MB

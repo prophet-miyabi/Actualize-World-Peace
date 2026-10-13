@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'AWP - Actualize World Peace',
     short_name: 'AWP',
-    description: 'やりたいことを、スマホひとつで世界へ。AIと一緒にホームページをつくって、無料で公開。',
+    description: 'やりたいことを、スマホひとつで世界へ。AWPと一緒にホームページをつくって、無料で公開。',
     start_url: '/dashboard',
     scope: '/',
     display: 'standalone',

@@ -62,7 +62,7 @@ export const CHANNELS = {
   progress: { name: '📈-進捗', topic: '1日の振り返りと、公開日までの見通し' },
   alerts: { name: '🚨-アラート', topic: '本番のエラーや、遅れの警告' },
   ask: { name: '💬-相談', topic: '/ask で質問、/bug で不具合、/add でタスク追加' },
-  company: { name: '🏢-AI企業', topic: 'CEOの日次報告・承認待ちの操作・監査の結果' }
+  company: { name: '🏢-AWP企業', topic: 'CEOの日次報告・承認待ちの操作・監査の結果' }
 } as const;
 export type ChannelKey = keyof typeof CHANNELS;
 
@@ -110,7 +110,7 @@ export async function say(persona: PersonaKey, ch: ChannelKey, content: string, 
   }
 }
 
-// 任意の表示名で発言し、メッセージIDを返す（あとで editAs で書き換えるため。AI企業のエージェントが使う）
+// 任意の表示名で発言し、メッセージIDを返す（あとで editAs で書き換えるため。AWP企業のエージェントが使う）
 export async function sayAs(displayName: string, ch: ChannelKey, content: string, opts: { threadId?: string } = {}): Promise<string | null> {
   if (!discordConfigured()) return null;
   const hook = await webhookFor(ch);

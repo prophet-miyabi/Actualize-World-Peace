@@ -107,7 +107,7 @@ export default async function LandingPage({ params }: Params) {
   }
   const siteUrl = SITE_URL || (await currentOrigin());
   const { p: palette } = buildTokens(lp.design);
-  // 持ち主が追加した機能（商品・予約リクエスト・AIチャットボット）
+  // 持ち主が追加した機能（商品・予約リクエスト・AWPチャットボット）
   const modules = (
     <>
       <ProductsSection lp={lp} products={lp.products ?? []} shop={lp.shop} siteUrl={siteUrl} />

@@ -49,7 +49,7 @@ router.post('/sessions/:id/messages', metered('builder'), async (req: AuthReques
   if (!s || s.status !== 'active') return res.status(404).json({ error: '見つかりません' });
   const text = String(req.body?.text ?? '').trim().slice(0, 1000);
   if (!text) return res.status(400).json({ error: 'メッセージを入力してね' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AIが利用できないため、いまは対話で作れません。' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AWPが利用できないため、いまは対話で作れません。' });
   if (!(await isAdminUser(req.user!.id)) && hitRateLimit(`builder:${req.user!.id}`, DAILY_TURNS, 24 * 60 * 60 * 1000)) {
     return res.status(429).json({ error: '今日はたくさん話したね！続きは明日できるよ。' });
   }
@@ -71,7 +71,7 @@ router.post('/sessions/:id/messages', metered('builder'), async (req: AuthReques
     // 管理者には原因（キー・残高・上限など）をそのまま、利用者には状況だけを伝える
     const detail = describeAiError(e);
     const admin = await isAdminUser(req.user!.id);
-    return res.status(502).json({ error: admin ? `AIの応答に失敗しました: ${detail}` : 'AIがいま混み合っているか、一時的に使えません。少し待ってからもう一度送ってみてね。', code: 'AI_UNAVAILABLE' });
+    return res.status(502).json({ error: admin ? `AWPの応答に失敗しました: ${detail}` : 'AWPがいま混み合っているか、一時的に使えません。少し待ってからもう一度送ってみてね。', code: 'AI_UNAVAILABLE' });
   }
   const updated = await prisma.builderSession.update({
     where: { id: s.id },

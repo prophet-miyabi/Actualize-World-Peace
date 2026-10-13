@@ -2,7 +2,7 @@ import prisma from '../prisma';
 
 // AWPの有料プラン（3段階）。運営者の方針:
 // - 料金は Claude の Pro プラン（月額・米ドル）を基準に、段階ごとの倍率で決める
-// - 料金の 78% を、その利用者の「AIの利用枠」（トークンの消費にかかる費用）に充てる。22% がAWPの運営の取り分
+// - 料金の 78% を、その利用者の「intelligence の利用枠」（トークンの消費にかかる費用）に充てる。22% がAWPの運営の取り分
 // 基準額・為替・倍率・無料プランの利用枠は、管理画面から変えられる（SystemSetting の plan_config）
 export const PLAN_KEYS = ['lite', 'standard', 'pro'] as const;
 export type PlanKey = (typeof PLAN_KEYS)[number];
@@ -12,7 +12,7 @@ export type PlanConfig = {
   baseUsd: number;     // 基準: Claude Pro の月額（米ドル）
   usdJpy: number;      // 円換算のレート
   multipliers: Record<PlanKey, number>;
-  freeAiUsd: number;   // 無料プランの月のAI利用枠（米ドル）
+  freeAiUsd: number;   // 無料プランの月の intelligence 利用枠（米ドル）
 };
 
 export const DEFAULT_PLAN_CONFIG: PlanConfig = {
@@ -44,7 +44,7 @@ export async function setPlanConfig(c: PlanConfig, updatedBy: string) {
   await prisma.systemSetting.upsert({ where: { key: 'plan_config' }, update: { value: JSON.stringify(c), updatedBy }, create: { key: 'plan_config', value: JSON.stringify(c), updatedBy } });
 }
 
-// 月額（円・10円単位）と、そのうちAIの利用枠に充てる額
+// 月額（円・10円単位）と、そのうち intelligence の利用枠に充てる額
 export function planPrices(c: PlanConfig) {
   return Object.fromEntries(PLAN_KEYS.map((k) => {
     const priceYen = Math.round((c.baseUsd * c.multipliers[k] * c.usdJpy) / 10) * 10;
@@ -71,7 +71,7 @@ export async function userHasPaidPlan(userId: string) {
   return hasPaidPlan(u);
 }
 
-// 月のAI利用枠（米ドル）
+// 月の intelligence 利用枠（米ドル）
 export async function aiAllowanceUsd(userId: string) {
   const [u, c] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { plan: true, planUntil: true, isAdmin: true, subscriptionStatus: true } }),

@@ -6,7 +6,7 @@ import { fetchWithRetry } from './cloudflareFetch';
 import { aiClient, recordAiCost } from '../lib/aiUsage';
 
 // ---------------------------------------------------------------------------
-// デザインは「AIが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAIが選ぶ方式。
+// デザインは「AWPが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAWPが選ぶ方式。
 // スマホでの崩れや、不正なスクリプトの混入を防ぎつつ、店ごとに異なる見た目を作る。
 //   - Claude: 配色・書体・レイアウトの決定と、画像の指示文の作成
 //   - Gemini: メイン画像（ヒーロー画像）の生成
@@ -34,7 +34,7 @@ type DesignInput = { businessName: string; heroTitle: string; strengths: string[
 
 // Claudeへの出力形式。
 // SDKは選択肢（enum）や正規表現をAPIに制約として送らず、受信後にまとめて検査するため、
-// 1項目でも外れるとAIのデザイン全体が破棄されてしまう。そこで選択肢も文字列で受け取り、
+// 1項目でも外れるとAWPのデザイン全体が破棄されてしまう。そこで選択肢も文字列で受け取り、
 // finalize() で項目ごとに照合して、外れた項目だけをプリセットの値で補う。
 const oneOf = (list: readonly string[]) => `次のいずれか: ${list.join(' / ')}`;
 const AiDesignSchema = z.object({
@@ -49,7 +49,7 @@ const AiDesignSchema = z.object({
   imagePrompt: z.string().describe('メイン画像の英語の指示文。写真風、文字・ロゴなし')
 });
 
-// --- プリセット（AIが使えないときも、業種に合う洗練された見た目にする） --------------------
+// --- プリセット（intelligence が使えないときも、業種に合う洗練された見た目にする） --------------------
 
 const PRESETS: Record<string, Omit<Design, 'palette' | 'heroOverlay'> & { palette: Omit<Design['palette'], 'onPrimary'> }> = {
   trust: {
@@ -154,7 +154,7 @@ const DARK = '#111827';
 const LIGHT = '#ffffff';
 const bestOn = (bg: string) => (contrast(LIGHT, bg) >= contrast(DARK, bg) ? LIGHT : DARK);
 
-// AIやプリセットの値を検証し、読みにくい配色はサーバー側で自動補正する
+// AWPやプリセットの値を検証し、読みにくい配色はサーバー側で自動補正する
 function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
   const p = preset.palette;
   const background = normalizeHex(raw?.palette?.background ?? raw?.background, p.background);
@@ -223,7 +223,7 @@ export async function designWithClaude(input: DesignInput, templateKey?: string 
   if (response.stop_reason === 'refusal' || !response.parsed_output) {
     throw new Error(`design not produced (stop_reason=${response.stop_reason})`);
   }
-  // AIの値が不正・読みにくい場合は、業種に合うプリセット（明示選択があればそれ）の値で補う
+  // AWPの値が不正・読みにくい場合は、業種に合うプリセット（明示選択があればそれ）の値で補う
   return finalize(response.parsed_output, PRESETS[baseKeyFor(input, templateKey)]);
 }
 
@@ -246,7 +246,7 @@ export async function reviewImageWithClaude(input: DesignInput, design: Design, 
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     system:
-      'あなたはWebサイトの品質管理を担当するアートディレクターです。別のAIが生成したメイン画像を厳しく確認してください。\n' +
+      'あなたはWebサイトの品質管理を担当するアートディレクターです。別のAWPが生成したメイン画像を厳しく確認してください。\n' +
       '不合格の条件: 画像内に文字・ロゴ・透かし・看板がある / 人体や物の形が不自然 / 事業の雰囲気と合わない / 画質が粗い。\n' +
       'あわせて、この写真と調和するメインカラーと、写真の上に文字を載せる際の暗幕の濃さを決めてください。',
     messages: [{
@@ -281,7 +281,7 @@ export async function reviewImageWithClaude(input: DesignInput, design: Design, 
 
 // --- メイン画像の生成 -----------------------------------------------------------------------
 // Gemini（無料枠だと画像生成は1日0回のことが多い）に加えて、
-// Cloudflare Workers AI（1日10,000 Neuronsまで無料。FLUXの画像1枚は数Neuron程度）にも対応する。
+// Cloudflare Workers AWP（1日10,000 Neuronsまで無料。FLUXの画像1枚は数Neuron程度）にも対応する。
 // どちらを使うかは設定されている環境変数で自動判定する（generateHeroImage参照）。
 
 function buildImagePrompt(imagePrompt: string, fixInstructions?: string): string {
@@ -308,7 +308,7 @@ async function imageFromGemini(prompt: string): Promise<{ data: Buffer; mimeType
   return { data: Buffer.from(image.data, 'base64'), mimeType: image.mime_type || 'image/jpeg' };
 }
 
-// Cloudflare Workers AI（FLUX.1 [schnell]）に、そのままの指示文で画像を1枚作らせる
+// Cloudflare Workers AWP（FLUX.1 [schnell]）に、そのままの指示文で画像を1枚作らせる
 async function imageFromWorkersAI(prompt: string): Promise<{ data: Buffer; mimeType: string }> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
@@ -337,7 +337,7 @@ export async function heroImageWithWorkersAI(imagePrompt: string, fixInstruction
   return imageFromWorkersAI(buildImagePrompt(imagePrompt, fixInstructions));
 }
 
-// どのAIで画像を作るかを、設定済みの環境変数から自動選択する
+// どのAWPで画像を作るかを、設定済みの環境変数から自動選択する
 // （Cloudflareの方が無料枠が大きいため優先。どちらも未設定なら画像なしで公開する）
 export async function generateHeroImage(imagePrompt: string, fixInstructions?: string): Promise<{ data: Buffer; mimeType: string }> {
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {

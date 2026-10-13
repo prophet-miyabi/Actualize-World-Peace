@@ -22,13 +22,13 @@ type Session = {
 const STATUS: Record<Status, { label: string; cls: string }> = {
   confirmed: { label: '確定', cls: 'bg-green-100 text-green-700' },
   provided: { label: 'あなたが言った', cls: 'bg-sky-100 text-sky-700' },
-  assumed: { label: 'AIの推測', cls: 'bg-amber-100 text-amber-700' },
+  assumed: { label: 'AWPの推測', cls: 'bg-amber-100 text-amber-700' },
   default: { label: '既定', cls: 'bg-gray-100 text-gray-600' },
   unconfirmed: { label: '未確認', cls: 'bg-gray-100 text-gray-400' }
 };
 const PUBLISHABLE: Status[] = ['confirmed', 'default'];
 
-// 対話で作るページビルダー。左右に切り替える2画面: 「おしゃべり」（聞き取り）と「確認して公開」（事実の台帳）
+// 対話で作るページビルダー。左右に切り替える2画面: 「チャット」（聞き取り）と「確認して公開」（事実の台帳）
 export default function BuilderPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function BuilderPage() {
     const text = input.trim();
     if (!text || busy || !session) return;
     setInput('');
-    // 送った内容はすぐ画面に出す（AIの返事を待つ間も会話が見えるように）
+    // 送った内容はすぐ画面に出す（AWPの返事を待つ間も会話が見えるように）
     setSession({ ...session, messages: [...session.messages, { role: 'user', content: text }] });
     const ok = await run(() => api.post(`/builder/sessions/${session.id}/messages`, { text }));
     if (!ok) setSession(session);
@@ -132,14 +132,14 @@ export default function BuilderPage() {
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b">
         <div className="max-w-2xl mx-auto px-4 pt-3 flex items-center justify-between">
           <Link href="/dashboard" className="text-sm text-violet-700 font-bold">← ホーム</Link>
-          <p className="font-black">AIとページづくり</p>
+          <p className="font-black">AWPとページづくり</p>
           <button onClick={restart} className="text-xs text-gray-500 underline">やり直す</button>
         </div>
         <div className="max-w-2xl mx-auto px-4 flex">
           {(['chat', 'check'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 py-2.5 text-sm font-bold border-b-2 ${tab === t ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-500'}`}>
-              {t === 'chat' ? 'おしゃべり' : '確認して公開'}
+              {t === 'chat' ? 'チャット' : '確認して公開'}
               {t === 'check' && pending > 0 && <span className="ml-1 rounded-full bg-amber-400 text-white text-[10px] px-1.5 py-0.5">{pending}</span>}
             </button>
           ))}
@@ -179,7 +179,7 @@ export default function BuilderPage() {
         <section className="max-w-2xl w-full mx-auto px-4 py-4 pb-16 space-y-5">
           <div className="rounded-2xl bg-white border p-4 text-xs text-gray-600 leading-relaxed">
             ページに載るのは <span className="rounded-full px-2 py-0.5 font-bold bg-green-100 text-green-700">確定</span> の情報だけ。
-            「AIの推測」や「未確認」の項目は、確定するまでページに出ないから安心してね。
+            「AWPの推測」や「未確認」の項目は、確定するまでページに出ないから安心してね。
           </div>
 
           <div>
@@ -239,7 +239,7 @@ export default function BuilderPage() {
               {brief.copy && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS[brief.copy.status].cls}`}>{STATUS[brief.copy.status].label}</span>}
             </div>
             {!brief.copy ? (
-              <p className="text-sm text-gray-400 mt-1">名前と活動内容がわかったら、AIが案を作るよ</p>
+              <p className="text-sm text-gray-400 mt-1">名前と活動内容がわかったら、AWPが案を作るよ</p>
             ) : copyDraft ? (
               <div className="mt-2 space-y-2">
                 <input value={copyDraft.heroTitle} onChange={(e) => setCopyDraft({ ...copyDraft, heroTitle: e.target.value })} maxLength={60} className="w-full border rounded-xl px-3 py-2 text-base font-bold" />

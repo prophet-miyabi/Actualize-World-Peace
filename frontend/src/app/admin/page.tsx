@@ -19,9 +19,9 @@ type Overview = {
 const CONFIG_LABEL: Record<keyof Overview['config'], string> = {
   smsVerification: 'SMS認証',
   stripe: '決済（Stripe）',
-  anthropic: 'AI（Claude）',
-  imageAi: '画像生成AI',
-  githubForAiDevelopment: 'AIによる開発（GitHub連携）',
+  anthropic: 'intelligence（Claude）',
+  imageAi: '画像生成 intelligence',
+  githubForAiDevelopment: 'AWPによる開発（GitHub連携）',
   customDomainBase: 'AWPの独自ドメイン'
 };
 
@@ -41,7 +41,7 @@ export default function AdminDashboard() {
     { label: '公開ページ', value: o.kpi.pages, sub: `7日間で +${o.kpi.newPages7d}` },
     { label: '未対応の申し込み', value: o.kpi.ordersRequested, sub: `対応中 ${o.kpi.ordersInProgress}`, href: '/admin/harness', alert: o.kpi.ordersRequested > 0 },
     { label: '未解決のエラー', value: o.kpi.openErrors, href: '/admin/monitoring', alert: o.kpi.openErrors > 0 },
-    { label: '承認待ちのAI提案', value: o.kpi.proposalsWaiting, href: '/admin/ops', alert: o.kpi.proposalsWaiting > 0 },
+    { label: '承認待ちのAWP提案', value: o.kpi.proposalsWaiting, href: '/admin/ops', alert: o.kpi.proposalsWaiting > 0 },
     { label: '提携ツールのクリック', value: o.kpi.affiliateClicks7d, sub: '直近7日間' }
   ];
   const paused = o.emergency.pause_agent_loop || o.emergency.pause_sns_posting || !!o.emergency.pause_crew;
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
 
       {paused && (
         <Link href="/admin/emergency" className="block mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-bold">
-          緊急停止中: {[o.emergency.pause_agent_loop && 'AIエージェント', o.emergency.pause_sns_posting && 'SNS予約投稿', o.emergency.pause_crew && 'ローンチ・クルー'].filter(Boolean).join('・')} →
+          緊急停止中: {[o.emergency.pause_agent_loop && 'AWPエージェント', o.emergency.pause_sns_posting && 'SNS予約投稿', o.emergency.pause_crew && 'ローンチ・クルー'].filter(Boolean).join('・')} →
         </Link>
       )}
 
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
           ))}
         </div>
         <div className="rounded-xl p-4 text-white bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500">
-          <h2 className="font-bold mb-1">AIオペレーターに聞く</h2>
+          <h2 className="font-bold mb-1">AWPオペレーターに聞く</h2>
           <p className="text-sm opacity-90 mb-3">システムの状況確認、課題の整理、設定変更やコード変更の提案までをチャットで。実行はあなたの承認後です。</p>
           <Link href="/admin/ops" className="inline-block bg-white text-violet-700 font-bold rounded-full px-4 py-2 text-sm">チャットを開く →</Link>
         </div>

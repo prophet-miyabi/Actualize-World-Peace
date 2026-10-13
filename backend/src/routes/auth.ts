@@ -264,4 +264,28 @@ router.post('/devenv-token', authenticate, async (req: AuthRequest, res) => {
   res.json({ token, expiresInDays: 90, savePath: '~/.claude/awp-admin-token' });
 });
 
+// 運営者が「新規ユーザーの視点」でシステムを試すためのテストアカウント。管理者のみ。
+// reset=true でテストユーザーのデータ（ページ・投稿・予約・注文など、ユーザーに紐づくもの）を消してまっさらにする
+const TEST_USER_EMAIL = 'tester@awp.local';
+router.post('/admin/test-user', authenticate, async (req: AuthRequest, res) => {
+  const me = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { isAdmin: true } });
+  if (!me?.isAdmin) return res.status(403).json({ error: '管理者のみ' });
+  const reset = !!req.body?.reset;
+  let user = await prisma.user.findUnique({ where: { email: TEST_USER_EMAIL } });
+  if (user && reset) {
+    // アカウント削除と同じ順序で消す（ページ → LINE設定 → 本人。他は連鎖削除）
+    await prisma.$transaction([
+      prisma.inquiry.deleteMany({ where: { tenantId: user.id } }),
+      prisma.landingPage.deleteMany({ where: { userId: user.id } }),
+      prisma.lineConfig.deleteMany({ where: { userId: user.id } }),
+      prisma.user.delete({ where: { id: user.id } })
+    ]);
+    user = null;
+  }
+  if (!user) {
+    user = await prisma.user.create({ data: { email: TEST_USER_EMAIL, name: 'テストユーザー', password: await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10) } });
+  }
+  res.json({ token: issueToken(user), user: { id: user.id, name: user.name, email: user.email } });
+});
+
 export default router;

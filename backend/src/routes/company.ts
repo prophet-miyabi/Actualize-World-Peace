@@ -15,7 +15,7 @@ import { companyTick } from '../company/loop';
 import { chatWithAgent, type ChatTurn } from '../company/chat';
 import { seedCompany } from '../company/seed';
 
-// AI企業の管理画面用API（運営者のみ）: 組織図・目標・タスク・承認待ち・メモリ・イベント・費用
+// AWP企業の管理画面用API（運営者のみ）: 組織図・目標・タスク・承認待ち・メモリ・イベント・費用
 const router = Router();
 router.use(authenticate);
 router.use(async (req: AuthRequest, res, next) => {
@@ -297,7 +297,7 @@ router.post('/chats/:id/messages', async (req: AuthRequest, res) => {
   const text = String(req.body?.text ?? '').trim().slice(0, 6000);
   if (!text) return res.status(400).json({ error: 'メッセージを入力してください' });
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY が未設定です' });
-  if (await getFlag(SETTING_KEYS.pauseCompany)) return res.status(409).json({ error: 'AI企業は停止中です（管理画面で開始してください）' });
+  if (await getFlag(SETTING_KEYS.pauseCompany)) return res.status(409).json({ error: 'AWP企業は停止中です（管理画面で開始してください）' });
 
   const prior = ((chat.messages as any[]) ?? []) as { role: 'user' | 'assistant'; content: string }[];
   const history: ChatTurn[] = [...prior.map((m) => ({ role: m.role, content: String(m.content) })), { role: 'user', content: text }];

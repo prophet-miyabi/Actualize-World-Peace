@@ -11,7 +11,7 @@ import { hitRateLimit } from '../lib/rateLimit';
 import { createAnthropic } from '../lib/anthropic';
 import { COMPANY_MODELS } from '../company/registry';
 
-// 運営者（管理者）専用: ダッシュボード・緊急コントロール・AIオペレーターとのチャット・提案の承認
+// 運営者（管理者）専用: ダッシュボード・緊急コントロール・AWPオペレーターとのチャット・提案の承認
 const router = Router();
 
 async function requireAdmin(req: AuthRequest, res: any): Promise<boolean> {
@@ -39,11 +39,11 @@ router.put('/emergency', authenticate, async (req: AuthRequest, res) => {
   res.json((await buildOverview()).emergency);
 });
 
-// ---- AIオペレーターとのチャット（Server-Sent Events で少しずつ返す） ----
+// ---- AWPオペレーターとのチャット（Server-Sent Events で少しずつ返す） ----
 router.post('/chat', authenticate, async (req: AuthRequest, res) => {
   if (!(await requireAdmin(req, res))) return;
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AIオペレーターは使えません。' });
-  // 管理者専用の画面なので回数の上限は設けない（費用は会社のAI費用として記録される）
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AWPオペレーターは使えません。' });
+  // 管理者専用の画面なので回数の上限は設けない（費用は会社の intelligence 費用として記録される）
 
   const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
   const history: ChatTurn[] = raw
@@ -68,13 +68,13 @@ router.post('/chat', authenticate, async (req: AuthRequest, res) => {
     send({ type: 'done' });
   } catch (e: any) {
     console.error('ops chat failed', e?.message);
-    send({ type: 'error', message: `AIの応答に失敗しました: ${describeAiError(e)}` });
+    send({ type: 'error', message: `AWPの応答に失敗しました: ${describeAiError(e)}` });
   } finally {
     res.end();
   }
 });
 
-// ---- AI接続の確認（運営者が原因をすぐ特定できるように、実際に1回だけ小さな呼び出しをする） ----
+// ---- intelligence 接続の確認（運営者が原因をすぐ特定できるように、実際に1回だけ小さな呼び出しをする） ----
 router.get('/ai-check', authenticate, async (req: AuthRequest, res) => {
   if (!(await requireAdmin(req, res))) return;
   const problem = anthropicKeyProblem();
@@ -132,7 +132,7 @@ router.post('/proposals/:id/approve', authenticate, async (req: AuthRequest, res
       p.body,
       '',
       '---',
-      'この課題は、AWPの管理者画面でAIオペレーターが作成し、運営者が承認したものです。',
+      'この課題は、AWPの管理者画面でAWPオペレーターが作成し、運営者が承認したものです。',
       '- 作業はこのリポジトリのルール（CLAUDE.md）に従ってください。',
       '- 変更はブランチで行い、プルリクエストとして提出してください（mainへ直接プッシュしない）。',
       '- 本番への反映は、運営者がプルリクエストを確認してマージしたときだけ行われます。'

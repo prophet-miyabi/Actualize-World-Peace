@@ -19,7 +19,7 @@ import { domainServable, evaluateDomain } from '../lib/domainPolicy';
 
 const router = Router();
 
-// 実績（口コミNo.1、○件など）や限定オファー（先着○名など）はAIに作らせない。
+// 実績（口コミNo.1、○件など）や限定オファー（先着○名など）はAWPに作らせない。
 // 事実でない表示は、顧客が景品表示法の不当表示に問われるおそれがあるため、店主本人が事実を記入する。
 // また正規表現・件数などの制約はAPIに送られないため付けず、受け取った後にサーバーで整える。
 const LpContentSchema = z.object({
@@ -28,16 +28,16 @@ const LpContentSchema = z.object({
   suggestedSlug: z.string().describe('事業内容をローマ字にした、半角英小文字・数字・ハイフンのURL')
 });
 
-// 事業内容を一言入力するだけで、LPの文章一式をAIが作成する
+// 事業内容を一言入力するだけで、LPの文章一式をAWPが作成する
 // （顧客がキーボードで長文を打たずに済むようにするための機能）
-// 支払い前の無料お試し段階でも使えるようにする（登録直後にAIの力を体験してもらうため）。
-// ただしAIの利用料が発生するため、1人あたり24時間で10回までに制限する。
+// 支払い前の無料お試し段階でも使えるようにする（登録直後にAWPの力を体験してもらうため）。
+// ただし intelligence の利用料が発生するため、1人あたり24時間で10回までに制限する。
 const AI_GENERATE_LIMIT = 10;
 const aiGenerateRequests = new Map<string, number[]>();
 
 router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRequest, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(400).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AI自動入力は使えません。' });
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY が未設定のため、AWP自動入力は使えません。' });
   }
   const description = String(req.body.description || '').slice(0, 300);
   if (!description) return res.status(400).json({ error: 'description is required' });
@@ -46,7 +46,7 @@ router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRe
   const now = Date.now();
   const recent = (aiGenerateRequests.get(userId) ?? []).filter((t) => now - t < 24 * 60 * 60 * 1000);
   if (recent.length >= AI_GENERATE_LIMIT && !(await isAdminUser(userId))) {
-    return res.status(429).json({ error: `AI自動入力は24時間に${AI_GENERATE_LIMIT}回までです。時間をおいてお試しください。` });
+    return res.status(429).json({ error: `AWP自動入力は24時間に${AI_GENERATE_LIMIT}回までです。時間をおいてお試しください。` });
   }
   aiGenerateRequests.set(userId, [...recent, now]);
 
@@ -69,11 +69,11 @@ router.post('/ai-generate', authenticate, metered('page_ai'), async (req: AuthRe
     });
     const out = response.parsed_output;
     if (response.stop_reason === 'refusal' || !out) {
-      return res.status(502).json({ error: 'AIの応答を解析できませんでした。もう一度お試しください。' });
+      return res.status(502).json({ error: 'AWPの応答を解析できませんでした。もう一度お試しください。' });
     }
     const strengths = out.strengths.map((s) => s.trim()).filter(Boolean).slice(0, 3);
     if (strengths.length < 3) {
-      return res.status(502).json({ error: 'AIの応答が不完全でした。もう一度お試しください。' });
+      return res.status(502).json({ error: 'AWPの応答が不完全でした。もう一度お試しください。' });
     }
     const slug = out.suggestedSlug.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
     res.json({ heroTitle: out.heroTitle.trim(), strengths, suggestedSlug: slug.length >= 3 ? slug : '' });
@@ -342,7 +342,7 @@ export const RESERVED_SLUGS = [
 ];
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
-// ページの公開は無料。LINE自動応答はAIの利用料がかかるため、有効化はこれがtrueの場合のみ
+// ページの公開は無料。LINE自動応答は intelligence の利用料がかかるため、有効化はこれがtrueの場合のみ
 const isPaidUser = hasPaidPlan;
 
 // 1アカウントで複数のページ（店舗・事業ごと）を持てるようにするためのヘルパー。
@@ -440,8 +440,8 @@ router.put('/line', authenticate, async (req: AuthRequest, res) => {
   res.json({ ok: true, webhook });
 });
 
-// ---------- AIデザイン ----------
-// 作り直しはAIの利用料がかかるため、1人あたり24時間で5回まで（1台構成の簡易な制限）
+// ---------- AWPデザイン ----------
+// 作り直しは intelligence の利用料がかかるため、1人あたり24時間で5回まで（1台構成の簡易な制限）
 const DESIGN_LIMIT = 5;
 const designRequests = new Map<string, number[]>();
 
@@ -492,7 +492,7 @@ router.get('/features', authenticate, async (req: AuthRequest, res) => {
 router.post('/features/:id', authenticate, metered('page_section'), async (req: AuthRequest, res) => {
   const feature = getFeature(String(req.params.id));
   if (!feature) return res.status(404).json({ error: 'この機能はありません。' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AIが利用できないため、現在この機能を追加できません。' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'AWPが利用できないため、現在この機能を追加できません。' });
 
   const userId = req.user!.id;
   const lp = await resolveLp(userId, req.body?.lpId);
@@ -516,7 +516,7 @@ router.post('/features/:id', authenticate, metered('page_section'), async (req: 
 
   try {
     const written = await writeSection(feature, { businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, inputs);
-    // 地図リンクはAIに書かせず、住所から確実に作る
+    // 地図リンクはAWPに書かせず、住所から確実に作る
     if (feature.id === 'access' && inputs.address) {
       written.content.mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inputs.address)}`;
     }
@@ -529,7 +529,7 @@ router.post('/features/:id', authenticate, metered('page_section'), async (req: 
     res.json({ feature: feature.id, content: section.content, promptBy: section.promptBy });
   } catch (e: any) {
     console.error('section generation failed', feature.id, e?.message);
-    res.status(502).json({ error: 'AIによる作成に失敗しました。時間をおいて再度お試しください。' });
+    res.status(502).json({ error: 'AWPによる作成に失敗しました。時間をおいて再度お試しください。' });
   }
 });
 

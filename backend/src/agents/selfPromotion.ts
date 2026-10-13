@@ -12,11 +12,11 @@ import { captureError } from '../lib/errors';
 // （二重管理で内容がずれないよう、ここでexportして使い回す）
 export const SELF_PROMOTION_FACTS: MarketingInput = {
   businessName: 'AWP',
-  heroTitle: 'あなたのビジネスも、あなた自身も。AIと一緒に世界へ公開しよう。',
+  heroTitle: 'あなたのビジネスも、あなた自身も。AWPと一緒に世界へ公開しよう。',
   strengths: [
-    'AIとの会話だけでLP・HPを自動作成',
+    'AWPとの会話だけでLP・HPを自動作成',
     '公式LINE連携（既にお持ちの場合は追加料金なし）',
-    'SNS投稿の下書き作成からコンプライアンス審査までAIエージェントが自動化'
+    'SNS投稿の下書き作成からコンプライアンス審査までAWPエージェントが自動化'
   ],
   sections: []
 };

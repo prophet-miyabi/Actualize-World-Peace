@@ -24,7 +24,7 @@ router.post('/generate', authenticate, requireAdmin, async (req: AuthRequest, re
   if (!KEY_RE.test(key)) return res.status(400).json({ error: 'キーは半角英数字・ハイフン・アンダースコアで60文字以内にしてください。' });
   if (!prompt) return res.status(400).json({ error: 'どんな画像にするか、指示文を入力してください。' });
   if (!process.env.GEMINI_API_KEY && !(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN)) {
-    return res.status(400).json({ error: '画像生成AIが未設定です（CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN またはGEMINI_API_KEYを設定してください）。' });
+    return res.status(400).json({ error: '画像生成 intelligenceが未設定です（CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN またはGEMINI_API_KEYを設定してください）。' });
   }
 
   try {

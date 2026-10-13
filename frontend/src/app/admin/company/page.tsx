@@ -38,7 +38,7 @@ const when = (s: string | null | undefined) => (s ? new Date(s).toLocaleString('
 const TABS = [['overview', '概要'], ['approvals', '承認'], ['tasks', 'タスク'], ['org', '組織'], ['reports', '報告'], ['memory', 'メモリ'], ['events', 'ログ']] as const;
 type Tab = (typeof TABS)[number][0];
 
-// AI企業の運営コンソール。人間のオーナーはここで、目標・設定・承認・点検を行い、エージェントの働きを監督する
+// AWP企業の運営コンソール。人間のオーナーはここで、目標・設定・承認・点検を行い、エージェントの働きを監督する
 export default function CompanyPage() {
   const [s, setS] = useState<Status | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
@@ -92,16 +92,16 @@ export default function CompanyPage() {
     <div className="px-4 py-6 md:px-8 max-w-4xl space-y-5">
       <div>
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-black">AI企業</h1>
+          <h1 className="text-2xl font-black">AWP企業</h1>
           <Link href="/admin/company/chat" className="shrink-0 rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">💬 AWP Intelligence</Link>
         </div>
-        <p className="text-sm text-gray-600 mt-1">あなたが目標・設定・重要な判断を決め、CEO以下のAIエージェントが日々の運営を進めます。</p>
+        <p className="text-sm text-gray-600 mt-1">あなたが目標・設定・重要な判断を決め、CEO以下のAWPエージェントが日々の運営を進めます。</p>
         {!s.configured && <p className="mt-2 text-sm text-red-600">ANTHROPIC_API_KEY が未設定のため、エージェントは動きません。</p>}
         <div className="mt-3"><AiHealthBanner /></div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button onClick={() => run('pause', () => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AI企業を開始しました。' : 'AI企業を停止しました。')}
+          <button onClick={() => run('pause', () => api.post('/company/pause', { paused: !s.paused }), s.paused ? 'AWP企業を開始しました。' : 'AWP企業を停止しました。')}
             className={`rounded-full px-5 py-2 text-sm font-bold ${s.paused ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white' : 'border text-gray-700'}`}>
-            {s.paused ? '▶ AI企業を開始する' : '⏸ 停止する'}
+            {s.paused ? '▶ AWP企業を開始する' : '⏸ 停止する'}
           </button>
           <span className={`text-xs ${s.paused ? 'text-gray-500' : 'text-green-700 font-bold'}`}>{s.paused ? '停止中（承認待ちの操作はそのまま残ります）' : '稼働中'}</span>
           {s.actions.length > 0 && <button onClick={() => setTab('approvals')} className="rounded-full bg-amber-400 text-white text-xs font-bold px-3 py-1.5">承認待ち {s.actions.length}</button>}
@@ -141,7 +141,7 @@ export default function CompanyPage() {
           </section>
           <p className="text-[11px] text-gray-500">
             最後の巡回: {s.health.lastTickAt ? `${tickAge}分前` : 'まだ'}{tickAge !== null && tickAge > 3 && !s.paused ? '（⚠ 巡回が止まっている可能性）' : ''}・CEOの最後の日次見直し: {s.health.lastCeoDay ?? 'まだ'}・
-            今月の費用 {usd(s.monthly.spentUsd)} / 上限 {usd(s.monthly.capUsd)}・30日: 会社 {usd(cost30)} / 利用者向けAI {usd(s.costs.userFacingAi30d.costUsd)}
+            今月の費用 {usd(s.monthly.spentUsd)} / 上限 {usd(s.monthly.capUsd)}・30日: 会社 {usd(cost30)} / 利用者向けAWP {usd(s.costs.userFacingAi30d.costUsd)}
           </p>
 
           <section className="bg-white border rounded-2xl p-4">
@@ -206,7 +206,7 @@ export default function CompanyPage() {
               <button disabled={!!busy} onClick={() => run('settings', () => api.put('/company/settings', settings), '設定を保存しました。')} className="rounded-full bg-violet-600 text-white text-xs font-bold px-4 py-2">設定を保存</button>
               <button disabled={!!busy} onClick={() => run('daily', () => api.post('/company/cycle/daily'), 'CEOの日次見直しを開始しました（数分で結果が出ます）。')} className="rounded-full border text-xs font-bold px-4 py-2">日次サイクルを今すぐ</button>
               <button disabled={!!busy} onClick={() => run('weekly', () => api.post('/company/cycle/weekly'), '週次（財務・データ・監査）を開始しました。')} className="rounded-full border text-xs font-bold px-4 py-2">週次サイクルを今すぐ</button>
-              <button disabled={!!busy} onClick={() => confirm('全エージェントに自己点検タスクを配ります（約$3〜5のAI費用）。よろしいですか？') && run('selftest', () => api.post('/company/selftest'), '自己点検を開始しました。「組織」タブで結果が順に表示されます。')} className="rounded-full border text-xs font-bold px-4 py-2">🧪 全エージェントを自己点検</button>
+              <button disabled={!!busy} onClick={() => confirm('全エージェントに自己点検タスクを配ります（約$3〜5の intelligence 費用）。よろしいですか？') && run('selftest', () => api.post('/company/selftest'), '自己点検を開始しました。「組織」タブで結果が順に表示されます。')} className="rounded-full border text-xs font-bold px-4 py-2">🧪 全エージェントを自己点検</button>
             </div>
             <p className="text-[11px] text-gray-500">自己点検の結果: {selftestDone}/{s.org.length} が合格（詳細は「組織」タブ）</p>
           </section>
@@ -359,7 +359,7 @@ export default function CompanyPage() {
 
       {tab === 'reports' && (
         <section className="space-y-3">
-          <p className="text-xs text-gray-500">CEOからあなたへの報告（Discord #🏢-AI企業 にも届きます）。</p>
+          <p className="text-xs text-gray-500">CEOからあなたへの報告（Discord #🏢-AWP企業 にも届きます）。</p>
           {s.reports.length === 0 && <p className="text-sm text-gray-500 bg-white border rounded-2xl p-4">まだ報告はありません。日次サイクルが動くと、ここに並びます。</p>}
           {s.reports.map((r) => (
             <article key={r.key} className="bg-white border rounded-2xl p-4 text-sm">

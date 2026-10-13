@@ -4,7 +4,7 @@ import prisma from '../prisma';
 import { aiAllowanceUsd } from './plans';
 import { createAnthropic } from './anthropic';
 
-// AIの利用量の計測と、プランごとの月の利用枠の管理。
+// intelligence の利用量の計測と、プランごとの月の利用枠の管理。
 // 利用者の操作から始まる処理を runAsUser() で包むと、その中で aiClient() を通したClaudeの呼び出しのトークン数を
 // 自動で記録する（あとから裏で続く処理 = デザイン作成なども同じ利用者として数える）。
 // 料金は公開価格（100万トークンあたりの米ドル）からの見積もり。AI_PRICE_JSON で上書きできる
@@ -35,7 +35,7 @@ export function anthropicKeyProblem(): string | null {
   return null;
 }
 
-// AIの呼び出しで起きたエラーを、運営者がそのまま読める日本語にする
+// AWPの呼び出しで起きたエラーを、運営者がそのまま読める日本語にする
 // 公開ヘルスチェック用: 原因を秘密を含まない分類だけで返す
 export function aiErrorCategory(e: any): string {
   const msg = String(e?.error?.error?.message ?? e?.error?.message ?? e?.message ?? '');
@@ -58,14 +58,14 @@ export function describeAiError(e: any): string {
   if (/must be a valid workspace ID/i.test(msg)) return 'Render の ANTHROPIC_WORKSPACE_ID が正しいワークスペースIDではありません（Console → 組織の設定 → ワークスペース の ID。wrkspc_ で始まる文字列をそのまま貼る）';
   if (/anthropic-workspace-id|not scoped to a workspace/i.test(msg)) return 'APIキーがワークスペースに紐づいていません。直し方は2つ: (A) Console の左上でワークスペース（Default など）を選んでから「キーを作成」し、そのキーを Render の ANTHROPIC_API_KEY に入れる / (B) Render に ANTHROPIC_WORKSPACE_ID を追加する（Console → 組織の設定 → ワークスペース → 使うワークスペースの ID。wrkspc_ で始まる）';
   if (e?.status === 401) return 'APIキーが無効です（Render の ANTHROPIC_API_KEY を確認してください）';
-  if (e?.status === 429) return 'AIのレート制限に達しました。少し待ってからお試しください';
-  if (e?.status === 402 || /credit balance/i.test(msg)) return 'AIのクレジット残高がありません（Console でクレジットを追加するか、Max プランのクレジットをリンクしてください）';
+  if (e?.status === 429) return 'AWPのレート制限に達しました。少し待ってからお試しください';
+  if (e?.status === 402 || /credit balance/i.test(msg)) return 'intelligence のクレジット残高がありません（Console でクレジットを追加するか、Max プランのクレジットをリンクしてください）';
   return msg.slice(0, 300);
 }
 
 export class AiQuotaError extends Error {
   constructor() {
-    super('今月のAIの利用枠を使い切りました。プランを上げると、すぐに使えるようになります。');
+    super('今月の intelligence の利用枠を使い切りました。プランを上げると、すぐに使えるようになります。');
   }
 }
 
@@ -88,7 +88,7 @@ export async function aiQuota(userId: string) {
   return { usedUsd: used, allowanceUsd: allowance, remainingUsd: Math.max(0, allowance - used), exceeded: used >= allowance };
 }
 
-// AIを使う前に呼ぶ。今月の利用枠を超えていたら AiQuotaError
+// AWPを使う前に呼ぶ。今月の利用枠を超えていたら AiQuotaError
 export async function assertAiAllowance(userId: string) {
   if ((await aiQuota(userId)).exceeded) throw new AiQuotaError();
 }
@@ -121,7 +121,7 @@ export function aiClient() {
   });
 }
 
-// ルートに付けるミドルウェア: このリクエストの中で使ったAIを、ログイン中の本人の利用として数える。
+// ルートに付けるミドルウェア: このリクエストの中で使ったAWPを、ログイン中の本人の利用として数える。
 // block = true なら、今月の利用枠を超えているときは 402 で止める（ページ作成など止めたくない処理は false）
 export function metered(feature: string, block = true) {
   return async (req: any, res: any, next: (err?: unknown) => void) => {

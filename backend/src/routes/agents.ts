@@ -30,7 +30,7 @@ router.put('/settings', authenticate, async (req: AuthRequest, res) => {
 });
 
 // 定期実行を待たず、今すぐエージェントを動かす（お試し・急ぎのとき用）
-// 複数プラットフォーム分のAI呼び出しを直列で行うため数十秒かかることがあり、
+// 複数プラットフォーム分のAWP呼び出しを直列で行うため数十秒かかることがあり、
 // 待たせたままにするとプロキシ側のタイムアウトで失敗して見えてしまう。
 // そのため即座に202を返し、裏側で実行する（結果は一覧の再読み込みで確認する）
 router.post('/run-now', authenticate, async (req: AuthRequest, res) => {

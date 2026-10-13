@@ -5,7 +5,7 @@ import { listActivity } from './activity';
 
 // AWP 会議室: オーナーの大きな問いを、議長と5人の博士（心理学・社会学・経済学・地政学・天文学）で議論し、
 // 合意／未決／次の一手にまとめて会社メモリ council/* に残す。管理画面からいつでも開ける。
-// 実行は AI企業のタスク（担当: chair）。Claude Platform では chair がコーディネータで博士がロスター（並列）。
+// 実行は AWP企業のタスク（担当: chair）。Claude Platform では chair がコーディネータで博士がロスター（並列）。
 export const COUNCIL_SCOPE = 'council';
 export const CHAIR_KEY = 'chair';
 export const SCHOLAR_KEYS = ['psychology', 'sociology', 'economics', 'geopolitics', 'astronomy'];

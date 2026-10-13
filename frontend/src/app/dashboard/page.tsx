@@ -241,7 +241,7 @@ function DashboardInner() {
       <Link href="/builder" className="mb-3 flex items-center gap-3 rounded-2xl bg-white border-2 border-violet-200 p-4">
         <span className="text-2xl" aria-hidden>💬</span>
         <span className="min-w-0">
-          <span className="block font-bold text-sm">AIとおしゃべりしてページをつくる</span>
+          <span className="block font-bold text-sm">AWPとチャットしてページをつくる</span>
           <span className="block text-[11px] text-gray-500">質問に答えるだけ。確定した情報だけがページに載るよ</span>
         </span>
       </Link>
@@ -261,8 +261,8 @@ function DashboardInner() {
         <Link href="/plans" className="col-span-2 rounded-2xl bg-white border border-gray-200 p-4 flex items-center gap-3">
           <span className="text-lg" aria-hidden>⚡</span>
           <span className="min-w-0">
-            <span className="block font-bold text-sm">プランとAIの利用枠</span>
-            <span className="block text-[11px] text-gray-500">今月のAIの利用状況・独自ドメイン・有料機能</span>
+            <span className="block font-bold text-sm">プランと intelligence の利用枠</span>
+            <span className="block text-[11px] text-gray-500">今月の intelligence の利用状況・独自ドメイン・有料機能</span>
           </span>
         </Link>
         <Link href="/wallet" className="col-span-2 rounded-2xl bg-white border border-gray-200 p-4 flex items-center gap-3">
@@ -298,14 +298,14 @@ function DashboardInner() {
             <Link href={`/products${qs}`} className="text-blue-600 underline">商品</Link>
             <Link href="/shop-settings" className="text-blue-600 underline">ショップの設定</Link>
             <Link href="/orders" className="text-blue-600 underline">注文</Link>
-            <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AIチャットボット</Link>
+            <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AWPチャットボット</Link>
             <Link href="/feed" className="text-blue-600 underline">投稿する</Link>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
             {isActive && (
               <>
                 <Link href="/social" className="text-blue-600 underline">SNS連携・予約投稿</Link>
-                <Link href="/agents" className="text-blue-600 underline">AIエージェント</Link>
+                <Link href="/agents" className="text-blue-600 underline">AWPエージェント</Link>
                 <Link href="/automation" className="text-blue-600 underline">ブラウザ操作の自動化</Link>
                 <button onClick={openPortal} disabled={portalLoading} className="text-blue-600 underline">
                   {portalLoading ? '読み込み中...' : '支払い方法・解約の管理'}
@@ -318,8 +318,8 @@ function DashboardInner() {
             まだページがありません。さっそくつくってみよう！公開まで無料です。
           </div>
         )}
-        {isAdmin && <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3 mt-2">管理者モード：有料機能・AIの利用枠・回数制限・独自ドメインの条件は通過できます（支払いは発生しません）。すべての機能をそのまま使えます。</p>}
-        {isAdmin && <Link href="/admin" className="text-violet-700 font-bold underline text-sm block mt-2">運営者画面（ダッシュボード・AIオペレーター） →</Link>}
+        {isAdmin && <p className="text-xs rounded-xl bg-violet-50 text-violet-800 p-3 mt-2">管理者モード：有料機能・ intelligence の利用枠・回数制限・独自ドメインの条件は通過できます（支払いは発生しません）。すべての機能をそのまま使えます。</p>}
+        {isAdmin && <Link href="/admin" className="text-violet-700 font-bold underline text-sm block mt-2">運営者画面（ダッシュボード・AWPオペレーター） →</Link>}
         {isAdmin && <Link href="/admin/assets" className="text-blue-600 underline text-sm block mt-1">サイトの外装画像を管理 →</Link>}
         {isAdmin && <Link href="/admin/monitoring" className="text-blue-600 underline text-sm block mt-1">システム監視 →</Link>}
         {isAdmin && <Link href="/admin/tools" className="text-blue-600 underline text-sm block mt-1">提携ツールのカタログ管理 →</Link>}
@@ -329,7 +329,7 @@ function DashboardInner() {
       {data.lp && justCreated && (
         <div className="rounded-3xl p-6 mb-8 text-white bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 shadow-lg">
           <p className="text-2xl font-black mb-1">公開しました！</p>
-          <p className="text-sm opacity-90 mb-4">デザインはAIが仕上げ中です。まずはURLをシェアして、見てもらおう。</p>
+          <p className="text-sm opacity-90 mb-4">デザインはAWPが仕上げ中です。まずはURLをシェアして、見てもらおう。</p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => sharePage(data.lp.slug, data.lp.businessName)} className="bg-white text-violet-700 font-bold rounded-full px-6 py-3">
               ページをシェアする
@@ -374,14 +374,14 @@ function DashboardInner() {
               <p className="font-bold mt-1 text-blue-700">Meydaがクライアントの要望にそって作成中です…</p>
             ) : (
               <p className="font-bold mt-1">
-                {design?.source === 'ai' ? 'AIが作成したデザイン' : '業種に合わせたデザイン'}
+                {design?.source === 'ai' ? 'AWPが作成したデザイン' : '業種に合わせたデザイン'}
                 {design?.hasImage ? '（メイン画像あり）' : ''}
               </p>
             )}
             {designError && <p className="text-red-600 text-sm mt-2">{designError}</p>}
             <button type="button" onClick={regenerateDesign} disabled={design?.status === 'generating'}
               className="mt-4 text-sm font-bold text-blue-600 disabled:text-gray-400">
-              AIでデザインを作り直す →
+              AWPでデザインを作り直す →
             </button>
           </div>
           <Link href={`/features${qs}`} className="block bg-white rounded-xl border shadow-sm p-6 hover:border-blue-400 transition">
@@ -456,7 +456,7 @@ function DashboardInner() {
         </form>
       )}
 
-      {/* LINE自動応答（Messaging API）の設定。AIの利用料がかかる上位機能のため、有料プラン加入者のみ */}
+      {/* LINE自動応答（Messaging API）の設定。intelligence の利用料がかかる上位機能のため、有料プラン加入者のみ */}
       {data.lp && !hasLineConfig && isActive && (
         <div className="bg-white rounded-xl border shadow-sm p-6 mb-8">
           <p className="text-gray-500 text-sm mb-1">LINE自動応答</p>

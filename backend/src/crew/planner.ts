@@ -2,7 +2,7 @@ import prisma from '../prisma';
 import { SEED } from './seed';
 import { addDays, fromHHMM, toHHMM } from './time';
 
-// 1日の予定を15分刻みで組む（AIを使わず、決まったルールで毎回同じ結果になるようにする）。
+// 1日の予定を15分刻みで組む（AWPを使わず、決まったルールで毎回同じ結果になるようにする）。
 // 作業時間は 10:00〜19:00、13:00〜14:00 は昼休み。決まった時間に朝会・PRレビュー・休憩・振り返りを入れ、
 // 残りの枠に「あなたのタスク」を、目標日→優先度→計画の順で、見込み時間ぶん並べる
 export type Block = { start: string; end: string; kind: 'task' | 'routine' | 'break'; taskKey?: string; title: string; part?: string };

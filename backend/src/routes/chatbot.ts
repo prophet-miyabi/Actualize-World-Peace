@@ -9,7 +9,7 @@ import { isAdminUser } from '../middlewares/admin';
 import { FACT_META, PUBLISHABLE, type Brief } from '../ai/builderAgent';
 import { aiClient, aiQuota, runAsUser } from '../lib/aiUsage';
 
-// ページのAIチャットボット。訪問者の質問に、ページに載っている情報と、持ち主が確定した事実だけで答える。
+// ページのAWPチャットボット。訪問者の質問に、ページに載っている情報と、持ち主が確定した事実だけで答える。
 // わからないことは「わからない」と答え、問い合わせ方法を案内する（推測で料金・空き状況などを答えない）。
 // 持ち主が「よく聞かれること」を知れるよう質問文だけを残す（回答・訪問者の情報は保存しない、90日で削除）
 const router = Router();
@@ -62,7 +62,7 @@ async function knowledgeFor(lpId: string) {
   ].filter(Boolean).join('\n');
 }
 
-const SYSTEM = (name: string, knowledge: string) => `あなたは「${name}」の公式ページに置かれた、訪問者の質問に答えるAIアシスタントです。
+const SYSTEM = (name: string, knowledge: string) => `あなたは「${name}」の公式ページに置かれた、訪問者の質問に答えるAWPアシスタントです。
 
 ルール:
 - 下の【ページの情報】に書かれていることだけを根拠に、日本語で短く（3文以内）親しみやすく答える
@@ -78,7 +78,7 @@ ${knowledge}`;
 router.post('/:slug', async (req, res) => {
   const lp = await prisma.landingPage.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, userId: true, businessName: true, chatbotEnabled: true, hidden: true } });
   if (!lp || lp.hidden || !lp.chatbotEnabled) return res.status(404).json({ error: 'Not found' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'いまはAIが使えません。' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'いまは intelligence が使えません。' });
 
   const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
   const turns: Turn[] = raw
@@ -94,9 +94,9 @@ router.post('/:slug', async (req, res) => {
 
   const knowledge = await knowledgeFor(lp.id);
   if (!knowledge) return res.status(404).json({ error: 'Not found' });
-  // 訪問者の質問は、ページの持ち主のAI利用枠を使う。枠を使い切ったら、AIを呼ばずに問い合わせを案内する
+  // 訪問者の質問は、ページの持ち主の intelligence 利用枠を使う。枠を使い切ったら、AWPを呼ばずに問い合わせを案内する
   if ((await aiQuota(lp.userId)).exceeded) {
-    return res.json({ answer: 'ごめんなさい、いまはAIでお答えできません。ページ内のお問い合わせ方法から、お店に直接聞いてみてください。' });
+    return res.json({ answer: 'ごめんなさい、いまはAWPでお答えできません。ページ内のお問い合わせ方法から、お店に直接聞いてみてください。' });
   }
 
   try {

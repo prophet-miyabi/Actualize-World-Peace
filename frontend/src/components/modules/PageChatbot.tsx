@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 type Turn = { role: 'user' | 'assistant'; content: string };
 
-// ページのAIチャットボット（右下の丸ボタン）。ページの情報だけで答え、わからないことは問い合わせ方法を案内する
+// ページのAWPチャットボット（右下の丸ボタン）。ページの情報だけで答え、わからないことは問い合わせ方法を案内する
 export default function PageChatbot({ slug, businessName, primary, onPrimary }: { slug: string; businessName: string; primary: string; onPrimary: string }) {
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([{ role: 'assistant', content: `こんにちは！${businessName}について、気になることを聞いてね。` }]);
@@ -39,7 +39,7 @@ export default function PageChatbot({ slug, businessName, primary, onPrimary }: 
   return (
     <div style={{ fontFamily: 'var(--font-sans-jp)' }}>
       {!open && (
-        <button onClick={() => setOpen(true)} aria-label="AIに質問する"
+        <button onClick={() => setOpen(true)} aria-label="AWPに質問する"
           className="fixed z-40 right-4 bottom-4 rounded-full shadow-xl px-4 py-3 text-sm font-bold flex items-center gap-1.5"
           style={{ background: primary, color: onPrimary, marginBottom: 'env(safe-area-inset-bottom)' }}>
           <span aria-hidden>💬</span> 質問する
@@ -49,8 +49,8 @@ export default function PageChatbot({ slug, businessName, primary, onPrimary }: 
         <div className="fixed z-50 inset-x-0 bottom-0 sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 bg-white text-gray-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[80vh] border">
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div>
-              <p className="font-bold text-sm">{businessName}のAIアシスタント</p>
-              <p className="text-[10px] text-gray-500">ページの情報をもとにAIが答えます。予約・注文はここでは受け付けません</p>
+              <p className="font-bold text-sm">{businessName}のAWPアシスタント</p>
+              <p className="text-[10px] text-gray-500">ページの情報をもとにAWPが答えます。予約・注文はここでは受け付けません</p>
             </div>
             <button onClick={() => setOpen(false)} className="text-sm text-gray-500 shrink-0 ml-2">閉じる</button>
           </div>

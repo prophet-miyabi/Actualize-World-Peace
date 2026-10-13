@@ -50,7 +50,7 @@ router.post('/:tenantId', async (req: any, res) => {
       // 自動応答メッセージ（失敗しても問い合わせの保存・店主への通知・LINEへの応答は止めない）
       try {
         const lp = await prisma.landingPage.findFirst({ where: { userId: tenantId } });
-        // AIの自動応答は持ち主のAI利用枠を使う。枠を使い切っていたら、定型の応答にする
+        // AWPの自動応答は持ち主の intelligence 利用枠を使う。枠を使い切っていたら、定型の応答にする
         const text = event.message.text;
         const canUseAi = lp && !(await aiQuota(tenantId)).exceeded;
         const replyText = canUseAi ? await runAsUser(tenantId, 'line_reply', () => generateLineReply(lp, text)) : fallbackReply(text);

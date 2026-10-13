@@ -71,7 +71,7 @@ export default function CrewPage() {
     ['Discordの環境変数（4つ）', s.config.discord, 'T03'],
     ['運営者のDiscord ID（DISCORD_OWNER_ID）', s.config.discordOwner, 'T03'],
     ['Discordの初期設定（チャンネル作成）', s.config.discordSetup, 'T03'],
-    ['/ask 用のAI（ANTHROPIC_API_KEY）', s.config.askAi, '任意']
+    ['/ask 用のAWP（ANTHROPIC_API_KEY）', s.config.askAi, '任意']
   ];
 
   return (

@@ -9,7 +9,7 @@ type Purpose = 'business' | 'creator';
 
 const STEPS = ['はじめる', 'あなたのこと', '見た目', 'しあげ'] as const;
 
-// 目的ごとに入力欄の言葉づかいを変える（AIの書き方もサーバー側で切り替わる）
+// 目的ごとに入力欄の言葉づかいを変える（AWPの書き方もサーバー側で切り替わる）
 const COPY: Record<Purpose, {
   aiPlaceholder: string; name: string; catch: string; strength: string; slugExample: string;
 }> = {
@@ -63,13 +63,13 @@ export default function Wizard() {
       const { data } = await api.post('/lp/ai-generate', { description: aiDesc, purpose });
       setForm(f => ({
         ...f,
-        // 実績・特典は事実が必要なためAIには作らせない（本人が入力した値を残す）
+        // 実績・特典は事実が必要なためAWPには作らせない（本人が入力した値を残す）
         heroTitle: data.heroTitle,
         strengths: data.strengths,
         slug: f.slug || data.suggestedSlug
       }));
     } catch (err: any) {
-      setAiError(err?.response?.data?.error || 'AIがうまく書けませんでした。もう一度ためしてみてください');
+      setAiError(err?.response?.data?.error || 'AWPがうまく書けませんでした。もう一度ためしてみてください');
     } finally {
       setAiLoading(false);
     }
@@ -110,7 +110,7 @@ export default function Wizard() {
         {step === 0 && (
           <div>
             <h1 className="text-2xl font-black mb-2">なにを、はじめる？</h1>
-            <p className="text-gray-600 mb-6">えらんだ内容にあわせて、AIが文章の雰囲気を変えてくれます。</p>
+            <p className="text-gray-600 mb-6">えらんだ内容にあわせて、AWPが文章の雰囲気を変えてくれます。</p>
             <div className="space-y-4">
               <button type="button" onClick={() => choosePurpose('business')}
                 className="w-full text-left p-5 rounded-3xl bg-white border-2 border-gray-100 shadow-sm active:scale-[0.99] transition hover:border-violet-400">
@@ -124,7 +124,7 @@ export default function Wizard() {
               </button>
             </div>
             <Link href="/builder" className="mt-6 block text-center rounded-3xl border-2 border-dashed border-violet-300 bg-violet-50 p-4">
-              <span className="block font-black text-violet-700">💬 AIとおしゃべりして作る</span>
+              <span className="block font-black text-violet-700">💬 AWPとチャットして作る</span>
               <span className="block text-xs text-gray-600 mt-1">入力フォームが苦手なら、質問に答えるだけでもOK</span>
             </Link>
           </div>
@@ -134,16 +134,16 @@ export default function Wizard() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black mb-2">{purpose === 'creator' ? 'あなたの活動を教えて' : 'あなたのお店・サービスを教えて'}</h1>
-              <p className="text-gray-600">一言書くだけで、AIが下の項目をうめてくれます。あとから自由に直せます。</p>
+              <p className="text-gray-600">一言書くだけで、AWPが下の項目をうめてくれます。あとから自由に直せます。</p>
             </div>
 
             <div className="rounded-3xl bg-white border border-violet-100 shadow-sm p-5">
-              <p className="font-bold mb-3">AIにおまかせ</p>
+              <p className="font-bold mb-3">AWPにおまかせ</p>
               <textarea rows={2} placeholder={c.aiPlaceholder} className={inputCls}
                 value={aiDesc} onChange={e => setAiDesc(e.target.value)} />
               <button type="button" onClick={handleAiGenerate} disabled={aiLoading}
                 className="mt-3 w-full bg-gray-900 text-white py-3.5 rounded-2xl font-bold disabled:opacity-50">
-                {aiLoading ? 'AIが考え中…' : 'AIに書いてもらう'}
+                {aiLoading ? 'AWPが考え中…' : 'AWPに書いてもらう'}
               </button>
               {aiError && <p className="text-red-600 text-sm mt-2">{aiError}</p>}
             </div>

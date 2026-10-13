@@ -82,7 +82,7 @@ function GrowthInner() {
         <p className="text-sm text-gray-500 mb-6">
           公開ページの見出し（ヒーローコピー）を複数用意すると、訪問者ごとにランダムで表示し、
           LINE友だち追加につながった割合（CVR）を比較できます。十分な件数が集まると、
-          結果は<Link href="/agents" className="text-blue-600 underline">AIエージェント（成長分析担当）</Link>に表示されます。
+          結果は<Link href="/agents" className="text-blue-600 underline">AWPエージェント（成長分析担当）</Link>に表示されます。
         </p>
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 

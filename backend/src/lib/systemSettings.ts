@@ -11,10 +11,10 @@ export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS) as SettingKey[];
 
 export const SETTING_LABEL: Record<SettingKey, string> = {
-  pause_agent_loop: 'AIエージェントの定期実行を止める',
+  pause_agent_loop: 'AWPエージェントの定期実行を止める',
   pause_sns_posting: 'SNSの予約投稿を止める',
   pause_crew: 'ローンチ・クルー（Discordの進行・GitHubへの実装依頼）を止める',
-  pause_company: 'AI企業（CEO以下のエージェントの自律運営）を止める'
+  pause_company: 'AWP企業（CEO以下のエージェントの自律運営）を止める'
 };
 
 export async function getFlag(key: SettingKey): Promise<boolean> {

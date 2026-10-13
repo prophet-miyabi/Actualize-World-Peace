@@ -8,7 +8,7 @@ import { runTask } from './runtime';
 import { seedCompany } from './seed';
 import { getCompanySettings } from './settings';
 
-// AI企業の運営サイクル:
+// AWP企業の運営サイクル:
 // - 1分ごと: 実行待ちのタスクを（同時 CONCURRENCY 件まで）実行する。検証待ちのタスクには監査役のタスクを作る
 // - 毎日 08:00 JST: CEO の日次見直し（KPI・前日の成果・詰まり → 今日の重点を COO に委任）
 // - 毎週 月曜: ファイナンスとデータの週次報告、監査役による経営判断の監査
@@ -78,7 +78,7 @@ export async function ceoDailyCycle(day: string) {
     assignee: 'ceo', createdBy: 'system', goalId: goal.id, title: `日次の経営見直し ${day}`,
     instructions: [
       '毎日の経営見直しです。次の順に進めてください。',
-      '1. get_goals と get_metrics(30) と get_costs で、KPIの実績・推移・AI費用を確認する',
+      '1. get_goals と get_metrics(30) と get_costs で、KPIの実績・推移・ intelligence 費用を確認する',
       '2. list_tasks(status=done) と list_tasks(status=failed) と list_actions(status=pending) で、前日の成果・失敗・承認待ちを確認する',
       '3. read_memory(company, strategy) の計画と比べ、差とその理由を短く整理する',
       '4. 今日の重点を最大3つ決め、create_task で coo に委任する（1つの重点につき1タスク。目的・期待する成果物・期限を書く）。すでに同じ内容の未完了タスクがあれば作らない',
@@ -93,7 +93,7 @@ export async function weeklyCycle(day: string) {
   const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
   await createIfAbsent({
     assignee: 'finance', createdBy: 'system', goalId: goal?.id ?? null, title: `週次の財務報告 ${day}`,
-    instructions: 'get_ledger・get_costs・get_metrics(30)・get_plan_config を使い、今週の収入（プラン・確定報酬のAWP分）、AI費用（会社・利用者向け）、利用者1人あたりの費用、各プランの採算（AI利用枠が実際にどれだけ使われているか）を計算し、write_memory(dept:finance, weekly-' + day + ') に残して finish_task で報告してください。計算の根拠（取得した数字）を必ず書くこと。'
+    instructions: 'get_ledger・get_costs・get_metrics(30)・get_plan_config を使い、今週の収入（プラン・確定報酬のAWP分）、intelligence 費用（会社・利用者向け）、利用者1人あたりの費用、各プランの採算（intelligence 利用枠が実際にどれだけ使われているか）を計算し、write_memory(dept:finance, weekly-' + day + ') に残して finish_task で報告してください。計算の根拠（取得した数字）を必ず書くこと。'
   });
   await createIfAbsent({
     assignee: 'data', createdBy: 'system', goalId: goal?.id ?? null, title: `週次の指標レポート ${day}`,

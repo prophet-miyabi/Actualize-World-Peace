@@ -11,7 +11,7 @@ type ChatSummary = { id: string; agent: string; title: string; costUsd: number; 
 type Agent = { key: string; name: string; department: string; mission: string };
 
 const TOOL_LABEL: Record<string, string> = {
-  get_overview: '現況を確認', get_metrics: '指標を確認', get_costs: 'AI費用を確認', get_goals: '目標を確認', list_tasks: 'タスクを確認', get_task: 'タスクの詳細を確認',
+  get_overview: '現況を確認', get_metrics: '指標を確認', get_costs: 'intelligence 費用を確認', get_goals: '目標を確認', list_tasks: 'タスクを確認', get_task: 'タスクの詳細を確認',
   read_memory: 'メモリを読む', write_memory: 'メモリに保存', create_task: 'タスクを作成', report_to_owner: 'オーナーに報告', get_launch_plan: '開発の進み具合を確認',
   request_implementation: '実装を依頼', list_open_errors: 'エラーを確認', draft_content: '下書きを保存', get_support_signals: 'つまずきを集計', get_ledger: '台帳を確認',
   get_plan_config: '料金設定を確認', propose_plan_config: '料金変更を提案', get_tool_catalog: '提携カタログを確認', propose_tool_catalog: 'カタログ変更を提案',
@@ -25,7 +25,7 @@ const QUICK: Record<string, string[]> = {
   engineering: ['未解決エラーを分類して修正依頼を作って', '実装依頼の進み具合を教えて'],
   data: ['直近30日の指標を計画と比べて', '計測できていないKPIはどれ？'],
   marketing: ['公開日の告知文（X用）を3本下書きして', '獲得ループの現状と次の一手は？'],
-  finance: ['今月の収支とAI費用を報告して', '無料枠のAI費用のリスクを見積もって'],
+  finance: ['今月の収支と intelligence 費用を報告して', '無料枠の intelligence 費用のリスクを見積もって'],
   auditor: ['直近の完了タスクで自己申告だけのものはない？', '今週の経営判断を監査して']
 };
 
@@ -157,7 +157,7 @@ export default function CompanyChatPage() {
           <h1 className="text-2xl font-black">AWP Intelligence</h1>
           <p className="text-sm text-gray-600 mt-1">指示を送ると、その場で道具を使って実行し、結果を報告します。お金・設定・公開に関わる操作は、この画面の承認ボタンを押したときだけ実行されます。</p>
         </div>
-        <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AI企業の画面</Link>
+        <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AWP企業の画面</Link>
       </div>
 
       {/* Claude Code（開発環境）から同じエージェント・道具を使うための接続。トークンは一度だけ表示する */}

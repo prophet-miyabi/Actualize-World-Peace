@@ -47,7 +47,7 @@ const VOICES: Record<string, Partial<Voice>> = {
 };
 
 export const TOOL_JA: Record<string, string> = {
-  get_overview: '全体の状況', get_metrics: '指標', get_costs: 'AI費用', get_goals: '目標', list_tasks: 'タスク一覧', get_task: 'タスクの詳細',
+  get_overview: '全体の状況', get_metrics: '指標', get_costs: 'intelligence 費用', get_goals: '目標', list_tasks: 'タスク一覧', get_task: 'タスクの詳細',
   read_memory: 'メモリ', write_memory: 'メモリへの記録', create_task: 'タスクの作成', report_to_owner: 'オーナーへの報告', get_launch_plan: '公開計画',
   request_implementation: '実装依頼', list_open_errors: 'エラー一覧', draft_content: '文章の下書き', get_support_signals: '利用者の声', get_ledger: '台帳',
   get_plan_config: 'プラン設定', propose_plan_config: 'プラン変更の提案', get_tool_catalog: 'ツール一覧', propose_tool_catalog: 'ツール追加の提案',
@@ -79,7 +79,7 @@ export function activityOf(agentKey: string): Activity | null {
   return listActivity().find((a) => a.agent === agentKey) ?? null;
 }
 
-// タスクの開始。Discord（#AI企業）に「取りかかります」と1件だけ投稿し、以後はその投稿を書き換える
+// タスクの開始。Discord（#AWP企業）に「取りかかります」と1件だけ投稿し、以後はその投稿を書き換える
 export async function startActivity(o: { taskId: string; agent: string; task: string; via?: 'task' | 'chat' }) {
   const def = AGENT_BY_KEY.get(o.agent);
   const now = new Date().toISOString();

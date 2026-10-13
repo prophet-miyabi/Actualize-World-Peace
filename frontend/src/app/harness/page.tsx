@@ -133,7 +133,7 @@ export default function HarnessPage() {
           <span className="text-2xl" aria-hidden>🗓️</span>
           <span className="min-w-0">
             <span className="block font-bold text-sm">導入済みの方: AWPから予約投稿</span>
-            <span className="block text-[11px] text-gray-500">X Harness・IG Harnessとつないで、AIの下書き→確認→予約までここで完結</span>
+            <span className="block text-[11px] text-gray-500">X Harness・IG Harnessとつないで、AWPの下書き→確認→予約までここで完結</span>
           </span>
         </Link>
 
@@ -207,7 +207,7 @@ export default function HarnessPage() {
         })}
 
         <p className="text-[11px] text-gray-500 leading-relaxed mb-8">
-          L Harness・X Harness・IG Harness は、AIエージェント株式会社（野田修一 氏）が公開しているオープンソースソフトウェア（MIT License）です。
+          L Harness・X Harness・IG Harness は、AWPエージェント株式会社（野田修一 氏）が公開しているオープンソースソフトウェア（MIT License）です。
           AWPは開発元と提携しておらず、独立した導入支援として紹介しています。導入先は、あなた自身のCloudflareアカウントです。
         </p>
 

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { BRAND_GRADIENT, PHI, goldenRosette } from '@/lib/brand';
 
-// ブランドロゴ（AWP）。AI画像生成は文字や形が崩れやすいため、SVGで描いて常にくっきり表示する。
+// ブランドロゴ（AWP）。AWP画像生成は文字や形が崩れやすいため、SVGで描いて常にくっきり表示する。
 // マークは、日本を中心にした地球（白い線）を、黄金らせん6つが60°ずつ囲む円環（lib/brand.ts）。
 // 黄金比: マークの高さ : 文字の大きさ = φ : 1、マークと文字の間隔 = マーク × 1/φ²、角丸 = マーク × 1/φ³
 // ロゴの書体（Outfit）は app/layout.tsx で読み込む

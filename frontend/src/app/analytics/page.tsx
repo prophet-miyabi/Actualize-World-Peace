@@ -125,10 +125,10 @@ function Analytics() {
           <section id="chatbot" className="bg-white border rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-bold text-sm">💬 AIチャットボット</h2>
+                <h2 className="font-bold text-sm">💬 AWPチャットボット</h2>
                 <p className="text-[11px] text-gray-500 mt-0.5">ページの情報だけを使って、訪問者の質問に24時間答えるよ。わからないことは推測せず、問い合わせ方法を案内します。</p>
               </div>
-              <button onClick={toggleBot} role="switch" aria-checked={bot.enabled} aria-label="AIチャットボット"
+              <button onClick={toggleBot} role="switch" aria-checked={bot.enabled} aria-label="AWPチャットボット"
                 className={`relative w-12 h-7 shrink-0 rounded-full transition ${bot.enabled ? 'bg-violet-600' : 'bg-gray-300'}`}>
                 <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${bot.enabled ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
@@ -144,7 +144,7 @@ function Analytics() {
                 ))}
               </ul>
             )}
-            <p className="text-[11px] text-gray-400 mt-2">「答えられなかった」質問は、ページに情報を足すチャンス。料金表やよくある質問を追加すると、AIも答えられるようになるよ。</p>
+            <p className="text-[11px] text-gray-400 mt-2">「答えられなかった」質問は、ページに情報を足すチャンス。料金表やよくある質問を追加すると、AWPも答えられるようになるよ。</p>
           </section>
         )}
 

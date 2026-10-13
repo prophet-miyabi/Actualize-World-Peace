@@ -76,7 +76,7 @@ async function nextKey(prefix: string) {
 }
 
 async function askCrew(question: string): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) return 'いまは質問に答えるAIが使えないよ（ANTHROPIC_API_KEY が未設定）。';
+  if (!process.env.ANTHROPIC_API_KEY) return 'いまは質問に答える intelligence が使えないよ（ANTHROPIC_API_KEY が未設定）。';
   const month = new Date().toISOString().slice(0, 7);
   const spent = Number((await getState(`askSpend:${month}`)) || 0);
   if (spent >= ASK_MONTHLY_USD) return `今月の /ask の上限（$${ASK_MONTHLY_USD}）に達したよ。来月まで待つか、CREW_ASK_MONTHLY_USD を見直してね。`;

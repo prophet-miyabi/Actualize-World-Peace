@@ -17,7 +17,7 @@ type Data = {
 const STATUS: Record<string, string> = { queued: '開始待ち', running: '会議中', verifying: '監査中', done: '終了', failed: '失敗', awaiting_approval: '承認待ち', cancelled: '取り消し' };
 
 // AWP 会議室: 議題を入れると、議長と5人の博士（心理学・社会学・経済学・地政学・天文学）が議論し、
-// 合意／未決／次の一手を議事録に残す。決定は「次の一手をタスクにする」で AI企業へ流す
+// 合意／未決／次の一手を議事録に残す。決定は「次の一手をタスクにする」で AWP企業へ流す
 export default function CouncilPage() {
   const [d, setD] = useState<Data | null>(null);
   const [topic, setTopic] = useState('');
@@ -51,7 +51,7 @@ export default function CouncilPage() {
         assignee: 'coo', risk: 'low', title: `会議の次の一手を段取り: ${s.title}`.slice(0, 120),
         instructions: `read_memory(council, ${s.key}) の「次の一手」を読み、担当ごとに create_task で登録してください（1件1成果物、期限つき。同じ内容の未完了タスクがあれば作らない）。登録したタスクIDを finish_task の artifacts に書くこと。`
       });
-      setMsg('COO に段取りを任せました。「AI企業」のタスク一覧で進みを確認できます。');
+      setMsg('COO に段取りを任せました。「AWP企業」のタスク一覧で進みを確認できます。');
       await load();
     } catch (e: any) { setError(e?.response?.data?.error || '登録できませんでした。'); } finally { setBusy(false); }
   };
@@ -64,9 +64,9 @@ export default function CouncilPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black">AWP 会議室</h1>
-          <p className="text-sm text-gray-600 mt-1">大きな問いを、議長と5人の博士（心理学・社会学・経済学・地政学・天文学）で議論し、合意・未決・次の一手にまとめます。決定はここから AI企業のタスクへ流せます。</p>
+          <p className="text-sm text-gray-600 mt-1">大きな問いを、議長と5人の博士（心理学・社会学・経済学・地政学・天文学）で議論し、合意・未決・次の一手にまとめます。決定はここから AWP企業のタスクへ流せます。</p>
         </div>
-        <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AI企業の画面</Link>
+        <Link href="/admin/company" className="shrink-0 text-xs text-violet-700 underline">AWP企業の画面</Link>
       </div>
       <div className="mt-4"><AiHealthBanner /></div>
 
@@ -97,7 +97,7 @@ export default function CouncilPage() {
           <p className="text-xs font-bold text-violet-800">開催中</p>
           {running.map((t) => <p key={t.id} className="font-bold">🏛️ {t.title}（{STATUS[t.status] ?? t.status}）</p>)}
           {d.activity.map((a) => <p key={a.taskId + a.agent} className="flex items-center gap-2"><span className="inline-block w-2 h-2 rounded-full bg-violet-500 animate-pulse" /><span className="font-bold">{a.emoji} {a.agentName}</span><span>{a.text}</span></p>)}
-          {d.activity.length === 0 && <p className="text-xs text-gray-500">開始待ち… AIが止まっている場合は、上のバナーの直し方を見てください。</p>}
+          {d.activity.length === 0 && <p className="text-xs text-gray-500">開始待ち… intelligence が止まっている場合は、上のバナーの直し方を見てください。</p>}
         </section>
       )}
 

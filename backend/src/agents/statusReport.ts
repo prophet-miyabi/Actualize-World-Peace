@@ -4,7 +4,7 @@ import prisma from '../prisma';
 import { FEATURE_CHECKLIST, STATUS_LABEL, type FeatureItem, type FeatureStatus } from './statusData';
 
 // 進捗報告担当エージェント：システムの実装状況を文章とグラフにまとめてファイル化する。
-// 「進捗の判定」はAIに推測させず、backend/src/agents/statusData.ts で手動管理する
+// 「進捗の判定」はAWPに推測させず、backend/src/agents/statusData.ts で手動管理する
 // チェックリスト（開発者が実際のコードを把握した上で記録）を正とする。エージェントの役割は
 // それを集計・可視化することと、DBから取得できる実際の稼働状況を添えることに限定する
 // （事実に基づかない「進捗の誇張」を防ぐため。marketing.ts/growth.tsと同じ設計方針）。
