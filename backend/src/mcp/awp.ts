@@ -167,6 +167,21 @@ server.registerTool('awp_agent_config', {
 server.registerTool('awp_managed_sync', { title: 'Claude Platform に同期', description: 'エージェント定義を Claude Platform（Managed Agents）に同期する。変更があった分だけ新しい版になる', inputSchema: { agents: z.array(z.string()).optional() } },
   async ({ agents }) => guard(() => api('POST', '/company/managed/sync', agents ? { agents } : {})));
 
+// ---- AWP 会議室 ----
+server.registerTool('awp_council', { title: 'AWP 会議室の記録', description: 'ビジョン、未決の問い、過去の会議の議事録（council/*）、開催中の会議と進行状況を返す', inputSchema: { part: z.enum(['summary', 'vision', 'open', 'sessions', 'tasks', 'all']).default('summary'), key: z.string().optional().describe('議事録のキーを指定すると全文') } },
+  async ({ part, key }) => guard(async () => {
+    const c = await api('GET', '/company/council');
+    if (key) return c.sessions.find((x: any) => x.key === key) ?? { error: '見つかりません' };
+    if (part === 'all') return c;
+    if (part === 'vision') return c.vision;
+    if (part === 'open') return c.openQuestions;
+    if (part === 'sessions') return c.sessions.map((x: any) => ({ key: x.key, title: x.title, updatedAt: x.updatedAt }));
+    if (part === 'tasks') return c.tasks;
+    return { openQuestions: c.openQuestions, sessions: c.sessions.map((x: any) => ({ key: x.key, title: x.title, updatedAt: x.updatedAt })).slice(0, 10), running: c.tasks.filter((t: any) => ['queued', 'running'].includes(t.status)), activity: c.activity };
+  }));
+server.registerTool('awp_council_open', { title: 'AWP 会議室を開く', description: '議題を渡すと、議長（AI企業）が5人の博士と会議を開き、議事録を council/* に残す。本番のAIが止まっているときは待機になる', inputSchema: { topic: z.string().min(4).max(200) } },
+  async ({ topic }) => guard(() => api('POST', '/company/council/open', { topic })));
+
 // ---- ローンチ・クルー ----
 server.registerTool('awp_crew_status', {
   title: 'ローンチ・クルーの状況',

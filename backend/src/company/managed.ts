@@ -47,6 +47,8 @@ export async function ensureEnvironment(client = createAnthropic()): Promise<str
 // COO はコーディネータ: 専門職をロスター（チーム）として持ち、1セッションの中で並列に委任できる（Managed Agents のマルチエージェント）
 export const COORDINATOR_KEY = 'coo';
 export const ROSTER_KEYS = ['research', 'product', 'engineering', 'qa', 'data', 'marketing', 'content', 'growth', 'cs', 'finance', 'partnership', 'security', 'legal'];
+// 会議室: 議長がコーディネータ、5人の博士がロスター
+export const COORDINATORS: Record<string, string[]> = { [COORDINATOR_KEY]: ROSTER_KEYS, chair: ['psychology', 'sociology', 'economics', 'geopolitics', 'astronomy'] };
 
 export function agentSpec(agent: AgentDef, model: string, roster: { key: string; id: string }[] = []) {
   const custom = [...toolsForAgent(agent).map((t) => ({ type: 'custom' as const, name: t.name, description: `${t.description}（リスク: ${t.risk}）`, input_schema: t.input_schema as any })),
@@ -80,7 +82,7 @@ export async function syncManagedAgents(keys?: string[]): Promise<{ environmentI
   const environmentId = await ensureEnvironment(client);
   const results: SyncResult[] = [];
   // コーディネータ（COO）はロスターのIDが必要なので、専門職を先に同期する
-  const order = AGENTS.filter((a) => !keys || keys.includes(a.key)).sort((a, b) => (a.key === COORDINATOR_KEY ? 1 : 0) - (b.key === COORDINATOR_KEY ? 1 : 0));
+  const order = AGENTS.filter((a) => !keys || keys.includes(a.key)).sort((a, b) => (a.key in COORDINATORS ? 1 : 0) - (b.key in COORDINATORS ? 1 : 0));
   for (const agent of order) {
     try {
       results.push(await ensureManagedAgent(agent, client));
@@ -96,9 +98,9 @@ export async function ensureManagedAgent(agent: AgentDef, client = createAnthrop
   const row = await prisma.companyAgentConfig.findUnique({ where: { key: agent.key } });
   const model = row?.model || agent.model;
   let roster: { key: string; id: string }[] = [];
-  if (agent.key === COORDINATOR_KEY) {
-    // 専門職が未同期なら先に同期して、そのIDをロスターにする
-    for (const k of ROSTER_KEYS) {
+  if (agent.key in COORDINATORS) {
+    // ロスターの相手が未同期なら先に同期して、そのIDをロスターにする
+    for (const k of COORDINATORS[agent.key]) {
       const def = AGENT_BY_KEY.get(k);
       if (!def) continue;
       const r = await ensureManagedAgent(def, client);

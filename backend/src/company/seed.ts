@@ -2,6 +2,7 @@ import prisma from '../prisma';
 import { STRATEGY_MD, STRATEGY_VERSION } from './strategy';
 import { BEHAVIORAL_MD, BEHAVIORAL_VERSION } from './behavioral';
 import { VISION_MD, VISION_VERSION } from './vision';
+import { seedCouncil } from './council';
 
 // 起動時に、オーナーの目標と戦略メモを用意する（既にあれば触らない。戦略は版が上がったときだけ更新）
 export const OWNER_GOAL = {
@@ -26,6 +27,7 @@ export async function seedCompany() {
     // 初回は停止状態で用意する（AI費用が発生するため、オーナーが管理画面で「開始」したときから動く）
     await prisma.systemSetting.upsert({ where: { key: 'pause_company' }, update: {}, create: { key: 'pause_company', value: 'true', updatedBy: 'system' } });
   }
+  await seedCouncil();
   // ビジョン（北極星）。版が変わったら上書きする
   const vis = await prisma.companyMemory.findUnique({ where: { scope_key: { scope: 'company', key: 'vision' } } });
   if (!vis || !vis.content.includes(`v${VISION_VERSION}`)) {

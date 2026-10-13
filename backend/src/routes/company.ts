@@ -6,6 +6,7 @@ import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey, COMPANY_MODELS } from '../company/registry';
 import { consoleSessionUrl, managedEnabled, syncManagedAgents } from '../company/managed';
 import { listActivity } from '../company/activity';
+import { councilOverview, openCouncil } from '../company/council';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
 import { getCompanySettings, setCompanySettings } from '../company/settings';
@@ -73,6 +74,17 @@ router.get('/status', async (_req, res) => {
     activity: listActivity(),
     engine: { kind: managedEnabled() ? 'managed' : 'messages', environmentId: managedEnv?.value ?? null, workspace: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim() || 'default' }
   });
+});
+
+// ---- AWP 会議室 ----
+router.get('/council', async (_req, res) => res.json(await councilOverview()));
+router.post('/council/open', async (req: AuthRequest, res) => {
+  const topic = String(req.body?.topic ?? '').trim().slice(0, 200);
+  if (topic.length < 4) return res.status(400).json({ error: '議題を書いてください（4文字以上）' });
+  const { task, key } = await openCouncil(topic, 'owner');
+  // すぐに実行する（ループを待たない）
+  void runTask(task.id).catch((e) => console.error('council run failed', e?.message));
+  res.json({ task: { id: task.id, title: task.title, status: task.status }, key });
 });
 
 // Claude Platform（Managed Agents）へエージェント定義を同期する。変更があった分だけ新しい版になる

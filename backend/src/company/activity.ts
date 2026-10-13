@@ -37,6 +37,12 @@ const VOICES: Record<string, Partial<Voice>> = {
   partnership: { emoji: '🤝', starting: '「{task}」の相手先を考えます', thinking: '組める相手を探しています…', tool: '{tool}を確認中', reporting: '提案をまとめています', done: '「{task}」の提案を出しました' },
   security: { emoji: '🛡️', starting: '「{task}」を安全面から点検します', thinking: 'リスクを洗い出しています…', tool: '{tool}を点検中', reporting: '点検結果を書いています', done: '「{task}」の点検を終えました' },
   legal: { emoji: '⚖️', starting: '「{task}」を法務の目で確認します', thinking: '法令と規約を照らしています…', tool: '{tool}を確認中', reporting: '法務の見解をまとめています', done: '「{task}」の見解を出しました' },
+  chair: { emoji: '🏛️', starting: '会議「{task}」を開きます', thinking: '論点を整理しています…', tool: '{tool}を確認中', delegating: '{tool}に見解を求めています', reporting: '議事録をまとめています', done: '会議「{task}」を閉じました' },
+  psychology: { emoji: '🧠', starting: '「{task}」を心理学の目で見ます', thinking: '人の動機から考えています…', tool: '{tool}を確認中', reporting: '見解をまとめています', done: '心理学の見解を出しました' },
+  sociology: { emoji: '🕸️', starting: '「{task}」を社会学の目で見ます', thinking: 'ネットワークと制度から考えています…', tool: '{tool}を確認中', reporting: '見解をまとめています', done: '社会学の見解を出しました' },
+  economics: { emoji: '📈', starting: '「{task}」を経済学の目で見ます', thinking: '原資と配分を計算しています…', tool: '{tool}で数字を取っています', reporting: '見解をまとめています', done: '経済学の見解を出しました' },
+  geopolitics: { emoji: '🌐', starting: '「{task}」を地政学の目で見ます', thinking: '主権と規制の現実から考えています…', tool: '{tool}を確認中', reporting: '見解をまとめています', done: '地政学の見解を出しました' },
+  astronomy: { emoji: '🔭', starting: '「{task}」を宇宙の尺度で見ます', thinking: '長い時間で考えています…', tool: '{tool}を確認中', reporting: '見解をまとめています', done: '天文学の見解を出しました' },
   auditor: { emoji: '🔍', starting: '「{task}」を監査します', thinking: '報告と事実を突き合わせています…', tool: '{tool}で裏取り中', reporting: '判定を書いています', done: '「{task}」の判定を出しました' }
 };
 
