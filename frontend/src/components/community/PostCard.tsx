@@ -5,7 +5,8 @@ import ReportButton from './ReportButton';
 
 export type PostView = {
   id: string; body: string; createdAt: string; mine: boolean; image: string | null;
-  author: { username: string | null; name: string };
+  video?: string | null; kind?: 'post' | 'reel';
+  author: { username: string | null; name: string; pageSlug?: string | null; pageName?: string | null };
   likes?: number; comments?: number; liked?: boolean;
 };
 
@@ -22,8 +23,8 @@ function authHeaders(): Record<string, string> {
   try { const t = localStorage.getItem('token'); return t ? { Authorization: `Bearer ${t}` } : {}; } catch { return {}; }
 }
 
-// 投稿1件の表示。本文はテキストとして表示する（HTMLとしては解釈しない）。
-// いいね・返信・共有は、SNSの基本動作として全画面で同じ見た目にする
+// 投稿1件の表示。文章＋写真 or 動画（リール）。本文はテキストとして表示する（HTMLとしては解釈しない）。
+// 作った人の名前からプロフィールへ、「ページ」からその人のHP/LPへ飛べる
 export default function PostCard({ post, onDelete, detail = false }: { post: PostView; onDelete?: (id: string) => void; detail?: boolean }) {
   const [liked, setLiked] = useState(!!post.liked);
   const [likes, setLikes] = useState(post.likes ?? 0);
@@ -55,7 +56,10 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
           {post.author.username ? (
             <Link href={`/${post.author.username}`} className="block font-bold text-sm truncate">{post.author.name} <span className="font-normal text-gray-400">@{post.author.username}</span></Link>
           ) : <p className="font-bold text-sm truncate">{post.author.name}</p>}
-          <p className="text-[11px] text-gray-400">{ago(post.createdAt)}</p>
+          <p className="text-[11px] text-gray-400 flex items-center gap-2">
+            {ago(post.createdAt)}
+            {post.author.pageSlug && <Link href={`/${post.author.pageSlug}`} className="rounded-full bg-violet-50 text-violet-700 font-bold px-2 py-0.5">ページ → {post.author.pageName || post.author.pageSlug}</Link>}
+          </p>
         </div>
         {post.mine && onDelete ? (
           <button onClick={() => onDelete(post.id)} className="text-xs text-gray-400 underline">削除</button>
@@ -63,15 +67,19 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
           <ReportButton targetType="post" targetId={post.id} />
         )}
       </header>
-      {detail ? (
+      {post.body && (detail ? (
         <p className="mt-3 text-base leading-relaxed whitespace-pre-wrap break-words">{post.body}</p>
       ) : (
         <Link href={`/p/${post.id}`} className="block mt-3 text-sm leading-relaxed whitespace-pre-wrap break-words">{post.body}</Link>
-      )}
-      {post.image && (
+      ))}
+      {post.video ? (
+        <div className={`mt-3 rounded-xl overflow-hidden bg-black ${post.kind === 'reel' ? 'aspect-[9/16] max-h-[70vh] mx-auto' : ''}`}>
+          <video src={post.video} controls playsInline preload="metadata" className="w-full h-full object-contain" />
+        </div>
+      ) : post.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={post.image} alt="" loading="lazy" className="mt-3 w-full rounded-xl object-cover max-h-[420px]" />
-      )}
+      ) : null}
       <footer className="mt-3 flex items-center gap-1 text-xs text-gray-500">
         <button onClick={toggleLike} aria-pressed={liked} className={`flex items-center gap-1 rounded-full px-3 py-1.5 ${liked ? 'bg-pink-50 text-pink-600 font-bold' : 'hover:bg-gray-50'}`}>
           <span aria-hidden>{liked ? '♥' : '♡'}</span>{likes > 0 && <span>{likes}</span>}<span className="sr-only">いいね</span>

@@ -55,6 +55,11 @@ export default function ProfileView({ profile }: { profile: Profile }) {
               ))}
             </ul>
           )}
+          {profile.pages[0] && (
+            <Link href={`/${profile.pages[0].slug}`} className="mt-4 block rounded-2xl bg-gray-900 text-white text-center font-bold py-3 text-sm">
+              ページを見る → {profile.pages[0].businessName}
+            </Link>
+          )}
           <div className="mt-4 pt-4 border-t border-gray-100">
             <FollowButton username={profile.username} initialFollowers={profile.followers} />
           </div>

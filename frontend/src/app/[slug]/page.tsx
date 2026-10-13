@@ -8,6 +8,8 @@ import ProductsSection, { type PublicProduct, type PublicShop } from '@/componen
 import BookingWidget from '@/components/modules/BookingWidget';
 import PageChatbot from '@/components/modules/PageChatbot';
 import ProfileView, { type Profile } from '@/components/community/ProfileView';
+import OwnerPostsSection from '@/components/community/OwnerPostsSection';
+import AwpHomeBar from '@/components/community/AwpHomeBar';
 
 // SEO: 顧客の公開ページはサーバー側でデータを取得して描画する（クライアント側fetchだと
 // 検索エンジン・SNSのクローラーには中身が空のページに見えてしまうため）
@@ -21,6 +23,7 @@ type PublicLp = Lp & {
   shop?: PublicShop | null;
   booking?: { menus: { name: string; note: string }[]; note: string; leadDays: number; maxDays: number } | null;
   chatbotEnabled?: boolean;
+  postsEnabled?: boolean;
 };
 
 async function fetchLp(slug: string): Promise<PublicLp | null> {
@@ -103,7 +106,7 @@ export default async function LandingPage({ params }: Params) {
   if (!lp) {
     const profile = await fetchProfile(slug);
     if (!profile) notFound();
-    return <ProfileView profile={profile} />;
+    return <><ProfileView profile={profile} /><AwpHomeBar siteUrl={SITE_URL || (await currentOrigin())} /></>;
   }
   const siteUrl = SITE_URL || (await currentOrigin());
   const { p: palette } = buildTokens(lp.design);
@@ -115,12 +118,15 @@ export default async function LandingPage({ params }: Params) {
         <BookingWidget slug={lp.slug} businessName={lp.businessName} config={lp.booking} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />
       )}
       {lp.chatbotEnabled && <PageChatbot slug={lp.slug} businessName={lp.businessName} primary={palette.primary} onPrimary={palette.onPrimary} />}
+      {lp.postsEnabled !== false && lp.owner && <OwnerPostsSection username={lp.owner.username} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />}
     </>
   );
   const engagement = (
     <>
       <PromotionBlock slug={lp.slug} items={lp.promotions ?? []} />
       <PageEngagementBar slug={lp.slug} owner={lp.owner} siteUrl={siteUrl} />
+      {/* AWPで公開された全ページに必ず入る、AWPのホームへ戻るボタン（持ち主は外せない） */}
+      <AwpHomeBar siteUrl={siteUrl} />
     </>
   );
 

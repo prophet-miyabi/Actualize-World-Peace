@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import express from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
 import { authenticate, AuthRequest, JWT_SECRET } from '../middlewares/auth';
@@ -27,19 +28,25 @@ function viewerId(req: AuthRequest): string | null {
   }
 }
 
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
 const select = {
-  id: true, body: true, imageType: true, createdAt: true, userId: true,
-  user: { select: { username: true, name: true } },
+  id: true, body: true, imageType: true, kind: true, videoType: true, createdAt: true, userId: true,
+  // 作った人と、その人の代表ページ（最初の公開ページ）。投稿からページへ飛べるようにする
+  user: { select: { username: true, name: true, landingPages: { where: { hidden: false }, orderBy: { createdAt: 'asc' as const }, take: 1, select: { slug: true, businessName: true } } } },
   _count: { select: { likes: true, comments: { where: { hidden: false } } } }
 } as const;
 
-type PostRow = { id: string; body: string; imageType: string | null; createdAt: Date; userId: string; user: { username: string | null; name: string }; _count: { likes: number; comments: number } };
+type PostRow = { id: string; body: string; imageType: string | null; kind: string; videoType: string | null; createdAt: Date; userId: string; user: { username: string | null; name: string; landingPages: { slug: string; businessName: string }[] }; _count: { likes: number; comments: number } };
 
 function view(p: PostRow, me: string | null, likedIds?: Set<string>) {
+  const page = p.user.landingPages[0];
   return {
-    id: p.id, body: p.body, createdAt: p.createdAt, mine: p.userId === me,
+    id: p.id, body: p.body, createdAt: p.createdAt, mine: p.userId === me, kind: p.kind,
     image: p.imageType ? `/api/posts/${p.id}/image` : null,
-    author: { username: p.user.username, name: p.user.name },
+    video: p.videoType ? `/api/posts/${p.id}/video` : null,
+    author: { username: p.user.username, name: p.user.name, pageSlug: page?.slug ?? null, pageName: page?.businessName ?? null },
     likes: p._count.likes, comments: p._count.comments, liked: likedIds ? likedIds.has(p.id) : false
   };
 }
@@ -60,6 +67,7 @@ router.get('/feed', async (req: AuthRequest, res) => {
   const before = typeof req.query.before === 'string' ? new Date(req.query.before) : null;
   const where: any = { ...visible };
   if (before && !Number.isNaN(before.getTime())) where.createdAt = { lt: before };
+  if (req.query.kind === 'reel') where.videoType = { not: null };
   if (tab === 'following') {
     if (!me) return res.json({ posts: [], needsLogin: true });
     const follows = await prisma.follow.findMany({ where: { followerId: me }, select: { followingId: true }, take: 2000 });
@@ -72,12 +80,56 @@ router.get('/feed', async (req: AuthRequest, res) => {
 
 router.get('/user/:username', async (req: AuthRequest, res) => {
   const me = viewerId(req);
+  const limit = Math.min(PAGE_SIZE, Math.max(1, Number(req.query.limit) || PAGE_SIZE));
   const posts = await prisma.post.findMany({
-    where: { ...visible, user: { ...visible.user, username: String(req.params.username).toLowerCase() } },
-    orderBy: { createdAt: 'desc' }, take: PAGE_SIZE, select
+    where: { ...visible, user: { ...visible.user, username: String(req.params.username).toLowerCase() }, ...(req.query.kind === 'reel' ? { videoType: { not: null } } : {}) },
+    orderBy: { createdAt: 'desc' }, take: limit, select
   });
   const liked = await likedSet(me, posts.map((p) => p.id));
   res.json({ posts: posts.map((p) => view(p, me, liked)) });
+});
+
+// 動画を付ける（投稿を作った直後に、本体を別送する。JSONではなく動画そのものを送る）
+router.put('/:id/video', authenticate, express.raw({ type: VIDEO_TYPES, limit: '26mb' }), async (req: AuthRequest, res) => {
+  const post = await prisma.post.findFirst({ where: { id: String(req.params.id), userId: req.user!.id }, select: { id: true, kind: true } });
+  if (!post) return res.status(404).json({ error: '見つかりません' });
+  const type = String(req.headers['content-type'] || '').split(';')[0].trim();
+  if (!VIDEO_TYPES.includes(type)) return res.status(400).json({ error: '動画は MP4・WebM・MOV にしてね' });
+  const buf = req.body as Buffer;
+  if (!Buffer.isBuffer(buf) || buf.length === 0) return res.status(400).json({ error: '動画が空です' });
+  if (buf.length > MAX_VIDEO_BYTES) return res.status(400).json({ error: '動画は25MBまでにしてね（60秒ほどの長さが目安）' });
+  const kind = req.query.kind === 'post' ? 'post' : 'reel';
+  await prisma.post.update({ where: { id: post.id }, data: { video: buf, videoType: type, videoSize: buf.length, kind } });
+  res.json({ ok: true, video: `/api/posts/${post.id}/video`, kind });
+});
+
+// 動画の配信（途中からの再生に対応: Range）
+router.get('/:id/video', async (req, res) => {
+  const p = await prisma.post.findUnique({ where: { id: String(req.params.id) }, select: { video: true, videoType: true, hidden: true } });
+  if (!p?.video || p.hidden) return res.status(404).end();
+  const buf = Buffer.from(p.video);
+  const total = buf.length;
+  res.set('Content-Type', p.videoType || 'video/mp4');
+  res.set('Accept-Ranges', 'bytes');
+  res.set('Cache-Control', 'public, max-age=86400');
+  const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+  if (range) {
+    const start = range[1] ? Number(range[1]) : 0;
+    const end = range[2] ? Math.min(Number(range[2]), total - 1) : total - 1;
+    if (start >= total || start > end) return res.status(416).set('Content-Range', `bytes */${total}`).end();
+    res.status(206).set('Content-Range', `bytes ${start}-${end}/${total}`).set('Content-Length', String(end - start + 1));
+    return res.end(buf.subarray(start, end + 1));
+  }
+  res.set('Content-Length', String(total));
+  res.end(buf);
+});
+
+// 持ち主向け: 「最新の投稿」をページに表示するか
+router.put('/page-settings', authenticate, async (req: AuthRequest, res) => {
+  const lp = await prisma.landingPage.findFirst({ where: { id: String(req.body?.lpId ?? ''), userId: req.user!.id } });
+  if (!lp) return res.status(404).json({ error: 'ページが見つかりません' });
+  const page = await prisma.landingPage.update({ where: { id: lp.id }, data: { postsEnabled: !!req.body?.enabled }, select: { id: true, postsEnabled: true } });
+  res.json({ page });
 });
 
 // 投稿の詳細（返信つき）
@@ -152,7 +204,9 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
   if (!user?.username) return res.status(400).json({ error: '投稿するには、先にプロフィールでユーザー名を決めてね' });
   const body = String(req.body?.body ?? '').trim().slice(0, MAX_BODY);
-  if (!body) return res.status(400).json({ error: '本文を入力してね' });
+  const kind = req.body?.kind === 'reel' ? 'reel' : 'post';
+  const willUpload = !!req.body?.hasVideo;
+  if (!body && !willUpload && !req.body?.imageDataUrl) return res.status(400).json({ error: '本文か、写真・動画を入れてね' });
   let image: Buffer | null = null;
   let imageType: string | null = null;
   if (typeof req.body?.imageDataUrl === 'string' && req.body.imageDataUrl) {
@@ -163,7 +217,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
     imageType = m[1];
   }
   if (!(await isAdminUser(userId)) && hitRateLimit(`post:${userId}`, DAILY_POSTS, 24 * 3600_000)) return res.status(429).json({ error: '今日はたくさん投稿したね！続きは明日。' });
-  const post = await prisma.post.create({ data: { userId, body, image, imageType }, select });
+  const post = await prisma.post.create({ data: { userId, body, image, imageType, kind }, select });
   void contribute(userId, 'post', post.id);
   res.status(201).json({ post: view(post, userId) });
 });

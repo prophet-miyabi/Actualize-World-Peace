@@ -33,6 +33,7 @@ function DashboardInner() {
   const [lineError, setLineError] = useState('');
   const [lineSaved, setLineSaved] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [postsOnPage, setPostsOnPage] = useState(true);
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState('');
   const [lineUrl, setLineUrl] = useState('');
@@ -300,6 +301,7 @@ function DashboardInner() {
             <Link href="/orders" className="text-blue-600 underline">注文</Link>
             <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AWPチャットボット</Link>
             <Link href="/feed" className="text-blue-600 underline">投稿する</Link>
+            <label className="inline-flex items-center gap-1 text-xs text-gray-700"><input type="checkbox" checked={postsOnPage} onChange={(e) => { setPostsOnPage(e.target.checked); api.put('/posts/page-settings', { lpId: data.lp.id, enabled: e.target.checked }).catch(() => setPostsOnPage(!e.target.checked)); }} />最新の投稿をページに表示</label>
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
             {isActive && (

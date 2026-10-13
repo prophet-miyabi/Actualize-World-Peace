@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 // ログイン後の画面に出す、SNS の下部タブバー（PCでは非表示）。
 // ホーム（タイムライン）／発見／作る／通知／マイページ。公開ページ（/{slug}）とトップには出さない
-const APP_PREFIXES = ['/feed', '/discover', '/create', '/notifications', '/me', '/p/', '/profile', '/wallet', '/analytics', '/bookings', '/products', '/plans', '/orders', '/shop-settings', '/dashboard', '/features', '/tools', '/harness', '/preview', '/domain', '/growth', '/photos', '/social', '/agents', '/automation', '/builder', '/wizard'];
+const APP_PREFIXES = ['/feed', '/reels', '/discover', '/create', '/notifications', '/me', '/p/', '/profile', '/wallet', '/analytics', '/bookings', '/products', '/plans', '/orders', '/shop-settings', '/dashboard', '/features', '/tools', '/harness', '/preview', '/domain', '/growth', '/photos', '/social', '/agents', '/automation', '/builder', '/wizard'];
 
 const Icon = ({ d }: { d: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6" aria-hidden>
@@ -14,7 +14,7 @@ const Icon = ({ d }: { d: string }) => (
 );
 
 const TABS: { href: string; label: string; icon: ReactNode; match: string[]; center?: boolean; badge?: boolean }[] = [
-  { href: '/feed', label: 'ホーム', icon: <Icon d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />, match: ['/feed', '/p/'] },
+  { href: '/feed', label: 'ホーム', icon: <Icon d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />, match: ['/feed', '/p/', '/reels'] },
   { href: '/discover', label: '発見', icon: <Icon d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm10 2-4.3-4.3" />, match: ['/discover'] },
   { href: '/create', label: '作る', icon: <Icon d="M12 5v14M5 12h14" />, match: ['/create', '/wizard', '/builder'], center: true },
   { href: '/notifications', label: '通知', icon: <Icon d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9zm4 13a2 2 0 0 0 4 0" />, match: ['/notifications'], badge: true },

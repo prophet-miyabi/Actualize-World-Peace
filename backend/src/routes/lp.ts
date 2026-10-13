@@ -694,6 +694,7 @@ router.get('/:slug', async (req, res) => {
     variantId: variant?.id ?? null,
     // 公開ページ下部のバー（作成者のプロフィール・いいね）用。非公開にされたプロフィールは出さない
     owner: user.username && !user.profileHidden ? { username: user.username, name: user.name } : null,
+    postsEnabled: lpData.postsEnabled,
     likeCount: _count.likes
   });
 });

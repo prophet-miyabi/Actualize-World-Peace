@@ -222,6 +222,7 @@ model LandingPage {
   // 持ち主が「収益化（PR枠）」をオンにしたページ。PR表示付きで提携サービスの紹介枠を出す
   monetizationEnabled Boolean @default(false)
   // 持ち主が「AIチャットボット」をオンにしたページ。確定した情報だけで訪問者の質問に答える
+  postsEnabled   Boolean @default(true) // 持ち主の最新の投稿をページに表示する
   chatbotEnabled Boolean @default(false)
   chatbotQuestions ChatbotQuestion[]
   // 予約リクエスト（訪問者が希望日時を送り、持ち主が確定・お断りする）。設定: { menus: [{ name, note }], note, leadDays, maxDays }
@@ -643,6 +644,10 @@ model Post {
   body      String
   image     Bytes?
   imageType String?
+  kind      String   @default("post") // post（文章＋写真/動画）/ reel（縦動画）
+  video     Bytes?
+  videoType String?
+  videoSize Int?
   hidden    Boolean  @default(false) // 通報で運営者が非公開にした投稿
   createdAt DateTime @default(now())
   likes     PostLike[]
