@@ -35,6 +35,10 @@ model User {
   pageLikes PageLike[]
   builderSessions BuilderSession[]
   posts Post[]
+  postLikes     PostLike[]
+  comments      Comment[]
+  notifications Notification[]
+  contributions Contribution[]
   harnessLinks HarnessLink[]
   harnessPosts HarnessScheduledPost[]
 
@@ -641,9 +645,69 @@ model Post {
   imageType String?
   hidden    Boolean  @default(false) // 通報で運営者が非公開にした投稿
   createdAt DateTime @default(now())
+  likes     PostLike[]
+  comments  Comment[]
 
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+// 投稿へのいいね
+model PostLike {
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+// 投稿への返信（1階層）
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+  @@index([userId])
+}
+
+// アプリ内の通知（フォロー・いいね・返信・予約・注文・プランなど）。プッシュ通知と同じ内容をここにも残す
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // follow / post_like / comment / page_like / booking / order / plan / system
+  title     String
+  body      String
+  href      String?   // 開く先（/p/xxx, /bookings など）
+  actorId   String?   // 行動した人（いれば）
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// 参加の記録（将来の参加配当の根拠）。何をしたか・いくつ分かを事実として残す。金額ではない
+model Contribution {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String   // post / comment / like_received / follow_received / page_published / referral / order_completed
+  points    Int      @default(1)
+  refId     String?  // 対象のID（投稿・ページ・注文など）
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
 }
 
 // ---- 利用者自身の X Harness / IG Harness との接続 ----

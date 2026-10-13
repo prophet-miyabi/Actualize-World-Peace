@@ -1,6 +1,7 @@
 // .envは他のどのモジュールよりも先に読み込む（JWT_SECRET等をimport時に参照するため）
 import 'dotenv/config';
 import { createAnthropic } from './lib/anthropic';
+import notificationRoutes from './routes/notifications';
 import { COMPANY_MODELS } from './company/registry';
 import express from 'express';
 import cors from 'cors';
@@ -109,6 +110,7 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/harness-link', harnessLinkRoutes);
 app.use('/api/crew', crewRoutes);
 app.use('/api/plans', planRoutes);

@@ -16,6 +16,7 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [pageCount, setPageCount] = useState<number | null>(null);
   const [body, setBody] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +35,12 @@ export default function FeedPage() {
   }, [tab]);
 
   useEffect(() => { setSignedIn(!!token()); }, []);
+  // 自分のページがまだない人には、最初の一歩（ページを作る）をそっと出す
+  useEffect(() => {
+    if (!token()) return;
+    fetch('/api/lp/list', { headers: auth() }).then((r) => r.json()).then((d) => setPageCount(Array.isArray(d.pages) ? d.pages.length : null)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { setPosts(null); load().catch(() => setPosts([])); }, [load]);
 
   const submit = async (e: React.FormEvent) => {
@@ -67,9 +74,9 @@ export default function FeedPage() {
         <div className="max-w-xl mx-auto px-4 pt-3">
           <div className="flex items-center justify-between">
             <Link href="/" aria-label="AWP トップ"><Logo size={28} /></Link>
-            <Link href="/discover" className="text-xs font-bold text-violet-700">ページを探す →</Link>
+            <Link href="/discover" className="text-xs font-bold text-violet-700">発見 →</Link>
           </div>
-          <h1 className="text-2xl font-black mt-2">タイムライン</h1>
+          <h1 className="text-2xl font-black mt-2">ホーム</h1>
           <div className="mt-1 flex">
             {(['all', 'following'] as const).map((t) => (
               <button key={t} onClick={() => setTab(t)}
@@ -82,6 +89,12 @@ export default function FeedPage() {
       </header>
 
       <div className="max-w-xl mx-auto px-4 py-4 space-y-3">
+        {signedIn && pageCount === 0 && (
+          <Link href="/create" className="block rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white p-4">
+            <span className="block font-bold text-sm">まだ自分のページがないみたい</span>
+            <span className="block text-xs opacity-90 mt-0.5">質問に答えるだけで、約5分。公開まで無料。ここに投稿する前に、あなたの居場所を作ろう →</span>
+          </Link>
+        )}
         {signedIn ? (
           <form onSubmit={submit} className="bg-white border rounded-2xl p-3">
             <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={500} rows={3} placeholder="いま、どんなことしてる？（新作・お知らせ・日々のこと）"

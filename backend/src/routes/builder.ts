@@ -5,6 +5,7 @@ import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
 import { describeAiError, metered } from '../lib/aiUsage';
 import { captureError } from '../lib/errors';
+import { contribute } from '../lib/contribution';
 import { RESERVED_SLUGS } from './lp';
 import { publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
 import { FEATURES, getFeature } from '../features/catalog';
@@ -162,6 +163,7 @@ router.post('/sessions/:id/publish', metered('builder_publish', false), async (r
     throw e;
   }
   await prisma.builderSession.update({ where: { id: s.id }, data: { status: 'published', lpId: lp.id } });
+  void contribute(req.user!.id, 'page_published', lp.id);
 
   // デザインと、確定した料金・営業時間からのセクション作成は時間がかかるため、裏で進める
   const description = [ok('what'), ok('target'), ok('area')].filter(Boolean).join(' / ').slice(0, 300);

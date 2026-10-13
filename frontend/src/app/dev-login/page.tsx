@@ -15,7 +15,7 @@ export default function DevLogin() {
     api.get(`/auth/dev-login?code=${encodeURIComponent(code)}`)
       .then(({ data }) => {
         localStorage.setItem('token', data.token);
-        router.replace('/dashboard');
+        router.replace('/feed');
       })
       .catch(() => setError('このリンクは無効です。'));
   }, [router]);

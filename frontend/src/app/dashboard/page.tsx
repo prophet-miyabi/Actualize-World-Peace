@@ -236,6 +236,7 @@ function DashboardInner() {
         </div>
       )}
 
+      <Link href="/feed" className="mb-3 inline-block text-xs font-bold text-violet-700">← ホーム（タイムライン）へ</Link>
       {/* 対話で作るページビルダー */}
       <Link href="/builder" className="mb-3 flex items-center gap-3 rounded-2xl bg-white border-2 border-violet-200 p-4">
         <span className="text-2xl" aria-hidden>💬</span>

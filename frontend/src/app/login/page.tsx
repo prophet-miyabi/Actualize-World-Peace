@@ -36,7 +36,7 @@ export default function Login() {
   const login = async () => {
     try {
       const { data } = await api.post('/auth/login', { email: form.email, password: form.password });
-      finish(data.token, '/dashboard');
+      finish(data.token, new URLSearchParams(window.location.search).get('next') || '/feed');
     } catch (err: any) {
       setError(err?.response?.status === 401 ? 'メールアドレスまたはパスワードが違います。' : errorOf(err));
       setLoading(false);

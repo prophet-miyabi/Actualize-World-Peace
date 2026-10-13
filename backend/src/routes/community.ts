@@ -4,6 +4,8 @@ import prisma from '../prisma';
 import { authenticate, AuthRequest, JWT_SECRET } from '../middlewares/auth';
 import { RESERVED_SLUGS } from './lp';
 import { hitRateLimit } from '../lib/rateLimit';
+import { notifyUser } from '../lib/push';
+import { contribute } from '../lib/contribution';
 
 // SNSの土台: プロフィール（/ユーザー名）・フォロー・いいね・発見・閲覧/クリックの記録・通報
 const router = Router();
@@ -139,11 +141,13 @@ router.post('/follow/:username', authenticate, async (req: AuthRequest, res) => 
   const target = await prisma.user.findUnique({ where: { username: String(req.params.username).toLowerCase() }, select: { id: true } });
   if (!target) return res.status(404).json({ error: 'ユーザーが見つかりません' });
   if (target.id === req.user!.id) return res.status(400).json({ error: '自分はフォローできません' });
-  await prisma.follow.upsert({
-    where: { followerId_followingId: { followerId: req.user!.id, followingId: target.id } },
-    update: {},
-    create: { followerId: req.user!.id, followingId: target.id }
-  });
+  const existed = await prisma.follow.findUnique({ where: { followerId_followingId: { followerId: req.user!.id, followingId: target.id } } });
+  if (!existed) {
+    await prisma.follow.create({ data: { followerId: req.user!.id, followingId: target.id } });
+    const actor = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true, username: true } });
+    void notifyUser(target.id, `${actor?.name ?? 'だれか'}さんにフォローされました`, actor?.username ? `@${actor.username}` : '', { type: 'follow', href: actor?.username ? `/${actor.username}` : '/me', actorId: req.user!.id });
+    void contribute(target.id, 'follow_received', req.user!.id);
+  }
   res.json({ following: true, followers: await prisma.follow.count({ where: { followingId: target.id } }) });
 });
 
@@ -166,13 +170,17 @@ router.get('/likes/:slug', async (req: AuthRequest, res) => {
 });
 
 router.post('/likes/:slug', authenticate, async (req: AuthRequest, res) => {
-  const lp = await prisma.landingPage.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, hidden: true } });
+  const lp = await prisma.landingPage.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, hidden: true, userId: true, businessName: true } });
   if (!lp || lp.hidden) return res.status(404).json({ error: 'Not found' });
-  await prisma.pageLike.upsert({
-    where: { userId_lpId: { userId: req.user!.id, lpId: lp.id } },
-    update: {},
-    create: { userId: req.user!.id, lpId: lp.id }
-  });
+  const existed = await prisma.pageLike.findUnique({ where: { userId_lpId: { userId: req.user!.id, lpId: lp.id } } });
+  if (!existed) {
+    await prisma.pageLike.create({ data: { userId: req.user!.id, lpId: lp.id } });
+    if (lp.userId !== req.user!.id) {
+      const actor = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { name: true } });
+      void notifyUser(lp.userId, `${actor?.name ?? 'だれか'}さんがページにいいねしました`, lp.businessName, { type: 'page_like', href: `/${req.params.slug}`, actorId: req.user!.id });
+      void contribute(lp.userId, 'like_received', lp.id);
+    }
+  }
   res.json({ liked: true, count: await prisma.pageLike.count({ where: { lpId: lp.id } }) });
 });
 
