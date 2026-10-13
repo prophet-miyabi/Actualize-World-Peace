@@ -1,6 +1,7 @@
 // .envは他のどのモジュールよりも先に読み込む（JWT_SECRET等をimport時に参照するため）
 import 'dotenv/config';
 import { createAnthropic } from './lib/anthropic';
+import { seedOfficial } from './lib/official';
 import notificationRoutes from './routes/notifications';
 import { COMPANY_MODELS } from './company/registry';
 import express from 'express';
@@ -139,5 +140,7 @@ startAgentLoop();
 }
 startCrew();
 startCompany();
+// AWP 公式アカウント・公式ページ・最初の投稿（無ければ作る）
+void seedOfficial().then((r) => { if (r.created) console.log(`official account seeded: ${r.created} posts`); }).catch((e) => console.error('official seed failed', e?.message));
 // 振込期限を過ぎた注文の取り消しと、保存期間を過ぎた注文の削除
 setInterval(() => void sweepOrders().catch((e) => console.error('order sweep failed', e?.message)), 10 * 60_000);
