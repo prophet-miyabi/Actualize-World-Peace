@@ -488,6 +488,37 @@ export const SEED: Seed[] = [
     ].join('\n'),
     acceptance: 'ドメイン登録サービスが「独自ドメイン」画面に表示される'
   },
+  // ===== 公開後: 第三種資金移動業の登録（2027年中）に向けた最初の一歩 =====
+  {
+    key: 'T30', title: '資金決済法に実績のある弁護士・行政書士を選び、相談を予約', area: 'legal', epic: '資金移動業', owner: 'user', agents: ['ritsu', 'mina'],
+    estimateMin: 60, priority: 1, planDay: '2026-11-05',
+    steps: [
+      '1. 「資金移動業 登録 弁護士」「資金決済法 行政書士」で、第三種（または第二種）の登録支援の実績を明記している事務所を3つ選ぶ',
+      '2. 問い合わせで伝えること: AWP の概要（利用者のキャッシュを出金・参加配当を支払いたい）、希望時期（2027年中に登録）、現状（個人か法人か・資本）',
+      '3. 初回相談の日程を決める（docs/strategy/funds-transfer-license.md を事前に送る）'
+    ].join('\n'),
+    acceptance: '初回相談の日程が決まり、依頼先候補と費用感がメモされている'
+  },
+  {
+    key: 'T31', title: '財務局の事前相談を予約（資金移動業の登録）', area: 'legal', epic: '資金移動業', owner: 'user', agents: ['ritsu', 'mina'],
+    estimateMin: 45, priority: 1, planDay: '2026-11-20', dependsOn: ['T30'],
+    steps: [
+      '1. 本店所在地を管轄する財務局（関東財務局など）の「資金移動業の登録」の窓口に、事前相談を申し込む（弁護士と相談のうえ）',
+      '2. 持参資料: 事業概要、資金の流れ図（誰から誰へ、いくら、どのタイミングで）、第三種を選ぶ理由、保全方法の案（供託か預金管理）',
+      '3. 相談で確認すること: 第三種の該当性、法人要件、財産的基礎の目安、必要な規程、審査期間の目安'
+    ].join('\n'),
+    acceptance: '事前相談の日程が確定し、持参資料の一覧がある'
+  },
+  {
+    key: 'A20', title: '資金移動業の登録に向けた「資金の流れ図」と要件チェックリストの初版を作る', area: 'legal', epic: '資金移動業', owner: 'agent', agents: ['ritsu', 'kei'],
+    estimateMin: 90, priority: 1, planDay: '2026-11-10',
+    acceptance: [
+      '- `docs/strategy/funds-flow.md` を新規作成: 現在のキャッシュ（分配・Harness支払い・プラン支払い）の資金の流れを、実際のコード（backend/src/lib/ledger.ts, backend/src/routes/wallet.ts, plans.ts, shop.ts）から図（Mermaid）と表にする',
+      '- 将来の「出金」「参加配当」を加えた流れ図を別に描き、どの矢印が為替取引に当たりうるかを「要確認」として印を付ける',
+      '- 第三種資金移動業の登録要件を、docs/strategy/funds-transfer-license.md の表をもとにチェックリスト化し、AWP の現状（できている／未着手）を事実にもとづいて埋める',
+      '- 法律の断定はしない。すべて「弁護士・財務局で確認」の前提で書く'
+    ].join('\n')
+  },
   {
     key: 'A19', title: 'ショップの注文・プランの通知をお知らせ（通知センター）に流し、E2Eテストを追加', area: 'dev', epic: '通知', owner: 'agent', agents: ['sora', 'tetsu', 'kei'],
     estimateMin: 120, priority: 1, planDay: '2026-10-15', dependsOn: ['A05', 'A12'],

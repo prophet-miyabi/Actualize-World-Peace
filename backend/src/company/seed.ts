@@ -20,7 +20,24 @@ export const OWNER_GOAL = {
   ]
 };
 
+// オーナーの決定（2026-10-13）: 2027年中に第三種資金移動業の登録を取得し、収益を利用者に配分できるようにする
+export const FUNDS_GOAL = {
+  title: '2027年中に第三種資金移動業の登録を取得し、収益を利用者に配分できるようにする',
+  description: '利用者のキャッシュを現金として出金し、参加配当を支払えるようにするため、資金決済法の第三種資金移動業（1件5万円以下）の登録を2027年中に取得する。法人格・財産的基礎・利用者資金の保全（供託か預金管理＋外部監査）・体制整備・犯収法対応（eKYC）・業務方法書・協会加入が必要。詳細は弁護士と財務局の事前相談で確認する（docs/strategy/funds-transfer-license.md）。登録までキャッシュは有料機能の支払い専用のまま。',
+  kpis: [
+    { key: 'fsa_preconsult', label: '財務局の事前相談を実施', target: 1, unit: '回', by: '2026-12-31' },
+    { key: 'entity_capital', label: '法人・資本・保全方法の確定', target: 1, unit: '件', by: '2027-03-31' },
+    { key: 'policies', label: '規程類（内部管理・AML・システムリスク・苦情対応）の完成', target: 4, unit: '本', by: '2027-06-30' },
+    { key: 'application', label: '登録申請書類の提出', target: 1, unit: '件', by: '2027-09-30' },
+    { key: 'registration', label: '第三種資金移動業の登録', target: 1, unit: '件', by: '2027-12-31' },
+    { key: 'first_dividend', label: '参加配当の初回支払い', target: 1, unit: '回', by: '2027-12-31' }
+  ]
+};
+
 export async function seedCompany() {
+  if (!(await prisma.companyGoal.findFirst({ where: { title: FUNDS_GOAL.title } }))) {
+    await prisma.companyGoal.create({ data: { ...FUNDS_GOAL, kpis: FUNDS_GOAL.kpis as any, setBy: 'owner' } });
+  }
   const existing = await prisma.companyGoal.findFirst({ where: { title: OWNER_GOAL.title } });
   if (!existing) {
     await prisma.companyGoal.create({ data: { ...OWNER_GOAL, kpis: OWNER_GOAL.kpis as any, setBy: 'owner' } });
