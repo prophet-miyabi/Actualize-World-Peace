@@ -87,6 +87,10 @@ export async function runDesignJob(lpId: string, description?: string) {
     }
   }
 
+  // 写真が無いのに「写真全面に文字を重ねる」レイアウトだと、単色の背景に文字だけの貧相な見た目になる。
+  // 画像が用意できなかった（今回も前回も無い）場合は、写真なしでも成立するレイアウトに切り替える
+  if (!image && !lp.heroImage && design.heroLayout === 'imageBackground') design.heroLayout = 'centered';
+
   await prisma.landingPage.update({
     where: { id: lpId },
     data: {
