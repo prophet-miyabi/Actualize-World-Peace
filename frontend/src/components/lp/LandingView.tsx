@@ -14,6 +14,10 @@ export type Design = {
   heroLayout: 'centered' | 'split' | 'imageBackground';
   strengthsStyle: 'cards' | 'numbered' | 'minimal';
   heroOverlay?: 'none' | 'light' | 'medium' | 'strong';
+  // ファーストビューの補助コピー（AWPがユーザーの事実だけから作る）。無ければ既定の文言
+  copy?: { eyebrow?: string; subcopy?: string; ctaLabel?: string; secondaryCtaLabel?: string };
+  // 同業種の人気ページに合わせたセクションの並び（サーバー側で並べ替え済み。画面では参照のみ）
+  sectionOrder?: string[];
 };
 
 export type Lp = {
@@ -76,31 +80,64 @@ export type Tokens = ReturnType<typeof buildTokens>;
 
 function SectionWrap({ tokens, children, tint = false, id }: { tokens: Tokens; children: ReactNode; tint?: boolean; id?: string }) {
   return (
-    <section id={id} style={{ background: tint ? alpha(tokens.p.primary, 0.05) : 'transparent' }} className="px-6 py-16 sm:py-24">
+    <section id={id} style={{ background: tint ? alpha(tokens.p.primary, 0.05) : 'transparent', scrollMarginTop: 72 }} className="px-5 sm:px-6 py-14 sm:py-24">
       <div className="max-w-5xl mx-auto">{children}</div>
     </section>
   );
 }
-function HeadingBlock({ tokens, children }: { tokens: Tokens; children: ReactNode }) {
+function HeadingBlock({ tokens, children, lead }: { tokens: Tokens; children: ReactNode; lead?: string }) {
   return (
-    <h2 style={tokens.headingStyle} className="text-2xl sm:text-3xl text-center mb-10 sm:mb-14">
-      {children}
+    <div className="text-center mb-9 sm:mb-14">
+      {lead && <p style={{ color: tokens.p.primary }} className="text-[11px] font-bold tracking-[0.3em] mb-3">{lead}</p>}
+      <h2 style={tokens.headingStyle} className="text-[1.45rem] sm:text-3xl leading-snug">
+        {children}
+      </h2>
       <span aria-hidden style={{ background: tokens.p.primary }} className="block w-10 h-1 mx-auto mt-4 rounded-full" />
-    </h2>
+    </div>
   );
 }
-// ヒーローのボタン。LINEが登録されていればLINEの案内へ、なければ提携ツール（予約・ショップ等）へ。どちらもなければ出さない
-function CtaLink({ lp, tokens, large = false }: { lp: Lp; tokens: Tokens; large?: boolean }) {
+// 主ボタンの行き先。LINEが登録されていればLINEの案内へ、なければ提携ツール（予約・ショップ等）へ。どちらもなければ無し
+function ctaTarget(lp: Lp): { href: string; label: string } | null {
   const tools = lp.tools ?? [];
-  const target = lp.lineAddUrl
-    ? { href: '#line', label: isCreator(lp) ? 'LINEでつながる' : 'LINEで気軽に相談する' }
-    : tools.length > 0
-      ? { href: '#tools', label: tools.length === 1 ? tools[0].label : isCreator(lp) ? 'ショップ・リンクを見る' : 'オンライン窓口へ' }
-      : null;
+  const custom = lp.design.copy?.ctaLabel?.trim();
+  if (lp.lineAddUrl) return { href: '#line', label: custom || (isCreator(lp) ? 'LINEでつながる' : 'LINEで気軽に相談する') };
+  if (tools.length > 0) return { href: '#tools', label: custom || (tools.length === 1 ? tools[0].label : isCreator(lp) ? 'ショップ・リンクを見る' : 'オンライン窓口へ') };
+  return null;
+}
+// 補助ボタンの行き先。メニューがあればメニューへ、なければ強みへ
+function secondaryTarget(lp: Lp): { href: string; label: string } {
+  const custom = lp.design.copy?.secondaryCtaLabel?.trim();
+  const hasMenu = lp.sections.some((s) => s.feature === 'menu');
+  return { href: hasMenu ? '#menu' : '#strengths', label: custom || (hasMenu ? 'メニューを見る' : '詳しく見る') };
+}
+// ヒーローのボタン（主＋補助）。主ボタンが無ければ補助だけを出す
+function CtaLink({ lp, tokens, large = false, onDark = false }: { lp: Lp; tokens: Tokens; large?: boolean; onDark?: boolean }) {
+  const target = ctaTarget(lp);
+  const second = secondaryTarget(lp);
+  const ghost: CSSProperties = onDark
+    ? { color: '#ffffff', border: '1.5px solid rgba(255,255,255,0.55)', borderRadius: tokens.r.button }
+    : { color: tokens.p.text, border: `1.5px solid ${alpha(tokens.p.text, 0.22)}`, borderRadius: tokens.r.button };
+  return (
+    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
+      {target && (
+        <a href={target.href} style={tokens.ctaStyle}
+          className={`inline-block text-center font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${large ? 'px-9 py-4 sm:px-10 sm:py-5 text-base sm:text-lg' : 'px-8 py-4'}`}>
+          {target.label}
+        </a>
+      )}
+      <a href={second.href} style={ghost} className={`inline-block text-center font-bold ${large ? 'px-8 py-4 sm:py-5' : 'px-7 py-4'}`}>
+        {second.label}
+      </a>
+    </div>
+  );
+}
+// スマホで画面下に常に出る主ボタン。左下のAWPボタンと重ならないよう右側に置く
+export function MobileCtaBar({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
+  const target = ctaTarget(lp);
   if (!target) return null;
   return (
-    <a href={target.href} style={tokens.ctaStyle}
-      className={`inline-block font-bold shadow-lg transition-transform hover:-translate-y-0.5 ${large ? 'px-10 py-5 text-lg' : 'px-8 py-4'}`}>
+    <a href={target.href} style={{ ...tokens.ctaStyle, marginBottom: 'env(safe-area-inset-bottom)' }}
+      className="sm:hidden fixed right-3 bottom-3 z-40 px-5 py-3 text-sm font-bold shadow-xl max-w-[60vw] truncate">
       {target.label}
     </a>
   );
@@ -109,22 +146,30 @@ function CtaLink({ lp, tokens, large = false }: { lp: Lp; tokens: Tokens; large?
 // ---- ヒーロー（3種類のレイアウト） ----
 export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string | null; tokens: Tokens }) {
   const { d, p, headingStyle, r } = tokens;
+  const eyebrow = lp.design.copy?.eyebrow?.trim() || '';
+  const subcopy = lp.design.copy?.subcopy?.trim() || '';
   const heroText = (onDark: boolean) => (
     <>
-      <p style={{ color: onDark ? 'rgba(255,255,255,0.85)' : p.primary }} className="font-bold tracking-widest text-sm mb-4">{lp.businessName}</p>
-      <h1 style={{ ...headingStyle, color: onDark ? '#ffffff' : p.text }} className="text-3xl sm:text-5xl leading-tight mb-8 whitespace-pre-line">{lp.heroTitle}</h1>
+      <p style={{ color: onDark ? 'rgba(255,255,255,0.85)' : p.primary }} className="font-bold tracking-widest text-xs sm:text-sm mb-3">{lp.businessName}</p>
+      {eyebrow && (
+        <p style={{ color: onDark ? 'rgba(255,255,255,0.8)' : alpha(p.text, 0.72), borderColor: onDark ? 'rgba(255,255,255,0.4)' : alpha(p.text, 0.2) }}
+          className="inline-block text-xs font-bold px-3 py-1 border rounded-full mb-4">{eyebrow}</p>
+      )}
+      <h1 style={{ ...headingStyle, color: onDark ? '#ffffff' : p.text, letterSpacing: '-0.005em' }}
+        className="text-[1.9rem] sm:text-5xl leading-[1.3] sm:leading-[1.2] mb-5 whitespace-pre-line">{lp.heroTitle}</h1>
+      {subcopy && <p style={{ color: onDark ? 'rgba(255,255,255,0.88)' : alpha(p.text, 0.78) }} className="text-[15px] sm:text-lg leading-relaxed mb-6 max-w-xl">{subcopy}</p>}
       {lp.socialProof && (
         <p style={{ color: onDark ? '#ffffff' : p.text, background: onDark ? 'rgba(255,255,255,0.14)' : alpha(p.primary, 0.08), borderRadius: r.button }}
-          className="inline-block px-5 py-2 text-sm font-bold mb-8">{lp.socialProof}</p>
+          className="inline-block px-4 py-2 text-sm font-bold mb-7">{lp.socialProof}</p>
       )}
-      <div><CtaLink lp={lp} tokens={tokens} large /></div>
+      <div className={subcopy || lp.socialProof ? '' : 'mt-3'}><CtaLink lp={lp} tokens={tokens} large onDark={onDark} /></div>
     </>
   );
 
   if (d.heroLayout === 'imageBackground') {
     const overlay = OVERLAY[d.heroOverlay ?? 'medium'];
     return (
-      <header className="relative min-h-[78vh] flex items-center px-6 py-24 overflow-hidden"
+      <header className="relative min-h-[82vh] sm:min-h-[78vh] flex items-end sm:items-center px-5 sm:px-6 pt-24 pb-14 sm:py-24 overflow-hidden"
         style={imageUrl ? undefined : { background: `linear-gradient(135deg, ${p.primary}, ${alpha(p.text, 0.92)})` }}>
         {imageUrl && (
           <>
@@ -139,12 +184,17 @@ export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string
   }
   if (d.heroLayout === 'split') {
     return (
-      <header className="px-6 py-16 sm:py-24">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+      <header className="px-5 sm:px-6 pt-10 pb-14 sm:py-24" style={{ background: `linear-gradient(180deg, ${alpha(p.primary, 0.06)}, transparent 60%)` }}>
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          {imageUrl && (
+            // スマホでは写真を先に見せる（人気ページの多くが最初の画面で雰囲気を伝えているため）
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="md:hidden w-full aspect-[4/3] object-cover shadow-lg" style={{ borderRadius: r.box }} />
+          )}
           <div>{heroText(false)}</div>
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="w-full aspect-[4/3] object-cover shadow-xl" style={{ borderRadius: r.box }} />
+            <img src={imageUrl} alt="" className="hidden md:block w-full aspect-[4/3] object-cover shadow-xl" style={{ borderRadius: r.box }} />
           ) : (
             <div aria-hidden className="w-full aspect-[4/3] shadow-xl flex items-center justify-center"
               style={{ borderRadius: r.box, background: `linear-gradient(135deg, ${alpha(p.primary, 0.9)}, ${alpha(p.primary, 0.55)})` }}>
@@ -156,11 +206,11 @@ export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string
     );
   }
   return (
-    <header className="px-6 pt-20 pb-16 sm:pt-28 text-center" style={{ background: `radial-gradient(ellipse at top, ${alpha(p.primary, 0.12)}, transparent 70%)` }}>
-      <div className="max-w-3xl mx-auto">{heroText(false)}</div>
+    <header className="px-5 sm:px-6 pt-16 pb-12 sm:pt-28 sm:pb-16 text-center" style={{ background: `radial-gradient(ellipse at top, ${alpha(p.primary, 0.12)}, transparent 70%)` }}>
+      <div className="max-w-3xl mx-auto [&_p.max-w-xl]:mx-auto [&_.flex]:justify-center">{heroText(false)}</div>
       {imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="max-w-5xl w-full mx-auto mt-14 aspect-[16/7] object-cover shadow-xl" style={{ borderRadius: r.box }} />
+        <img src={imageUrl} alt="" className="max-w-5xl w-full mx-auto mt-10 sm:mt-14 aspect-[4/3] sm:aspect-[16/7] object-cover shadow-xl" style={{ borderRadius: r.box }} />
       )}
     </header>
   );
@@ -173,11 +223,11 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   let block: ReactNode;
   if (d.strengthsStyle === 'numbered') {
     block = (
-      <ol className="grid md:grid-cols-3 gap-8">
+      <ol className="grid md:grid-cols-3 gap-6 md:gap-8">
         {strengths.map((s, i) => (
-          <li key={i} className="text-center">
-            <span style={{ ...headingStyle, color: p.primary }} className="block text-5xl mb-4">{String(i + 1).padStart(2, '0')}</span>
-            <p className="font-bold text-lg leading-relaxed">{s}</p>
+          <li key={i} className="flex md:block gap-5 items-start md:text-center">
+            <span style={{ ...headingStyle, color: p.primary }} className="block text-4xl md:text-5xl md:mb-4 leading-none shrink-0 w-12 md:w-auto">{String(i + 1).padStart(2, '0')}</span>
+            <p className="font-bold text-[17px] md:text-lg leading-relaxed">{s}</p>
           </li>
         ))}
       </ol>
@@ -195,20 +245,23 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
     );
   } else {
     block = (
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-4 md:gap-6">
         {strengths.map((s, i) => (
-          <div key={i} style={tokens.boxStyle} className="p-8 shadow-sm">
+          <div key={i} style={{ ...tokens.boxStyle, borderTop: `3px solid ${p.primary}` }} className="p-6 sm:p-8 shadow-sm flex md:block gap-4 items-start">
             <span aria-hidden style={{ background: alpha(p.primary, 0.12), color: p.primary, borderRadius: tokens.r.button }}
-              className="inline-flex w-10 h-10 items-center justify-center font-bold mb-5">{i + 1}</span>
-            <p className="font-bold text-lg leading-relaxed">{s}</p>
+              className="inline-flex w-10 h-10 items-center justify-center font-bold md:mb-5 shrink-0">{i + 1}</span>
+            <p className="font-bold text-[17px] md:text-lg leading-relaxed">{s}</p>
           </div>
         ))}
       </div>
     );
   }
+  const count = strengths.length;
   return (
-    <SectionWrap tokens={tokens} tint>
-      <HeadingBlock tokens={tokens}>{isCreator(lp) ? '作品と活動の3つの魅力' : '選ばれる3つの理由'}</HeadingBlock>
+    <SectionWrap tokens={tokens} tint id="strengths">
+      <HeadingBlock tokens={tokens} lead={isCreator(lp) ? 'ABOUT' : 'REASON'}>
+        {isCreator(lp) ? `作品と活動の${count}つの魅力` : `選ばれる${count}つの理由`}
+      </HeadingBlock>
       {block}
     </SectionWrap>
   );
@@ -389,7 +442,7 @@ export function LineCtaSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
 export function SiteFooter({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const { p } = tokens;
   return (
-    <footer className="px-6 py-8 text-center text-xs" style={{ background: p.text, color: alpha(p.background, 0.6) }}>
+    <footer className="px-6 pt-8 pb-20 sm:pb-8 text-center text-xs" style={{ background: p.text, color: alpha(p.background, 0.6) }}>
       © {new Date().getFullYear()} {lp.businessName}
     </footer>
   );
@@ -432,6 +485,7 @@ export default function LandingView({ lp, imageUrl, extra }: { lp: Lp; imageUrl:
       <LineCtaSection lp={lp} tokens={tokens} />
       {extra}
       <SiteFooter lp={lp} tokens={tokens} />
+      <MobileCtaBar lp={lp} tokens={tokens} />
     </div>
   );
 }

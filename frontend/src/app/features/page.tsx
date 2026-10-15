@@ -8,7 +8,10 @@ type Field = { key: string; label: string; type: 'text' | 'textarea'; required?:
 type Feature = {
   id: string; name: string; description: string; fields: Field[];
   added: boolean; inputs: Record<string, string>; promptBy: 'gemini' | 'template' | null;
+  // 同業種の人気ページで定番の機能なら、その順位と理由
+  recommended: { rank: number; reason: string } | null;
 };
+type Industry = { key: string; label: string; summary: string };
 
 // ページに追加できる機能の一覧と、機能ごとの質問フォーム。
 // 回答をもとに Gemini がその機能専用の指示文を設計し、Claude が内容を作成してページに追加する。
@@ -26,6 +29,7 @@ function FeaturesInner() {
   const backHref = lpId ? `/dashboard?lp=${encodeURIComponent(lpId)}` : '/dashboard';
 
   const [features, setFeatures] = useState<Feature[] | null>(null);
+  const [industry, setIndustry] = useState<Industry | null>(null);
   const [hasLp, setHasLp] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -39,7 +43,10 @@ function FeaturesInner() {
   const load = useCallback(async () => {
     const params = lpId ? { lpId } : {};
     const [f, s] = await Promise.all([api.get('/lp/features', { params }), api.get('/lp/dashboard/stats', { params })]);
-    setFeatures(f.data.features);
+    // 同業種の人気ページで定番のものを上に並べる
+    const list = [...(f.data.features as Feature[])].sort((a, b) => (a.recommended?.rank ?? 99) - (b.recommended?.rank ?? 99));
+    setFeatures(list);
+    setIndustry(f.data.industry ?? null);
     setHasLp(f.data.hasLp);
     setSlug(s.data.lp?.slug ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,6 +111,13 @@ function FeaturesInner() {
           </div>
         )}
 
+        {industry && hasLp && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-sm text-blue-900">
+            <p className="font-bold">{industry.label}の人気ページに合わせたおすすめ順です</p>
+            {industry.summary && <p className="mt-1 text-blue-800/80 leading-relaxed">{industry.summary}</p>}
+          </div>
+        )}
+
         {doneId && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-sm text-green-800">
             ページに追加しました。{slug && <a href={`/${slug}`} target="_blank" rel="noopener noreferrer" className="underline ml-1">ページで確認する</a>}
@@ -116,8 +130,12 @@ function FeaturesInner() {
               <button type="button" onClick={() => open(f)} disabled={!hasLp || busy}
                 className="w-full text-left p-5 flex items-start justify-between gap-4 disabled:opacity-60">
                 <div>
-                  <p className="font-bold">{f.name}</p>
+                  <p className="font-bold">
+                    {f.name}
+                    {f.recommended && <span className="ml-2 align-middle text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">おすすめ {f.recommended.rank}</span>}
+                  </p>
                   <p className="text-sm text-gray-500 mt-1">{f.description}</p>
+                  {f.recommended && !f.added && <p className="text-xs text-amber-800 mt-1">{f.recommended.reason}</p>}
                   {f.added && f.promptBy && (
                     <p className="text-xs text-gray-400 mt-2">
                       {f.promptBy === 'gemini' ? 'Geminiが設計した指示文で、Claudeが作成' : '標準の指示文で、Claudeが作成'}

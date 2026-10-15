@@ -10,6 +10,7 @@ import { runOpsChat, type ChatTurn } from '../agents/opsAgent';
 import { hitRateLimit } from '../lib/rateLimit';
 import { createAnthropic } from '../lib/anthropic';
 import { COMPANY_MODELS } from '../company/registry';
+import { buildPlaybook, INDUSTRY_KEYS, listPlaybooks } from '../ai/playbook';
 
 // 運営者（管理者）専用: ダッシュボード・緊急コントロール・AWPオペレーターとのチャット・提案の承認
 const router = Router();
@@ -26,6 +27,37 @@ async function requireAdmin(req: AuthRequest, res: any): Promise<boolean> {
 router.get('/overview', authenticate, async (req: AuthRequest, res) => {
   if (!(await requireAdmin(req, res))) return;
   res.json(await buildOverview());
+});
+
+// 業種別「人気ページの手本」の一覧と作り直し（運営者）。
+// 手本は全ユーザーのページ作成に使われるため、内容と参照元をここで確認できる
+router.get('/playbooks', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdmin(req, res))) return;
+  res.json({ items: await listPlaybooks(), webSearch: process.env.PLAYBOOK_WEB_SEARCH !== 'false' });
+});
+
+router.post('/playbooks/:key/rebuild', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdmin(req, res))) return;
+  const key = String(req.params.key);
+  if (!INDUSTRY_KEYS.includes(key)) return res.status(404).json({ error: 'この業種はありません' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'intelligence が利用できません' });
+  buildPlaybook(key).catch((e) => console.error('playbook rebuild failed', key, e?.message));
+  res.status(202).json({ status: 'generating', key });
+});
+
+// 全業種をまとめて作る（順番に実行。1業種あたり数十秒）
+router.post('/playbooks/rebuild-all', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requireAdmin(req, res))) return;
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'intelligence が利用できません' });
+  const onlyMissing = req.body?.onlyMissing !== false;
+  const items = await listPlaybooks();
+  const targets = items.filter((i) => !onlyMissing || i.status === 'missing' || i.status === 'failed' || i.stale).map((i) => i.key);
+  void (async () => {
+    for (const key of targets) {
+      try { await buildPlaybook(key); } catch (e: any) { console.error('playbook rebuild-all failed', key, e?.message); }
+    }
+  })();
+  res.status(202).json({ status: 'generating', count: targets.length, keys: targets });
 });
 
 // 緊急コントロール（運営者が画面から直接切り替える）

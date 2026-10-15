@@ -1,5 +1,6 @@
 import prisma from '../prisma';
 import { designWithClaude, generateHeroImage, presetDesign, reviewImageWithClaude, type Design } from './design';
+import { classifyIndustry, getPlaybook, type Playbook } from './playbook';
 
 const hasImageAi = () => !!((process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) || process.env.GEMINI_API_KEY);
 
@@ -23,18 +24,32 @@ export async function runDesignJob(lpId: string, description?: string) {
   const input = { businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths, description };
   const templateKey = lp.templateKey;
 
+  // 業種を判定し、同業種の人気ページの手本（構成・見せ方・文言の型）を取り出す。
+  // 手本が未作成の業種は、ここで作る（最初の1人だけ時間がかかり、以後は全ユーザーで共有される）
+  let playbook: Playbook | null = null;
+  try {
+    let industryKey = lp.industryKey;
+    if (!industryKey) {
+      industryKey = await classifyIndustry([lp.businessName, lp.heroTitle, description ?? '', ...lp.strengths].join(' '));
+      await prisma.landingPage.update({ where: { id: lpId }, data: { industryKey } });
+    }
+    playbook = await getPlaybook(industryKey, { wait: true });
+  } catch (e: any) {
+    console.error('playbook lookup failed, designing without it', lpId, e?.message);
+  }
+
   let design: Design;
   let source = 'ai';
   if (process.env.ANTHROPIC_API_KEY) {
     try {
-      design = await designWithClaude(input, templateKey);
+      design = await designWithClaude(input, templateKey, playbook);
     } catch (e: any) {
       console.error('Claude design failed, using preset', lpId, e?.message);
-      design = presetDesign(input, templateKey);
+      design = presetDesign(input, templateKey, playbook);
       source = 'preset';
     }
   } else {
-    design = presetDesign(input, templateKey);
+    design = presetDesign(input, templateKey, playbook);
     source = 'preset';
   }
 
@@ -54,14 +69,14 @@ export async function runDesignJob(lpId: string, description?: string) {
         });
         if (!review || review.acceptable) {
           image = first;
-          if (review) design = review.design;
+          if (review) design = { ...review.design, copy: design.copy, sectionOrder: design.sectionOrder };
         } else {
           console.log('Hero image rejected by review, regenerating once', lpId, review.issues);
           const second = await generateHeroImage(design.imagePrompt, review.issues);
           const review2 = await reviewImageWithClaude(input, design, second, templateKey).catch(() => null);
           if (review2?.acceptable) {
             image = second;
-            design = review2.design;
+            design = { ...review2.design, copy: design.copy, sectionOrder: design.sectionOrder };
           } else {
             console.log('Hero image rejected twice, publishing without image', lpId);
           }
@@ -104,11 +119,19 @@ export function publicLp<T extends {
   templateKey?: string | null;
 }>(lp: T) {
   const { heroImage, sections, ...rest } = lp;
+  const design = (lp.design as Design | null) ?? presetDesign({ businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, lp.templateKey);
   return {
     ...rest,
-    design: (lp.design as Design | null) ?? presetDesign({ businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, lp.templateKey),
+    design,
     hasImage: !!heroImage,
     imageVersion: lp.designUpdatedAt ? lp.designUpdatedAt.getTime() : 0,
-    sections: storedSections({ sections }).map(({ feature, content }) => ({ feature, content }))
+    sections: orderSections(storedSections({ sections }), design.sectionOrder).map(({ feature, content }) => ({ feature, content }))
   };
+}
+
+// 同業種の人気ページの並び（design.sectionOrder）に合わせてセクションを並べ替える。並びに無いものは元の順で後ろに
+export function orderSections<T extends { feature: string }>(sections: T[], order?: string[] | null): T[] {
+  if (!order?.length) return sections;
+  const rank = (f: string) => { const i = order.indexOf(f); return i < 0 ? 1000 : i; };
+  return [...sections].sort((a, b) => rank(a.feature) - rank(b.feature));
 }

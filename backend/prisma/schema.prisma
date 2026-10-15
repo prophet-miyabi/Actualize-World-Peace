@@ -188,6 +188,8 @@ model LandingPage {
   lineAddUrl String?
   // ユーザーが完成例から選んだ土台デザイン（PRESET_METAのid）。未選択ならnull
   templateKey String?
+  // 業種（IndustryPlaybook.key）。入力内容から自動判定し、同業種の人気ページの手本をデザイン・文章に反映する
+  industryKey String?
 
   // 独自ドメイン（例: www.example.jp）。DNSのCNAME確認が取れたらverified=true
   customDomain         String?  @unique
@@ -1036,4 +1038,19 @@ model CompanyChat {
   updatedAt DateTime @updatedAt
 
   @@index([updatedAt])
+}
+
+// 業種ごとの「人気ページの手本」。同業種の評価の高いサイトを調べて、構成・見出しの型・信頼要素・
+// CTA・配色・写真の傾向をまとめたもの。ページ作成（デザイン・文章・対話）の指示に使い、約60日で作り直す
+model IndustryPlaybook {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  content   Json
+  status    String   @default("ready") // generating / ready / failed
+  error     String?
+  model     String?
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

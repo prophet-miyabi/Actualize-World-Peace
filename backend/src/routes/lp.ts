@@ -5,6 +5,7 @@ import { z } from 'zod/v4';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import prisma from '../prisma';
 import { isGenerating, publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
+import { classifyIndustryByRules, getPlaybook, industryOf } from '../ai/playbook';
 import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
 import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
@@ -480,11 +481,17 @@ const sectionRequests = new Map<string, number[]>();
 router.get('/features', authenticate, async (req: AuthRequest, res) => {
   const lp = await resolveLp(req.user!.id, req.query.lpId);
   const added = lp ? storedSections(lp) : [];
+  // 同業種の人気ページで定番の機能を「おすすめ」として示す（手本が未作成なら一般的な型。作成は裏で始まる）
+  const industryKey = lp ? (lp.industryKey ?? classifyIndustryByRules([lp.businessName, lp.heroTitle, ...lp.strengths].join(' ')) ?? 'other') : null;
+  const playbook = lp ? await getPlaybook(industryKey, { wait: false }).catch(() => null) : null;
+  const recommended = playbook?.recommendedFeatures ?? [];
   res.json({
     hasLp: !!lp,
+    industry: lp ? { key: industryOf(industryKey).key, label: industryOf(industryKey).label, summary: playbook?.summary ?? '' } : null,
     features: publicCatalog().map((f) => {
       const s = added.find((x) => x.feature === f.id);
-      return { ...f, added: !!s, inputs: s?.inputs ?? {}, content: s?.content ?? null, promptBy: s?.promptBy ?? null };
+      const rec = recommended.find((r) => r.id === f.id);
+      return { ...f, added: !!s, inputs: s?.inputs ?? {}, content: s?.content ?? null, promptBy: s?.promptBy ?? null, recommended: rec ? { rank: recommended.indexOf(rec) + 1, reason: rec.reason } : null };
     })
   });
 });
@@ -515,7 +522,8 @@ router.post('/features/:id', authenticate, metered('page_section'), async (req: 
   sectionRequests.set(userId, [...recent, now]);
 
   try {
-    const written = await writeSection(feature, { businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, inputs);
+    const playbook = await getPlaybook(lp.industryKey ?? classifyIndustryByRules([lp.businessName, lp.heroTitle, ...lp.strengths].join(' ')), { wait: false }).catch(() => null);
+    const written = await writeSection(feature, { businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, inputs, playbook);
     // 地図リンクはAWPに書かせず、住所から確実に作る
     if (feature.id === 'access' && inputs.address) {
       written.content.mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inputs.address)}`;

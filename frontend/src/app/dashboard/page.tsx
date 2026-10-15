@@ -25,6 +25,7 @@ function DashboardInner() {
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [design, setDesign] = useState<{ status: string; source: string | null; hasImage: boolean } | null>(null);
+  const [recommend, setRecommend] = useState<{ label: string; total: number; added: number } | null>(null);
   const [designError, setDesignError] = useState('');
   const [checkout, setCheckout] = useState<'confirming' | 'timeout' | null>(null);
   const [hasLineConfig, setHasLineConfig] = useState(true);
@@ -83,6 +84,10 @@ function DashboardInner() {
     }).catch(() => {});
     api.get('/lp/domain', { params: withLp() }).then((res) => setDomain(res.data)).catch(() => {});
     api.get('/lp/design', { params: withLp() }).then((res) => setDesign(res.data)).catch(() => {});
+    api.get('/lp/features', { params: withLp() }).then((res) => {
+      const rec = (res.data.features as { recommended: unknown; added: boolean }[]).filter((f) => f.recommended);
+      if (res.data.industry && rec.length) setRecommend({ label: res.data.industry.label, total: rec.length, added: rec.filter((f) => f.added).length });
+    }).catch(() => {});
     setLineSaved(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lpId]);
@@ -391,6 +396,9 @@ function DashboardInner() {
             <p className="font-bold mt-1">
               {data.lp.sections?.length ? `${data.lp.sections.length}個の機能を追加済み` : 'メニュー・よくある質問・アクセスなどを追加できます'}
             </p>
+            {recommend && recommend.added < recommend.total && (
+              <p className="text-xs text-amber-800 mt-2">{recommend.label}の人気ページで定番の機能が、あと{recommend.total - recommend.added}つあります</p>
+            )}
             <span className="inline-block mt-4 text-sm font-bold text-blue-600">機能を追加する →</span>
           </Link>
         </div>

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, type Lp } from '@/components/lp/LandingView';
+import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, MobileCtaBar, type Lp } from '@/components/lp/LandingView';
 import PageEngagementBar from '@/components/community/PageEngagementBar';
 import PromotionBlock from '@/components/community/PromotionBlock';
 import ProductsSection, { type PublicProduct, type PublicShop } from '@/components/modules/ProductsSection';
@@ -160,6 +160,7 @@ export default async function LandingPage({ params }: Params) {
           <LineCtaSection lp={lp} tokens={tokens} />
           {modules}
           <SiteFooter lp={lp} tokens={tokens} />
+          <MobileCtaBar lp={lp} tokens={tokens} />
           {engagement}
         </div>
       </>

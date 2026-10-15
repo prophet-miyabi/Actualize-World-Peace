@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
 import { fetchWithRetry } from './cloudflareFetch';
 import { aiClient, recordAiCost } from '../lib/aiUsage';
+import { playbookBriefForDesign, type Playbook } from './playbook';
 
 // ---------------------------------------------------------------------------
 // デザインは「AWPが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAWPが選ぶ方式。
@@ -28,6 +29,10 @@ export type Design = {
   // 写真の上に文字を載せるときの暗幕の濃さ（画像を見たClaudeが決める）
   heroOverlay: (typeof OVERLAYS)[number];
   imagePrompt: string;
+  // ファーストビューの補助コピー（ユーザーが伝えた事実だけから作る）。無ければ画面側が既定の文言を使う
+  copy?: { eyebrow: string; subcopy: string; ctaLabel: string; secondaryCtaLabel: string };
+  // 同業種の人気ページに合わせたセクションの並び（publicLpで並べ替えに使う）
+  sectionOrder?: string[];
 };
 
 type DesignInput = { businessName: string; heroTitle: string; strengths: string[]; description?: string };
@@ -46,7 +51,11 @@ const AiDesignSchema = z.object({
   corner: z.string().describe(oneOf(CORNERS)),
   heroLayout: z.string().describe(oneOf(HERO_LAYOUTS)),
   strengthsStyle: z.string().describe(oneOf(STRENGTH_STYLES)),
-  imagePrompt: z.string().describe('メイン画像の英語の指示文。写真風、文字・ロゴなし')
+  imagePrompt: z.string().describe('メイン画像の英語の指示文。写真風、文字・ロゴなし'),
+  eyebrow: z.string().describe('見出しの上に置く小さな一行（業種・地域・対象など、伝えられた事実だけで。16文字以内。作れなければ空文字）'),
+  subcopy: z.string().describe('見出しの下の補足文（強みの中で最も差がつく1つを、お客様の得になる言い方で1〜2文・80文字以内。新しい事実・数字を足さない）'),
+  ctaLabel: z.string().describe('主ボタンの文言（12文字以内。例: 予約・相談する）'),
+  secondaryCtaLabel: z.string().describe('補助ボタンの文言（10文字以内。例: メニューを見る）')
 });
 
 // --- プリセット（intelligence が使えないときも、業種に合う洗練された見た目にする） --------------------
@@ -121,9 +130,14 @@ export function normalizeDesign(raw: unknown, input: DesignInput, templateKey?: 
   return finalize(raw, PRESETS[baseKeyFor(input, templateKey)]);
 }
 
-export function presetDesign(input: DesignInput, templateKey?: string | null): Design {
+export function presetDesign(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null): Design {
   const preset = PRESETS[baseKeyFor(input, templateKey)];
-  return finalize(preset, preset);
+  const d = finalize(preset, preset);
+  if (playbook) {
+    d.sectionOrder = playbook.sectionOrder;
+    d.copy = { eyebrow: '', subcopy: '', ctaLabel: playbook.hero.ctaLabel, secondaryCtaLabel: playbook.hero.secondaryCtaLabel };
+  }
+  return d;
 }
 
 // --- 読みやすさの保証（WCAGのコントラスト基準） -----------------------------------------
@@ -173,6 +187,16 @@ function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
   const pick = <T extends readonly string[]>(list: T, v: unknown, fb: T[number]): T[number] =>
     (list as readonly string[]).includes(v as string) ? (v as T[number]) : fb;
 
+  const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  const rawCopy = raw?.copy ?? raw;
+  const copy = {
+    eyebrow: clean(rawCopy?.eyebrow, 20),
+    subcopy: clean(rawCopy?.subcopy, 100),
+    ctaLabel: clean(rawCopy?.ctaLabel, 14),
+    secondaryCtaLabel: clean(rawCopy?.secondaryCtaLabel, 12)
+  };
+  const sectionOrder = Array.isArray(raw?.sectionOrder) ? (raw.sectionOrder as unknown[]).filter((s): s is string => typeof s === 'string').slice(0, 20) : undefined;
+
   return {
     palette: { primary, onPrimary: bestOn(primary), background, surface, text },
     font: pick(FONTS, raw?.font, preset.font),
@@ -180,7 +204,9 @@ function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
     heroLayout: pick(HERO_LAYOUTS, raw?.heroLayout, preset.heroLayout),
     strengthsStyle: pick(STRENGTH_STYLES, raw?.strengthsStyle, preset.strengthsStyle),
     heroOverlay: pick(OVERLAYS, raw?.heroOverlay, 'medium'),
-    imagePrompt: (typeof raw?.imagePrompt === 'string' && raw.imagePrompt.trim() ? raw.imagePrompt : preset.imagePrompt).slice(0, 500)
+    imagePrompt: (typeof raw?.imagePrompt === 'string' && raw.imagePrompt.trim() ? raw.imagePrompt : preset.imagePrompt).slice(0, 500),
+    ...(copy.eyebrow || copy.subcopy || copy.ctaLabel ? { copy } : {}),
+    ...(sectionOrder?.length ? { sectionOrder } : {})
   };
 }
 
@@ -197,10 +223,12 @@ const ART_DIRECTOR_PROMPT = [
   '- 書体: modern=すっきりしたゴシック / elegant=上品な明朝 / friendly=丸ゴシック / bold=力強い太字。',
   '- レイアウト: centered=中央揃えで静か / split=文章と写真を左右に並べる / imageBackground=写真全面に文字を重ねる（写真の雰囲気が強みになる業種向け）。',
   'imagePromptは、メイン画像を生成するための英語の指示文です。被写体・光・色調・構図を具体的に書き、',
-  '人物の顔のアップ、文字、ロゴ、看板、特定の実在ブランドは含めないでください。'
+  '人物の顔のアップ、文字、ロゴ、看板、特定の実在ブランドは含めないでください。',
+  '「同業種の人気ページに共通する型」が渡されたら、その型（構成・見せ方・配色の方向）を土台にしつつ、この店らしさを加えて仕上げてください。',
+  '型はあくまで手本です。他社の文章や数字は使わず、eyebrow / subcopy はユーザーが伝えた事実（事業名・キャッチコピー・強み・事業内容）だけから作ってください。'
 ].join('\n');
 
-export async function designWithClaude(input: DesignInput, templateKey?: string | null): Promise<Design> {
+export async function designWithClaude(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null): Promise<Design> {
   const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
@@ -215,16 +243,19 @@ export async function designWithClaude(input: DesignInput, templateKey?: string 
         `事業名: ${input.businessName}`,
         `キャッチコピー: ${input.heroTitle}`,
         `強み: ${input.strengths.filter(Boolean).join(' / ')}`,
-        input.description ? `事業内容: ${input.description}` : ''
+        input.description ? `事業内容: ${input.description}` : '',
+        playbook ? `\n${playbookBriefForDesign(playbook)}` : ''
       ].filter(Boolean).join('\n')
     }],
-    output_config: { effort: 'low', format: betaZodOutputFormat(AiDesignSchema) }
+    output_config: { effort: playbook ? 'medium' : 'low', format: betaZodOutputFormat(AiDesignSchema) }
   });
   if (response.stop_reason === 'refusal' || !response.parsed_output) {
     throw new Error(`design not produced (stop_reason=${response.stop_reason})`);
   }
   // AWPの値が不正・読みにくい場合は、業種に合うプリセット（明示選択があればそれ）の値で補う
-  return finalize(response.parsed_output, PRESETS[baseKeyFor(input, templateKey)]);
+  const design = finalize(response.parsed_output, PRESETS[baseKeyFor(input, templateKey)]);
+  if (playbook) design.sectionOrder = playbook.sectionOrder;
+  return design;
 }
 
 // --- Claude: Geminiの画像のレビューと、画像に合わせた配色の調整 ------------------------------
