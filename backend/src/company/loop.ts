@@ -1,4 +1,5 @@
 import { sweepActivity } from './activity';
+import { aiOutageActive } from './outage';
 import prisma from '../prisma';
 import { Prisma } from '@prisma/client';
 import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
@@ -131,7 +132,8 @@ export async function companyTick(now = new Date()) {
     const active = await prisma.companyTask.count({ where: { status: 'running' } });
     const slots = settings.concurrency - active;
     if (slots > 0) {
-      const due = await prisma.companyTask.findMany({ where: { status: 'queued', runAt: { lte: now } }, orderBy: [{ createdAt: 'asc' }], take: slots });
+      // intelligence が止まっている間は新しいタスクを始めない（10分ごとに1件だけ試す）
+      const due = aiOutageActive() ? [] : await prisma.companyTask.findMany({ where: { status: 'queued', runAt: { lte: now } }, orderBy: [{ createdAt: 'asc' }], take: slots });
       await Promise.all(due.map((t) => runTask(t.id).catch((e) => console.error('company task failed', t.id, e?.message))));
     }
   } catch (e: any) {

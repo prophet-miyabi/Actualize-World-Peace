@@ -54,6 +54,7 @@ import { FINISH_TOOL, parseFinish, type TaskResult } from './finish';
 import { handleToolUse, type ToolExecOpts } from './toolExec';
 import { consoleSessionUrl, ensureManagedAgent, managedEnabled, runManagedSession } from './managed';
 import { endActivity, startActivity, updateActivity } from './activity';
+import { clearAiOutage, isOutageError, markAiOutage } from './outage';
 export type { TaskResult };
 
 export function priceFor(model: string) {
@@ -275,6 +276,7 @@ export async function runTask(taskId: string): Promise<void> {
       }
     }
 
+    clearAiOutage();
     const final: TaskResult = result ?? { summary: '（報告なし）', facts: [], assumptions: [], artifacts: [], nextActions: [] };
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, engine, sessionId, status: 'ok', finishedAt: new Date() } });
     // 自己点検は監査しない（点検そのものの費用を増やさないため）
@@ -289,6 +291,13 @@ export async function runTask(taskId: string): Promise<void> {
   } catch (e: any) {
     await endActivity(taskId, { status: 'failed', summary: describeAiError(e), costUsd, toolCalls, sessionUrl: sessionId ? consoleSessionUrl(sessionId) : null });
     await prisma.agentRun.update({ where: { id: run.id }, data: { inputTokens, outputTokens, toolCalls, costUsd, engine, sessionId, status: 'error', error: String(e?.message ?? e).slice(0, 500), finishedAt: new Date() } });
+    if (isOutageError(e)) {
+      // intelligence 側の停止（残高・キー・上限）: 試行回数に数えず、停止が解けるまで待つ（遮断器）
+      const reason = markAiOutage(e);
+      await prisma.companyTask.update({ where: { id: taskId }, data: { status: 'queued', attempts: { decrement: 1 }, error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 15 * 60_000) } });
+      await emitEvent('company.ai_unavailable', 'system', { reason, taskId, error: describeAiError(e).slice(0, 200) }, taskId);
+      return;
+    }
     const retry = task.attempts < 2;
     await prisma.companyTask.update({ where: { id: taskId }, data: { status: retry ? 'queued' : 'failed', error: describeAiError(e).slice(0, 500), runAt: new Date(Date.now() + 30 * 60_000) } });
     await emitEvent('task.error', agent.key, { error: String(e?.message ?? e).slice(0, 300), retry, engine, sessionId }, taskId);

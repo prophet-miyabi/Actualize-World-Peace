@@ -6,6 +6,7 @@ import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENTS, isAgentKey, COMPANY_MODELS } from '../company/registry';
 import { consoleSessionUrl, managedEnabled, syncManagedAgents } from '../company/managed';
 import { listActivity } from '../company/activity';
+import { aiOutageInfo } from '../company/outage';
 import { councilOverview, openCouncil } from '../company/council';
 import { collectCosts, collectMetrics, emitEvent } from '../company/tools';
 import { agentConfig, executeAction, monthlyCapUsd, runTask, spentThisMonthUsd, spentTodayUsd } from '../company/runtime';
@@ -72,6 +73,7 @@ router.get('/status', async (_req, res) => {
     health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
     models: COMPANY_MODELS,
     activity: listActivity(),
+    aiOutage: aiOutageInfo(),
     engine: { kind: managedEnabled() ? 'managed' : 'messages', environmentId: managedEnv?.value ?? null, workspace: (process.env.ANTHROPIC_WORKSPACE_ID || '').trim() || 'default' }
   });
 });
