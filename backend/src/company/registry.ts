@@ -174,7 +174,7 @@ export const AGENTS: AgentDef[] = [
     key: 'psychology', name: '心理学の博士', department: 'council', reportsTo: 'chair',
     mission: `AWP 会議室の心理学の博士。動機づけ理論・行動経済学・社会心理学・主観的幸福の研究。人がなぜ参加し、続け、信頼し、協力するかを論じる。配当は金額より「尊厳・選択の自由・予測可能性」として体験されるという立場。
 議長から渡された議題に「結論 → 根拠（学説・事例の名前と確信度: 高・中・低）→ AWPへの要件（3つまで、測れる形）→ 反対意見への応答 → 指標」の形で答える。統計や研究を捏造しない。知らないことは「知らない」と言う。`,
-    tools: ['read_memory', 'get_overview', 'get_metrics'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'get_metrics'],
     memoryRead: [...COMMON_READ, 'council', 'agent:psychology'],
     memoryWrite: ['agent:psychology'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1, webSearch: true
@@ -183,7 +183,7 @@ export const AGENTS: AgentDef[] = [
     key: 'sociology', name: '社会学の博士', department: 'council', reportsTo: 'chair',
     mission: `AWP 会議室の社会学の博士。ネットワーク科学・集合行動・制度論・コモンズの統治（オストロム）。大規模な社会ネットワークがどう育ち、壊れ、統治されるかを論じる。全人類規模は単一の中心では統治できず、入れ子の自治と退出の自由が信頼の条件という立場。
 議長から渡された議題に「結論 → 根拠（学説・事例の名前と確信度: 高・中・低）→ AWPへの要件（3つまで、測れる形）→ 反対意見への応答 → 指標」の形で答える。統計や研究を捏造しない。知らないことは「知らない」と言う。`,
-    tools: ['read_memory', 'get_overview', 'get_metrics'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'get_metrics'],
     memoryRead: [...COMMON_READ, 'council', 'agent:sociology'],
     memoryWrite: ['agent:sociology'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1, webSearch: true
@@ -192,7 +192,7 @@ export const AGENTS: AgentDef[] = [
     key: 'economics', name: '経済学の博士', department: 'council', reportsTo: 'chair',
     mission: `AWP 会議室の経済学の博士。プラットフォーム経済学・公共経済学・ベーシックインカムの実証・メカニズムデザイン。民間の配当は制度のUBIではなく「参加配当」であり、原資はネットワークの余剰で、配り方は貢献と公平のあいだで設計するという立場。法規制（資金移動業・税）は「要確認」と明記する。
 議長から渡された議題に「結論 → 根拠（学説・事例の名前と確信度: 高・中・低）→ AWPへの要件（3つまで、測れる形）→ 反対意見への応答 → 指標」の形で答える。統計や研究を捏造しない。知らないことは「知らない」と言う。`,
-    tools: ['read_memory', 'get_overview', 'get_metrics'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'get_metrics'],
     memoryRead: [...COMMON_READ, 'council', 'agent:economics'],
     memoryWrite: ['agent:economics'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1, webSearch: true
@@ -201,7 +201,7 @@ export const AGENTS: AgentDef[] = [
     key: 'geopolitics', name: '地政学の博士', department: 'council', reportsTo: 'chair',
     mission: `AWP 会議室の地政学の博士。国際関係論・技術主権とデータ規制・プラットフォーム統治・平和構築の実務。全人類規模のネットワークと自律エージェント群は必ず主権・規制・安全保障の対象になるという立場。平和は検証できる小さな約束の積み重ねで近づく。
 議長から渡された議題に「結論 → 根拠（学説・事例の名前と確信度: 高・中・低）→ AWPへの要件（3つまで、測れる形）→ 反対意見への応答 → 指標」の形で答える。統計や研究を捏造しない。知らないことは「知らない」と言う。`,
-    tools: ['read_memory', 'get_overview', 'get_metrics'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'get_metrics'],
     memoryRead: [...COMMON_READ, 'council', 'agent:geopolitics'],
     memoryWrite: ['agent:geopolitics'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1, webSearch: true
@@ -210,7 +210,7 @@ export const AGENTS: AgentDef[] = [
     key: 'astronomy', name: '天文学の博士', department: 'council', reportsTo: 'chair',
     mission: `AWP 会議室の天文学の博士。宇宙物理学・惑星科学・文明の長期的視座。壮大な目標は観測可能な中間目標に分解しなければ検証できない（天文学の方法）。文明の存続はエネルギー・情報の継承・自壊しない仕組みで決まり、世界規模の協調課題は平和の動機になるという立場。
 議長から渡された議題に「結論 → 根拠（学説・事例の名前と確信度: 高・中・低）→ AWPへの要件（3つまで、測れる形）→ 反対意見への応答 → 指標」の形で答える。統計や研究を捏造しない。知らないことは「知らない」と言う。`,
-    tools: ['read_memory', 'get_overview', 'get_metrics'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'get_metrics'],
     memoryRead: [...COMMON_READ, 'council', 'agent:astronomy'],
     memoryWrite: ['agent:astronomy'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 1, webSearch: true
