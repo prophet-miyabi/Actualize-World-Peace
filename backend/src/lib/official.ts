@@ -35,6 +35,8 @@ export async function seedOfficial() {
 
   // 2. 公式ページ（LP）。デザインはプリセット、メイン画像は同梱の素材
   let lp = await prisma.landingPage.findUnique({ where: { slug: OFFICIAL_SLUG } });
+  // 公式ページでは AWP チャットボット（ページの情報だけで答える受付）を常にオンにする。訪問者が AWP について質問できる
+  if (lp && !lp.chatbotEnabled) lp = await prisma.landingPage.update({ where: { id: lp.id }, data: { chatbotEnabled: true } });
   if (!lp) {
     const hero = asset('hero.jpg');
     lp = await prisma.landingPage.create({
@@ -48,7 +50,7 @@ export async function seedOfficial() {
         ],
         design: undefined, designSource: 'preset', designStatus: 'ready', designUpdatedAt: new Date(),
         heroImage: hero ?? undefined, heroImageType: hero ? 'image/jpeg' : undefined,
-        postsEnabled: true, chatbotEnabled: false
+        postsEnabled: true, chatbotEnabled: true
       }
     });
   }
