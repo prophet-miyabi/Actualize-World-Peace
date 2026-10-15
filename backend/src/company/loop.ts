@@ -40,6 +40,13 @@ async function queueAudits() {
   for (const t of waiting) {
     const existing = await prisma.companyTask.findFirst({ where: { assignee: 'auditor', parentId: t.id, status: { in: ['queued', 'running'] } } });
     if (existing) continue;
+    // 監査が2回失敗した相手には、これ以上監査を作らない（失敗→再生成の暴走を防ぐ）。未検証のまま「完了」にして人が読めるようにする
+    const failedAudits = await prisma.companyTask.count({ where: { assignee: 'auditor', parentId: t.id, status: 'failed' } });
+    if (failedAudits >= 2) {
+      await prisma.companyTask.update({ where: { id: t.id }, data: { status: 'done', verification: { passed: null, findings: '監査が2回失敗したため未検証（人が確認してください）', checkedAt: new Date().toISOString() } as any } });
+      await emitEvent('task.unverified', 'system', { title: t.title, failedAudits }, t.id);
+      continue;
+    }
     await prisma.companyTask.create({
       data: {
         goalId: t.goalId, parentId: t.id, assignee: 'auditor', createdBy: 'system', risk: 'low',
