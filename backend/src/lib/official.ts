@@ -17,6 +17,25 @@ const asset = (name: string): Buffer | null => {
 };
 const frontendUrl = () => (process.env.FRONTEND_URL || process.env.SITE_URL || 'https://awp-frontend-bf17.onrender.com').replace(/\/$/, '');
 
+// 公式ページの「よくある質問」。AWP チャットボットはページの情報だけで答えるので、ここに事実を書いておく
+const OFFICIAL_SECTIONS = [
+  {
+    feature: 'faq', promptBy: 'system', updatedAt: new Date().toISOString(),
+    content: {
+      heading: 'よくある質問',
+      items: [
+        { question: 'AWPは無料ですか？', answer: 'はい。ページの作成・公開・SNS（投稿・フォロー）・ショップ（手数料0円）はずっと無料です。有料プランは、自分のドメインで公開したい人と、intelligence にもっと任せたい人のためのものです。' },
+        { question: '自分のドメイン（独自ドメイン）で公開できますか？', answer: 'できます。AWP の提携リンクから取得したドメインなら無料、それ以外のドメインは有料プラン（ライト以上）で公開できます。設定は「独自ドメイン」の画面から3ステップです。' },
+        { question: 'ページはどうやって作りますか？', answer: '「作る」から、AWPとチャットして作る（質問に答えるだけ）か、4ステップで作る、のどちらかを選びます。文章とデザインは AWP が用意し、仕上げはあなたの手で行います。公開まで無料です。' },
+        { question: 'ショップの手数料はかかりますか？', answer: 'かかりません。AWP のショップは手数料0円で、お客さまからの代金はあなたの口座に直接振り込まれます（AWP は代金を預かりません）。販売には特定商取引法に基づく表記が必要で、ショップの設定画面で入力できます。' },
+        { question: '投稿はどこに表示されますか？', answer: 'タイムライン、あなたのプロフィール、そしてあなたのページの「最新の投稿」に自動で表示されます。リール（動画）も、文章＋写真も投稿できます。' },
+        { question: '有料プランの支払い方法は？', answer: '銀行振込か、AWP のキャッシュです。決済会社を通さないため決済手数料はかかりません。自動更新はなく、やめたいときは何もしなくて大丈夫です。' },
+        { question: 'お問い合わせはどこから？', answer: 'このページの「予約をリクエスト」や投稿への返信からどうぞ。利用規約・プライバシーポリシーは画面下部のリンクから読めます。' }
+      ]
+    }
+  }
+];
+
 export async function seedOfficial() {
   // 1. アカウント
   let user = await prisma.user.findUnique({ where: { email: OFFICIAL_EMAIL } });
@@ -37,6 +56,10 @@ export async function seedOfficial() {
   let lp = await prisma.landingPage.findUnique({ where: { slug: OFFICIAL_SLUG } });
   // 公式ページでは AWP チャットボット（ページの情報だけで答える受付）を常にオンにする。訪問者が AWP について質問できる
   if (lp && !lp.chatbotEnabled) lp = await prisma.landingPage.update({ where: { id: lp.id }, data: { chatbotEnabled: true } });
+  // よくある質問が無ければ足す（チャットボットの知識にもなる）
+  if (lp && !(Array.isArray(lp.sections) && (lp.sections as any[]).some((x) => x?.feature === 'faq'))) {
+    lp = await prisma.landingPage.update({ where: { id: lp.id }, data: { sections: [...((Array.isArray(lp.sections) ? lp.sections : []) as any[]), ...OFFICIAL_SECTIONS] as any } });
+  }
   if (!lp) {
     const hero = asset('hero.jpg');
     lp = await prisma.landingPage.create({
@@ -50,7 +73,7 @@ export async function seedOfficial() {
         ],
         design: undefined, designSource: 'preset', designStatus: 'ready', designUpdatedAt: new Date(),
         heroImage: hero ?? undefined, heroImageType: hero ? 'image/jpeg' : undefined,
-        postsEnabled: true, chatbotEnabled: true
+        postsEnabled: true, chatbotEnabled: true, sections: OFFICIAL_SECTIONS as any
       }
     });
   }
