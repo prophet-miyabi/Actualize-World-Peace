@@ -24,6 +24,7 @@ type PublicLp = Lp & {
   booking?: { menus: { name: string; note: string }[]; note: string; leadDays: number; maxDays: number } | null;
   chatbotEnabled?: boolean;
   postsEnabled?: boolean;
+  postsPlacement?: string;
 };
 
 async function fetchLp(slug: string): Promise<PublicLp | null> {
@@ -118,9 +119,12 @@ export default async function LandingPage({ params }: Params) {
         <BookingWidget slug={lp.slug} businessName={lp.businessName} config={lp.booking} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />
       )}
       {lp.chatbotEnabled && <PageChatbot slug={lp.slug} businessName={lp.businessName} primary={palette.primary} onPrimary={palette.onPrimary} />}
-      {lp.postsEnabled !== false && lp.owner && <OwnerPostsSection username={lp.owner.username} primary={palette.primary} onPrimary={palette.onPrimary} siteUrl={siteUrl} />}
     </>
   );
+  // 持ち主の最新の投稿（リール・写真・文章）。投稿するたびに自動で更新され、持ち主は投稿ごとに外せる
+  const posts = lp.postsEnabled !== false && lp.owner
+    ? <OwnerPostsSection username={lp.owner.username} ownerName={lp.owner.name} design={lp.design} siteUrl={siteUrl} />
+    : null;
   const engagement = (
     <>
       <PromotionBlock slug={lp.slug} items={lp.promotions ?? []} />
@@ -156,6 +160,7 @@ export default async function LandingPage({ params }: Params) {
           <SiteNav lp={lp} tokens={tokens} current="" />
           <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
           <StrengthsSection lp={lp} tokens={tokens} />
+          {posts}
           <ToolsSection lp={lp} tokens={tokens} />
           <LineCtaSection lp={lp} tokens={tokens} />
           {modules}
@@ -170,7 +175,7 @@ export default async function LandingPage({ params }: Params) {
   return (
     <>
       {jsonLdScript}
-      <LandingView lp={lp} imageUrl={imageUrl} extra={modules} />
+      <LandingView lp={lp} imageUrl={imageUrl} extra={modules} posts={posts} postsPlacement={lp.postsPlacement} />
       {engagement}
     </>
   );

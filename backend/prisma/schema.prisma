@@ -225,6 +225,8 @@ model LandingPage {
   monetizationEnabled Boolean @default(false)
   // 持ち主が「AIチャットボット」をオンにしたページ。確定した情報だけで訪問者の質問に答える
   postsEnabled   Boolean @default(true) // 持ち主の最新の投稿をページに表示する
+  // 投稿をページのどこに置くか: top = 強みのすぐ下（SNSらしく前面に）/ bottom = 問い合わせの前
+  postsPlacement String  @default("top")
   chatbotEnabled Boolean @default(false)
   chatbotQuestions ChatbotQuestion[]
   // 予約リクエスト（訪問者が希望日時を送り、持ち主が確定・お断りする）。設定: { menus: [{ name, note }], note, leadDays, maxDays }
@@ -651,6 +653,8 @@ model Post {
   videoType String?
   videoSize Int?
   hidden    Boolean  @default(false) // 通報で運営者が非公開にした投稿
+  // 持ち主のページ（HP/LP）の「最新の投稿」に載せるか。投稿は既定で載り、あとから外せる
+  showOnPage Boolean @default(true)
   createdAt DateTime @default(now())
   likes     PostLike[]
   comments  Comment[]

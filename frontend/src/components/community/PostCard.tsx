@@ -6,6 +6,8 @@ import ReportButton from './ReportButton';
 export type PostView = {
   id: string; body: string; createdAt: string; mine: boolean; image: string | null;
   video?: string | null; kind?: 'post' | 'reel';
+  // 持ち主のページに載せるか（自分の投稿だけ切り替えられる）
+  showOnPage?: boolean;
   author: { username: string | null; name: string; pageSlug?: string | null; pageName?: string | null };
   likes?: number; comments?: number; liked?: boolean;
 };
@@ -29,6 +31,17 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
   const [liked, setLiked] = useState(!!post.liked);
   const [likes, setLikes] = useState(post.likes ?? 0);
   const [note, setNote] = useState('');
+  const [onPage, setOnPage] = useState(post.showOnPage !== false);
+
+  // 自分のページ（HP/LP）の「最新の投稿」に載せる／外す
+  const toggleOnPage = async () => {
+    const next = !onPage;
+    setOnPage(next);
+    const r = await fetch(`/api/posts/${post.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify({ showOnPage: next }) }).catch(() => null);
+    if (!r || !r.ok) { setOnPage(!next); setNote('切り替えられませんでした'); return; }
+    setNote(next ? 'ページに表示します' : 'ページには表示しません');
+    setTimeout(() => setNote(''), 2000);
+  };
 
   const toggleLike = async () => {
     const h = authHeaders();
@@ -62,7 +75,15 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
           </p>
         </div>
         {post.mine && onDelete ? (
-          <button onClick={() => onDelete(post.id)} className="text-xs text-gray-400 underline">削除</button>
+          <span className="flex items-center gap-2">
+            {post.author.pageSlug && (
+              <button type="button" onClick={toggleOnPage} aria-pressed={onPage}
+                className={`text-[11px] font-bold rounded-full px-2.5 py-1 ${onPage ? 'bg-violet-100 text-violet-800' : 'bg-gray-100 text-gray-500'}`}>
+                {onPage ? 'ページに表示中' : 'ページに非表示'}
+              </button>
+            )}
+            <button onClick={() => onDelete(post.id)} className="text-xs text-gray-400 underline">削除</button>
+          </span>
         ) : (
           <ReportButton targetType="post" targetId={post.id} />
         )}

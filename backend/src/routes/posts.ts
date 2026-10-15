@@ -32,18 +32,18 @@ const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 const select = {
-  id: true, body: true, imageType: true, kind: true, videoType: true, createdAt: true, userId: true,
+  id: true, body: true, imageType: true, kind: true, videoType: true, createdAt: true, userId: true, showOnPage: true,
   // 作った人と、その人の代表ページ（最初の公開ページ）。投稿からページへ飛べるようにする
   user: { select: { username: true, name: true, landingPages: { where: { hidden: false }, orderBy: { createdAt: 'asc' as const }, take: 1, select: { slug: true, businessName: true } } } },
   _count: { select: { likes: true, comments: { where: { hidden: false } } } }
 } as const;
 
-type PostRow = { id: string; body: string; imageType: string | null; kind: string; videoType: string | null; createdAt: Date; userId: string; user: { username: string | null; name: string; landingPages: { slug: string; businessName: string }[] }; _count: { likes: number; comments: number } };
+type PostRow = { id: string; body: string; imageType: string | null; kind: string; videoType: string | null; createdAt: Date; userId: string; showOnPage: boolean; user: { username: string | null; name: string; landingPages: { slug: string; businessName: string }[] }; _count: { likes: number; comments: number } };
 
 function view(p: PostRow, me: string | null, likedIds?: Set<string>) {
   const page = p.user.landingPages[0];
   return {
-    id: p.id, body: p.body, createdAt: p.createdAt, mine: p.userId === me, kind: p.kind,
+    id: p.id, body: p.body, createdAt: p.createdAt, mine: p.userId === me, kind: p.kind, showOnPage: p.showOnPage,
     image: p.imageType ? `/api/posts/${p.id}/image` : null,
     video: p.videoType ? `/api/posts/${p.id}/video` : null,
     author: { username: p.user.username, name: p.user.name, pageSlug: page?.slug ?? null, pageName: page?.businessName ?? null },
@@ -81,8 +81,13 @@ router.get('/feed', async (req: AuthRequest, res) => {
 router.get('/user/:username', async (req: AuthRequest, res) => {
   const me = viewerId(req);
   const limit = Math.min(PAGE_SIZE, Math.max(1, Number(req.query.limit) || PAGE_SIZE));
+  // onPage=1: 持ち主のページに載せる投稿だけ（持ち主が「ページに非表示」にしたものは除く）
   const posts = await prisma.post.findMany({
-    where: { ...visible, user: { ...visible.user, username: String(req.params.username).toLowerCase() }, ...(req.query.kind === 'reel' ? { videoType: { not: null } } : {}) },
+    where: {
+      ...visible, user: { ...visible.user, username: String(req.params.username).toLowerCase() },
+      ...(req.query.kind === 'reel' ? { videoType: { not: null } } : {}),
+      ...(req.query.onPage === '1' ? { showOnPage: true } : {})
+    },
     orderBy: { createdAt: 'desc' }, take: limit, select
   });
   const liked = await likedSet(me, posts.map((p) => p.id));
@@ -128,8 +133,20 @@ router.get('/:id/video', async (req, res) => {
 router.put('/page-settings', authenticate, async (req: AuthRequest, res) => {
   const lp = await prisma.landingPage.findFirst({ where: { id: String(req.body?.lpId ?? ''), userId: req.user!.id } });
   if (!lp) return res.status(404).json({ error: 'ページが見つかりません' });
-  const page = await prisma.landingPage.update({ where: { id: lp.id }, data: { postsEnabled: !!req.body?.enabled }, select: { id: true, postsEnabled: true } });
+  const data: { postsEnabled?: boolean; postsPlacement?: string } = {};
+  if (typeof req.body?.enabled === 'boolean') data.postsEnabled = req.body.enabled;
+  if (req.body?.placement === 'top' || req.body?.placement === 'bottom') data.postsPlacement = req.body.placement;
+  const page = await prisma.landingPage.update({ where: { id: lp.id }, data, select: { id: true, postsEnabled: true, postsPlacement: true } });
   res.json({ page });
+});
+
+// 投稿ごとに「ページに載せる／載せない」を切り替える（持ち主だけ）。既定は載せる
+router.patch('/:id', authenticate, async (req: AuthRequest, res) => {
+  const post = await prisma.post.findFirst({ where: { id: String(req.params.id), userId: req.user!.id }, select: { id: true } });
+  if (!post) return res.status(404).json({ error: '見つかりません' });
+  if (typeof req.body?.showOnPage !== 'boolean') return res.status(400).json({ error: 'showOnPage を true / false で指定してください' });
+  const updated = await prisma.post.update({ where: { id: post.id }, data: { showOnPage: req.body.showOnPage }, select });
+  res.json({ post: view(updated, req.user!.id) });
 });
 
 // 投稿の詳細（返信つき）
@@ -234,7 +251,7 @@ router.get('/me/summary', authenticate, async (req: AuthRequest, res) => {
   const me = req.user!.id;
   const [user, pages, unread, contribution, posts] = await Promise.all([
     prisma.user.findUnique({ where: { id: me }, select: { id: true, username: true, name: true, bio: true, category: true, region: true, links: true, isAdmin: true, _count: { select: { followers: true, following: true, posts: true } } } }),
-    prisma.landingPage.findMany({ where: { userId: me }, orderBy: { createdAt: 'desc' }, select: { slug: true, businessName: true, heroTitle: true, hidden: true, pageViews: true, heroImageType: true, designUpdatedAt: true, _count: { select: { likes: true } } } }),
+    prisma.landingPage.findMany({ where: { userId: me }, orderBy: { createdAt: 'desc' }, select: { id: true, slug: true, businessName: true, heroTitle: true, hidden: true, pageViews: true, heroImageType: true, designUpdatedAt: true, postsEnabled: true, postsPlacement: true, _count: { select: { likes: true } } } }),
     prisma.notification.count({ where: { userId: me, readAt: null } }),
     contributionSummary(me),
     prisma.post.findMany({ where: { userId: me, hidden: false }, orderBy: { createdAt: 'desc' }, take: PAGE_SIZE, select })
@@ -243,7 +260,8 @@ router.get('/me/summary', authenticate, async (req: AuthRequest, res) => {
   const liked = await likedSet(me, posts.map((p) => p.id));
   res.json({
     me: { username: user.username, name: user.name, bio: user.bio, category: user.category, region: user.region, links: user.links ?? [], isAdmin: user.isAdmin, followers: user._count.followers, following: user._count.following, postCount: user._count.posts },
-    pages: pages.map((p) => ({ slug: p.slug, businessName: p.businessName, heroTitle: p.heroTitle, hidden: p.hidden, views: p.pageViews, likes: p._count.likes, image: p.heroImageType ? `/api/lp/${p.slug}/image?v=${p.designUpdatedAt?.getTime() ?? 0}` : null })),
+    pages: pages.map((p) => ({ id: p.id, slug: p.slug, businessName: p.businessName, heroTitle: p.heroTitle, hidden: p.hidden, views: p.pageViews, likes: p._count.likes, postsEnabled: p.postsEnabled, postsPlacement: p.postsPlacement, image: p.heroImageType ? `/api/lp/${p.slug}/image?v=${p.designUpdatedAt?.getTime() ?? 0}` : null })),
+    onPageCount: posts.filter((p) => p.showOnPage).length,
     unread, contribution,
     posts: posts.map((p) => view(p, me, liked))
   });

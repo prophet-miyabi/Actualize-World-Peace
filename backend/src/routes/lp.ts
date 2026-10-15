@@ -703,6 +703,7 @@ router.get('/:slug', async (req, res) => {
     // 公開ページ下部のバー（作成者のプロフィール・いいね）用。非公開にされたプロフィールは出さない
     owner: user.username && !user.profileHidden ? { username: user.username, name: user.name } : null,
     postsEnabled: lpData.postsEnabled,
+    postsPlacement: lpData.postsPlacement,
     likeCount: _count.likes
   });
 });

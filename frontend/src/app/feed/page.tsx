@@ -23,6 +23,8 @@ export default function FeedPage() {
   const [uploading, setUploading] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // 投稿直後の案内（この投稿がページにも載ったこと）
+  const [posted, setPosted] = useState<{ slug: string; name: string } | null>(null);
 
   const auth = (): Record<string, string> => (token() ? { Authorization: `Bearer ${token()}` } : {});
 
@@ -70,6 +72,12 @@ export default function FeedPage() {
       setImage(null);
       setVideoFile(null);
       setPosts((prev) => [post, ...(prev ?? [])]);
+      // 投稿は持ち主のページ（HP/LP）の「最新の投稿」にも自動で載る。外し方をその場で伝える
+      if (post?.author?.pageSlug) {
+        setError('');
+        setPosted({ slug: post.author.pageSlug, name: post.author.pageName || post.author.pageSlug });
+        setTimeout(() => setPosted(null), 8000);
+      }
     } catch (err: any) {
       setError(err?.message || '投稿できませんでした');
     } finally {
@@ -148,6 +156,11 @@ export default function FeedPage() {
               <span className="text-[11px] text-gray-400 ml-auto mr-3">{body.length}/500</span>
               <button disabled={busy || (!body.trim() && !image && !videoFile)} className="rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500 text-white text-sm font-bold px-5 py-2 disabled:opacity-40">{uploading || (videoFile ? 'リールを投稿' : '投稿')}</button>
             </div>
+            {posted && (
+              <p className="text-xs rounded-xl bg-violet-50 text-violet-800 px-3 py-2">
+                投稿しました。<a href={`/${posted.slug}`} className="font-bold underline">{posted.name}</a> のページ「最新の投稿」にも載っています。載せたくないときは、投稿の「ページに表示中」を押して外せます。
+              </p>
+            )}
             {error && (
               <p className="text-xs text-red-600 mt-2">{error}{error.includes('ユーザー名') && <> <Link href="/profile" className="underline font-bold">プロフィールへ</Link></>}</p>
             )}

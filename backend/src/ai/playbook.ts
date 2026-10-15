@@ -126,6 +126,9 @@ const PlaybookSchema = z.object({
 export type Playbook = z.infer<typeof PlaybookSchema> & { key: string; label: string; generatedAt: string; source: 'web' | 'model' | 'fallback' };
 
 const FRESH_MS = 60 * 24 * 3600_000;
+// 「作成中」のまま止まったもの（デプロイでサーバーが再起動した等）は、この時間を過ぎたら作り直してよい
+const STUCK_MS = 15 * 60_000;
+const isStuck = (row: { status: string; updatedAt: Date }) => row.status === 'generating' && Date.now() - row.updatedAt.getTime() > STUCK_MS;
 const memory = new Map<string, { pb: Playbook; until: number }>();
 const building = new Map<string, Promise<Playbook>>();
 
@@ -288,12 +291,12 @@ export async function getPlaybook(key: string | null | undefined, opts: { wait?:
     memory.set(ind.key, { pb, until: row.updatedAt.getTime() + FRESH_MS });
     return pb;
   }
-  const stale = row && row.status !== 'generating' ? rowToPlaybook(row) : null;
+  const stale = row && (row.status !== 'generating' || isStuck(row)) ? rowToPlaybook(row) : null;
   if (!process.env.ANTHROPIC_API_KEY) return stale ?? fallbackPlaybook(ind.key);
   if (opts.wait) {
     try { return await buildPlaybook(ind.key); } catch { return stale ?? fallbackPlaybook(ind.key); }
   }
-  if (!building.has(ind.key) && row?.status !== 'generating') {
+  if (!building.has(ind.key) && (row?.status !== 'generating' || isStuck(row))) {
     buildPlaybook(ind.key).catch((e) => console.error('playbook build failed', ind.key, e?.message));
   }
   return stale ?? fallbackPlaybook(ind.key);
@@ -347,8 +350,8 @@ export async function listPlaybooks() {
     return {
       key: ind.key,
       label: ind.label,
-      status: row?.status ?? 'missing',
-      error: row?.error ?? null,
+      status: row ? (isStuck(row) ? 'failed' : row.status) : 'missing',
+      error: row ? (isStuck(row) ? '作成中のまま止まりました（サーバー再起動の可能性）。作り直してください' : row.error) : null,
       updatedAt: row?.updatedAt?.toISOString() ?? null,
       stale: row ? Date.now() - row.updatedAt.getTime() > FRESH_MS : true,
       source: pb?.source ?? null,

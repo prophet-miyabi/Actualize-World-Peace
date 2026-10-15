@@ -35,6 +35,7 @@ function DashboardInner() {
   const [lineSaved, setLineSaved] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [postsOnPage, setPostsOnPage] = useState(true);
+  const [postsPlacement, setPostsPlacement] = useState('top');
   const [notifying, setNotifying] = useState(false);
   const [notifyResult, setNotifyResult] = useState('');
   const [lineUrl, setLineUrl] = useState('');
@@ -307,6 +308,12 @@ function DashboardInner() {
             <Link href={`/analytics${qs}#chatbot`} className="text-blue-600 underline">AWPチャットボット</Link>
             <Link href="/feed" className="text-blue-600 underline">投稿する</Link>
             <label className="inline-flex items-center gap-1 text-xs text-gray-700"><input type="checkbox" checked={postsOnPage} onChange={(e) => { setPostsOnPage(e.target.checked); api.put('/posts/page-settings', { lpId: data.lp.id, enabled: e.target.checked }).catch(() => setPostsOnPage(!e.target.checked)); }} />最新の投稿をページに表示</label>
+            {postsOnPage && (
+              <select value={postsPlacement} onChange={(e) => { setPostsPlacement(e.target.value); api.put('/posts/page-settings', { lpId: data.lp.id, placement: e.target.value }).catch(() => {}); }} className="text-xs border rounded px-1 py-0.5">
+                <option value="top">投稿の位置: 上のほう（強みの下）</option>
+                <option value="bottom">投稿の位置: 下のほう（問い合わせの前）</option>
+              </select>
+            )}
             <Link href={`/growth${qs}`} className="text-blue-600 underline">A/Bテスト</Link>
             <Link href={`/photos${qs}`} className="text-blue-600 underline">写真・ロゴ</Link>
             {isActive && (

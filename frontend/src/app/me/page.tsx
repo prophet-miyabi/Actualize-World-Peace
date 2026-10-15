@@ -7,7 +7,8 @@ import PostCard, { type PostView } from '@/components/community/PostCard';
 
 type Summary = {
   me: { username: string | null; name: string; bio: string | null; category: string | null; region: string | null; links: { label: string; url: string }[]; isAdmin: boolean; followers: number; following: number; postCount: number };
-  pages: { slug: string; businessName: string; heroTitle: string; hidden: boolean; views: number; likes: number; image: string | null }[];
+  pages: { id: string; slug: string; businessName: string; heroTitle: string; hidden: boolean; views: number; likes: number; image: string | null; postsEnabled: boolean; postsPlacement: string }[];
+  onPageCount: number;
   unread: number;
   contribution: { totalPoints: number; last30Points: number; byKind: { kind: string; points: number; count: number }[] };
   posts: PostView[];
@@ -25,6 +26,12 @@ export default function MePage() {
       if (e?.response?.status === 401) router.replace('/login?next=/me'); else setError('読み込めませんでした。');
     });
   }, [router]);
+
+  // ページ側の設定: 投稿を載せる／載せない、載せる位置
+  const setPagePosts = async (id: string, patch: { enabled?: boolean; placement?: 'top' | 'bottom' }) => {
+    setD((prev) => prev ? { ...prev, pages: prev.pages.map((p) => p.id === id ? { ...p, ...(patch.enabled !== undefined ? { postsEnabled: patch.enabled } : {}), ...(patch.placement ? { postsPlacement: patch.placement } : {}) } : p) } : prev);
+    await api.put('/posts/page-settings', { lpId: id, ...patch }).catch(() => {});
+  };
 
   const removePost = async (id: string) => {
     if (!confirm('この投稿を削除しますか？')) return;
@@ -77,19 +84,43 @@ export default function MePage() {
               <span className="block text-xs text-gray-500 mt-1">質問に答えるだけ。公開まで無料</span>
             </Link>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               {d.pages.map((p) => (
-                <Link key={p.slug} href={`/dashboard?lp=${encodeURIComponent(p.slug)}`} className="bg-white border rounded-2xl overflow-hidden">
-                  {p.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image} alt="" className="w-full h-24 object-cover" />
-                  ) : <div className="w-full h-24 bg-gradient-to-br from-fuchsia-100 to-sky-100" />}
-                  <div className="p-3">
-                    <p className="font-bold text-sm truncate">{p.businessName}</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">{p.hidden ? '非公開' : '公開中'}・👀 {p.views}・♥ {p.likes}</p>
-                    <p className="text-[11px] text-violet-700 font-bold mt-1">管理する →</p>
+                <div key={p.slug} className="bg-white border rounded-2xl overflow-hidden">
+                  <div className="flex gap-3 p-3">
+                    <Link href={`/${p.slug}`} className="shrink-0 w-24 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-fuchsia-100 to-sky-100">
+                      {p.image && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.image} alt="" className="w-full h-full object-cover" />
+                      )}
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm truncate">{p.businessName}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{p.hidden ? '非公開' : '公開中'}・👀 {p.views}・♥ {p.likes}</p>
+                      <p className="mt-1.5 flex gap-3 text-[11px] font-bold">
+                        <Link href={`/${p.slug}`} className="text-violet-700">ページを見る</Link>
+                        <Link href={`/dashboard?lp=${encodeURIComponent(p.id)}`} className="text-gray-600">管理する</Link>
+                      </p>
+                    </div>
                   </div>
-                </Link>
+                  {/* 投稿とページのつながり: 投稿すると自動でページに載る。載せる位置と、載せるかどうかをここで決める */}
+                  <div className="border-t px-3 py-2 flex items-center justify-between gap-2 text-[11px]">
+                    <label className="inline-flex items-center gap-1.5 text-gray-700">
+                      <input type="checkbox" checked={p.postsEnabled} onChange={(e) => setPagePosts(p.id, { enabled: e.target.checked })} />
+                      投稿をこのページに載せる
+                    </label>
+                    {p.postsEnabled && (
+                      <span className="inline-flex rounded-full bg-gray-100 p-0.5">
+                        {(['top', 'bottom'] as const).map((v) => (
+                          <button key={v} type="button" onClick={() => setPagePosts(p.id, { placement: v })}
+                            className={`rounded-full px-2.5 py-1 font-bold ${p.postsPlacement === v ? 'bg-white shadow text-violet-800' : 'text-gray-500'}`}>
+                            {v === 'top' ? '上のほう' : '下のほう'}
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -109,7 +140,15 @@ export default function MePage() {
 
         {/* 自分の投稿 */}
         <section className="space-y-3">
-          <h2 className="font-black">あなたの投稿</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-black">あなたの投稿</h2>
+            <Link href="/feed" className="text-xs font-bold text-violet-700">＋ 投稿する</Link>
+          </div>
+          {d.pages.length > 0 && (
+            <p className="text-[11px] text-gray-600 bg-white/70 rounded-xl px-3 py-2">
+              動画・写真・文章を投稿すると、あなたのページの「最新の投稿」に自動で載ります（いま {d.onPageCount} 件）。載せたくない投稿は、投稿ごとに「ページに非表示」にできます。
+            </p>
+          )}
           {d.posts.length === 0 ? <p className="text-sm text-gray-500 bg-white rounded-2xl p-5 text-center">まだ投稿はありません。<Link href="/feed" className="text-violet-700 font-bold underline">タイムライン</Link>から投稿できます。</p>
             : d.posts.map((p) => <PostCard key={p.id} post={p} onDelete={removePost} />)}
         </section>
