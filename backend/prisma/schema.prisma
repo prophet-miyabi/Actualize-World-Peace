@@ -190,6 +190,8 @@ model LandingPage {
   templateKey String?
   // 業種（IndustryPlaybook.key）。入力内容から自動判定し、同業種の人気ページの手本をデザイン・文章に反映する
   industryKey String?
+  // ユーザーが選んだメインカラー（#RRGGBB）。未選択なら型の既定色か AWP が業種から選ぶ
+  accent String?
 
   // 独自ドメイン（例: www.example.jp）。DNSのCNAME確認が取れたらverified=true
   customDomain         String?  @unique

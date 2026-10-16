@@ -41,6 +41,7 @@ export default function Wizard() {
     businessName: '', slug: '', heroTitle: '',
     strengths: ['', '', ''], socialProof: '', scarcityOffer: '',
     siteType: 'lp' as 'lp' | 'hp', templateKey: null as string | null,
+    accent: null as string | null,
     lineAddUrl: ''
   });
   const [aiDesc, setAiDesc] = useState('');
@@ -211,7 +212,8 @@ export default function Wizard() {
               </div>
             </section>
             <section>
-              <p className="font-bold mb-3">デザイン</p>
+              <p className="font-bold mb-1">ページの型と色</p>
+              <p className="text-xs text-gray-500 mb-3">型を選ぶと、その構成をもとに AWP があなたの内容・写真・言葉でオリジナルのページを仕上げます。色は差し色として全体に使われます。</p>
               <TemplateGallery
                 businessName={form.businessName}
                 heroTitle={form.heroTitle}
@@ -219,6 +221,8 @@ export default function Wizard() {
                 purpose={purpose}
                 value={form.templateKey}
                 onChange={(key) => setForm({ ...form, templateKey: key })}
+                accent={form.accent}
+                onAccent={(hex) => setForm({ ...form, accent: hex })}
               />
             </section>
             <div className="space-y-3">

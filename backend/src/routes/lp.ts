@@ -7,6 +7,7 @@ import prisma from '../prisma';
 import { isGenerating, publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
 import { classifyIndustryByRules, getPlaybook, industryOf } from '../ai/playbook';
 import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
+import { ACCENT_SWATCHES, STYLE_KEYS, isHex } from '../ai/styles';
 import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
 import { authenticate, AuthRequest } from '../middlewares/auth';
@@ -257,8 +258,9 @@ router.post('/admin/domains/:id/:action', authenticate, async (req: AuthRequest,
   res.json({ ok: true });
 });
 
+// ページの型（12種類）とメインカラーの候補
 router.get('/templates', (req, res) => {
-  res.json({ templates: PRESET_KEYS.map((key) => ({ key, ...PRESET_META[key] })) });
+  res.json({ templates: STYLE_KEYS.map((key) => ({ key, ...PRESET_META[key] })), swatches: ACCENT_SWATCHES });
 });
 
 router.post('/templates/preview', (req, res) => {
@@ -268,11 +270,14 @@ router.post('/templates/preview', (req, res) => {
     ? req.body.strengths.map((s: unknown) => String(s || '').slice(0, 40)).filter(Boolean).slice(0, 3)
     : [];
   const input = { businessName, heroTitle, strengths: strengths.length ? strengths : ['強み1', '強み2', '強み3'] };
+  // accent を渡すと、全部の型をその色で描いた見本になる（ユーザーが色を選びながら比べられる）
+  const accent = isHex(req.body?.accent) ? String(req.body.accent).toLowerCase() : null;
   res.json({
     businessName,
     heroTitle,
     strengths: input.strengths,
-    templates: PRESET_KEYS.map((key) => ({ key, ...PRESET_META[key], design: presetDesign(input, key) }))
+    swatches: ACCENT_SWATCHES,
+    templates: STYLE_KEYS.map((key) => ({ key, ...PRESET_META[key], design: presetDesign(input, key, null, accent) }))
   });
 });
 
@@ -371,12 +376,13 @@ router.post('/wizard', authenticate, metered('page_design', false), async (req: 
   }
   const siteType = req.body.siteType === 'hp' ? 'hp' : 'lp';
   const templateKey = (PRESET_KEYS as string[]).includes(req.body.templateKey) ? req.body.templateKey : null;
+  const accent = isHex(req.body.accent) ? String(req.body.accent).toLowerCase() : null;
   const purpose = normalizePurpose(req.body.purpose);
   const lineAdd = normalizeLineAddUrl(req.body.lineAddUrl);
   if (!lineAdd.ok) return res.status(400).json({ error: LINE_URL_ERROR });
   try {
     const lp = await prisma.landingPage.create({
-      data: { userId, businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, siteType, templateKey, purpose, lineAddUrl: lineAdd.value }
+      data: { userId, businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, siteType, templateKey, accent, purpose, lineAddUrl: lineAdd.value }
     });
 
     // デザイン（Claude→Gemini→Claudeの審査）は時間がかかるため、待たずに裏で作成する
@@ -451,7 +457,7 @@ router.get('/design', authenticate, async (req: AuthRequest, res) => {
   const lp = await resolveLp(req.user!.id, req.query.lpId);
   if (!lp) return res.status(404).json({ error: '先にページを作成してください。' });
   const p = publicLp(lp);
-  res.json({ status: isGenerating(lp) ? 'generating' : 'ready', source: lp.designSource, design: p.design, hasImage: p.hasImage, imageVersion: p.imageVersion });
+  res.json({ status: isGenerating(lp) ? 'generating' : 'ready', source: lp.designSource, design: p.design, hasImage: p.hasImage, imageVersion: p.imageVersion, templateKey: lp.templateKey, accent: lp.accent });
 });
 
 // デザインを作り直す（無料お試し中も、満足のいく仕上がりになるまで試せる）
@@ -467,6 +473,13 @@ router.post('/design', authenticate, metered('page_design'), async (req: AuthReq
     return res.status(429).json({ error: `デザインの作り直しは24時間に${DESIGN_LIMIT}回までです。時間をおいてお試しください。` });
   }
   designRequests.set(userId, [...recent, now]);
+
+  // 型・メインカラーを変えて作り直す（指定があるときだけ更新。accent に null を渡すと「AWPに任せる」に戻る）
+  const data: { templateKey?: string; accent?: string | null } = {};
+  if (typeof req.body?.styleKey === 'string' && (PRESET_KEYS as string[]).includes(req.body.styleKey)) data.templateKey = req.body.styleKey;
+  if (isHex(req.body?.accent)) data.accent = String(req.body.accent).toLowerCase();
+  else if (req.body?.accent === null) data.accent = null;
+  if (Object.keys(data).length) await prisma.landingPage.update({ where: { id: lp.id }, data });
 
   void runDesignJob(lp.id, typeof req.body?.description === 'string' ? req.body.description.slice(0, 300) : undefined)
     .catch((e) => console.error('design job failed', lp.id, e?.message));

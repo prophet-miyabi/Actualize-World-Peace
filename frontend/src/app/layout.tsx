@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 // 日本語フォントはビルド時にダウンロードすると数百ファイルになり、ビルドが不安定になる（取得失敗でビルドごと止まる）ため、
 // 表示時に Google Fonts から読み込む（変数名は globals.css の --font-*-jp で定義）
 const FONTS_URL =
-  'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Outfit:wght@600;700&display=swap';
+  'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@400;700;800&family=Outfit:wght@600;700&family=Shippori+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Playfair+Display:wght@600;700&family=Space+Grotesk:wght@500;700&display=swap';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

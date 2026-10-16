@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
+import TemplateGallery from '@/components/lp/TemplateGallery';
 
 type PageSummary = { id: string; slug: string; businessName: string; siteType: string; pageViews: number; hidden?: boolean };
 
@@ -24,7 +25,9 @@ function DashboardInner() {
   const [domain, setDomain] = useState<{ customDomain: string | null; verified: boolean } | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [design, setDesign] = useState<{ status: string; source: string | null; hasImage: boolean } | null>(null);
+  const [design, setDesign] = useState<{ status: string; source: string | null; hasImage: boolean; templateKey?: string | null; accent?: string | null } | null>(null);
+  // 見た目を変える（型と色を選び直して作り直す）
+  const [restyle, setRestyle] = useState<{ open: boolean; key: string | null; accent: string | null }>({ open: false, key: null, accent: null });
   const [recommend, setRecommend] = useState<{ label: string; total: number; added: number } | null>(null);
   const [designError, setDesignError] = useState('');
   const [checkout, setCheckout] = useState<'confirming' | 'timeout' | null>(null);
@@ -156,6 +159,17 @@ function DashboardInner() {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design?.status]);
+
+  const applyRestyle = async () => {
+    setDesignError('');
+    try {
+      await api.post('/lp/design', withLp({ ...(restyle.key ? { styleKey: restyle.key } : {}), accent: restyle.accent } as any));
+      setRestyle((r) => ({ ...r, open: false }));
+      setDesign((d) => (d ? { ...d, status: 'generating' } : { status: 'generating', source: null, hasImage: false }));
+    } catch (err: any) {
+      setDesignError(err?.response?.data?.error || '開始できませんでした。');
+    }
+  };
 
   const regenerateDesign = async () => {
     setDesignError('');
@@ -393,10 +407,25 @@ function DashboardInner() {
               </p>
             )}
             {designError && <p className="text-red-600 text-sm mt-2">{designError}</p>}
-            <button type="button" onClick={regenerateDesign} disabled={design?.status === 'generating'}
-              className="mt-4 text-sm font-bold text-blue-600 disabled:text-gray-400">
-              AWPでデザインを作り直す →
-            </button>
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-bold">
+              <button type="button" onClick={() => setRestyle({ open: true, key: design?.templateKey ?? null, accent: design?.accent ?? null })} disabled={design?.status === 'generating'}
+                className="text-blue-600 disabled:text-gray-400">型と色を選んで作り直す →</button>
+              <button type="button" onClick={regenerateDesign} disabled={design?.status === 'generating'}
+                className="text-gray-600 disabled:text-gray-400">同じ型で作り直す</button>
+            </div>
+            {restyle.open && data.lp && (
+              <div className="mt-4 border-t pt-4">
+                <TemplateGallery
+                  businessName={data.lp.businessName} heroTitle={data.lp.heroTitle} strengths={data.lp.strengths ?? []} purpose={data.lp.purpose}
+                  value={restyle.key} onChange={(key) => setRestyle((r) => ({ ...r, key }))}
+                  accent={restyle.accent} onAccent={(hex) => setRestyle((r) => ({ ...r, accent: hex }))}
+                />
+                <div className="mt-4 flex gap-3">
+                  <button type="button" onClick={applyRestyle} disabled={!restyle.key} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold disabled:opacity-50">この型と色で作り直す</button>
+                  <button type="button" onClick={() => setRestyle((r) => ({ ...r, open: false }))} className="px-5 py-3 rounded-lg border font-bold">閉じる</button>
+                </div>
+              </div>
+            )}
           </div>
           <Link href={`/features${qs}`} className="block bg-white rounded-xl border shadow-sm p-6 hover:border-blue-400 transition">
             <p className="text-gray-500 text-sm">機能</p>

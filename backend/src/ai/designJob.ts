@@ -1,5 +1,6 @@
 import prisma from '../prisma';
-import { designWithClaude, generateHeroImage, presetDesign, reviewImageWithClaude, type Design } from './design';
+import { Prisma } from '@prisma/client';
+import { describeUsedCombos, designWithClaude, generateHeroImage, presetDesign, reviewImageWithClaude, type Design } from './design';
 import { classifyIndustry, getPlaybook, type Playbook } from './playbook';
 
 const hasImageAi = () => !!((process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) || process.env.GEMINI_API_KEY);
@@ -38,18 +39,24 @@ export async function runDesignJob(lpId: string, description?: string) {
     console.error('playbook lookup failed, designing without it', lpId, e?.message);
   }
 
+  // 似たページだらけにならないように、最近のページの「型×色×書体」の偏りを AWP に伝える
+  const recent = await prisma.landingPage.findMany({
+    where: { design: { not: Prisma.DbNull }, id: { not: lpId } }, orderBy: { createdAt: 'desc' }, take: 200, select: { design: true }
+  }).catch(() => [] as { design: unknown }[]);
+  const avoid = describeUsedCombos(recent.map((r) => r.design));
+
   let design: Design;
   let source = 'ai';
   if (process.env.ANTHROPIC_API_KEY) {
     try {
-      design = await designWithClaude(input, templateKey, playbook);
+      design = await designWithClaude(input, templateKey, playbook, { accent: lp.accent, avoid });
     } catch (e: any) {
       console.error('Claude design failed, using preset', lpId, e?.message);
-      design = presetDesign(input, templateKey, playbook);
+      design = presetDesign(input, templateKey, playbook, lp.accent);
       source = 'preset';
     }
   } else {
-    design = presetDesign(input, templateKey, playbook);
+    design = presetDesign(input, templateKey, playbook, lp.accent);
     source = 'preset';
   }
 
@@ -89,7 +96,7 @@ export async function runDesignJob(lpId: string, description?: string) {
 
   // 写真が無いのに「写真全面に文字を重ねる」レイアウトだと、単色の背景に文字だけの貧相な見た目になる。
   // 画像が用意できなかった（今回も前回も無い）場合は、写真なしでも成立するレイアウトに切り替える
-  if (!image && !lp.heroImage && design.heroLayout === 'imageBackground') design.heroLayout = 'centered';
+  if (!image && !lp.heroImage && (design.heroLayout === 'imageBackground' || design.heroLayout === 'fullBleed')) design.heroLayout = 'centered';
 
   await prisma.landingPage.update({
     where: { id: lpId },
@@ -120,10 +127,10 @@ export function storedSections(lp: { sections: unknown }): StoredSection[] {
 export function publicLp<T extends {
   slug: string; businessName: string; heroTitle: string; strengths: string[];
   design: unknown; heroImage: Uint8Array | null; designUpdatedAt: Date | null; sections: unknown;
-  templateKey?: string | null;
+  templateKey?: string | null; accent?: string | null;
 }>(lp: T) {
   const { heroImage, sections, ...rest } = lp;
-  const design = (lp.design as Design | null) ?? presetDesign({ businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, lp.templateKey);
+  const design = (lp.design as Design | null) ?? presetDesign({ businessName: lp.businessName, heroTitle: lp.heroTitle, strengths: lp.strengths }, lp.templateKey, null, lp.accent ?? null);
   return {
     ...rest,
     design,

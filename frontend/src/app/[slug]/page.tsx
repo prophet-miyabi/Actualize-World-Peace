@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, MobileCtaBar, type Lp } from '@/components/lp/LandingView';
+import LandingView, { buildTokens, HeroSection, StrengthsSection, ToolsSection, LineCtaSection, SiteFooter, SiteNav, MobileCtaBar, FeatureStrip, type Lp } from '@/components/lp/LandingView';
 import PageEngagementBar from '@/components/community/PageEngagementBar';
 import PromotionBlock from '@/components/community/PromotionBlock';
 import ProductsSection, { type PublicProduct, type PublicShop } from '@/components/modules/ProductsSection';
@@ -159,6 +159,7 @@ export default async function LandingPage({ params }: Params) {
         <div style={{ background: tokens.p.background, color: tokens.p.text, fontFamily: tokens.font.body }} className="min-h-screen">
           <SiteNav lp={lp} tokens={tokens} current="" />
           <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
+          <FeatureStrip lp={lp} tokens={tokens} />
           <StrengthsSection lp={lp} tokens={tokens} />
           {posts}
           <ToolsSection lp={lp} tokens={tokens} />

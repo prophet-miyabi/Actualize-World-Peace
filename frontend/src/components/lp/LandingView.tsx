@@ -9,13 +9,19 @@ import { LineFriendAddLink } from './LineFriendAddLink';
 
 export type Design = {
   palette: { primary: string; onPrimary: string; background: string; surface: string; text: string };
-  font: 'modern' | 'elegant' | 'friendly' | 'bold';
+  font: 'modern' | 'elegant' | 'friendly' | 'bold' | 'editorial' | 'grotesk';
   corner: 'sharp' | 'soft' | 'round';
-  heroLayout: 'centered' | 'split' | 'imageBackground';
+  heroLayout: 'centered' | 'split' | 'imageBackground' | 'editorial' | 'stage' | 'glass' | 'fullBleed';
   strengthsStyle: 'cards' | 'numbered' | 'minimal';
   heroOverlay?: 'none' | 'light' | 'medium' | 'strong';
+  // ページの型（styles.ts）・明暗・メインカラー・飾り・特徴ストリップ。古いデザインには無いので省略可
+  style?: string;
+  mode?: 'light' | 'dark';
+  accent?: string;
+  motif?: 'rules' | 'pills' | 'cards' | 'glass' | 'none';
+  featureStrip?: boolean;
   // ファーストビューの補助コピー（AWPがユーザーの事実だけから作る）。無ければ既定の文言
-  copy?: { eyebrow?: string; subcopy?: string; ctaLabel?: string; secondaryCtaLabel?: string };
+  copy?: { eyebrow?: string; subcopy?: string; ctaLabel?: string; secondaryCtaLabel?: string; strengthLabels?: string[] };
   // 同業種の人気ページに合わせたセクションの並び（サーバー側で並べ替え済み。画面では参照のみ）
   sectionOrder?: string[];
 };
@@ -48,7 +54,10 @@ const FONT_FAMILY: Record<Design['font'], { body: string; heading: string; headi
   modern: { body: 'var(--font-sans-jp)', heading: 'var(--font-sans-jp)', headingWeight: 700 },
   elegant: { body: 'var(--font-serif-jp)', heading: 'var(--font-serif-jp)', headingWeight: 600 },
   friendly: { body: 'var(--font-rounded-jp)', heading: 'var(--font-rounded-jp)', headingWeight: 800 },
-  bold: { body: 'var(--font-sans-jp)', heading: 'var(--font-sans-jp)', headingWeight: 900 }
+  bold: { body: 'var(--font-sans-jp)', heading: 'var(--font-display-sans-jp)', headingWeight: 900 },
+  // 雑誌のような見出し（欧文はPlayfair、和文はしっぽり明朝）/ 現代的なグロテスク（Space Grotesk ＋ Zen角ゴ）
+  editorial: { body: 'var(--font-serif-jp)', heading: 'var(--font-display-serif)', headingWeight: 600 },
+  grotesk: { body: 'var(--font-sans-jp)', heading: 'var(--font-display-grotesk)', headingWeight: 700 }
 };
 const RADIUS: Record<Design['corner'], { box: string; button: string }> = {
   sharp: { box: '4px', button: '4px' },
@@ -131,6 +140,63 @@ function CtaLink({ lp, tokens, large = false, onDark = false }: { lp: Lp; tokens
     </div>
   );
 }
+// ページ上部の細いバー（店名＋主ボタン）。人気ページの多くが持つ「いつでも押せる入口」
+export function TopBar({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
+  const t = ctaTarget(lp);
+  const { p, headingStyle, ctaStyle } = tokens;
+  return (
+    <div className="sticky top-0 z-30 backdrop-blur-md" style={{ background: alpha(p.background, 0.82), borderBottom: `1px solid ${alpha(p.text, 0.08)}` }}>
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 h-14 flex items-center justify-between gap-4">
+        <a href="#top" style={{ ...headingStyle, color: p.text }} className="text-[15px] tracking-wide truncate">{lp.businessName}</a>
+        {t && <a href={t.href} style={ctaStyle} className="shrink-0 text-xs font-bold px-4 py-2 shadow-sm">{t.label}</a>}
+      </div>
+    </div>
+  );
+}
+
+// 特徴ストリップ: 強みの短い見出しをアイコン付きで一列に（型が featureStrip のとき、ヒーローの直下）
+const ICON_PATHS: Record<string, string> = {
+  clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  shield: 'M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z',
+  heart: 'M12 20s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.5-7 10-7 10z',
+  leaf: 'M5 19c0-8 5-13 14-14-1 9-6 14-14 14zm0 0l7-7',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3z',
+  pin: 'M12 21s6-5.5 6-11a6 6 0 10-12 0c0 5.5 6 11 6 11zm0-9a2 2 0 100-4 2 2 0 000 4z',
+  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z',
+  check: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+};
+function iconFor(text: string) {
+  if (/時間|営業|予約|即日|当日|スピード|早/.test(text)) return 'clock';
+  if (/安心|安全|保証|衛生|清潔|資格|国家|保険/.test(text)) return 'shield';
+  if (/こだわり|丁寧|ひとり|一人|寄り添|親身|想い|カウンセリング/.test(text)) return 'heart';
+  if (/自然|素材|オーガニック|無添加|国産|手作り|手づくり|産地/.test(text)) return 'leaf';
+  if (/人気|実績|経験|受賞|プロ|技術|ベテラン|専門/.test(text)) return 'star';
+  if (/駅|アクセス|駐車|徒歩|地域|地元|出張/.test(text)) return 'pin';
+  if (/個性|自由|新し|オリジナル|唯一|特別|世界/.test(text)) return 'sparkle';
+  return 'check';
+}
+export function FeatureStrip({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
+  const { p, r } = tokens;
+  const labels = lp.design.copy?.strengthLabels ?? [];
+  if (!lp.design.featureStrip || labels.length === 0) return null;
+  const strengths = lp.strengths.filter(Boolean);
+  const items = labels.slice(0, 4).map((label, i) => ({ label, icon: iconFor(`${label} ${strengths[i] ?? ''}`) }));
+  const cols = items.length <= 2 ? 'grid-cols-2' : items.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4';
+  return (
+    <div className="px-5 sm:px-6 relative z-[1] -mt-4 sm:-mt-8">
+      <div className={`max-w-5xl mx-auto grid ${cols} overflow-hidden shadow-lg`} style={{ background: p.surface, borderRadius: r.box, border: `1px solid ${alpha(p.text, 0.08)}` }}>
+        {items.map((it, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-4 sm:flex-col sm:text-center sm:py-6 sm:gap-2"
+            style={{ borderLeft: i > 0 ? `1px solid ${alpha(p.text, 0.08)}` : undefined }}>
+            <svg aria-hidden viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="none" stroke={p.primary} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON_PATHS[it.icon]} /></svg>
+            <span className="text-[13px] sm:text-sm font-bold leading-snug" style={{ color: p.text }}>{it.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // スマホで画面下に常に出る主ボタン。左下のAWPボタンと重ならないよう右側に置く
 export function MobileCtaBar({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const target = ctaTarget(lp);
@@ -166,19 +232,87 @@ export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string
     </>
   );
 
-  if (d.heroLayout === 'imageBackground') {
+  if (d.heroLayout === 'imageBackground' || d.heroLayout === 'fullBleed') {
     const overlay = OVERLAY[d.heroOverlay ?? 'medium'];
+    const bleed = d.heroLayout === 'fullBleed';
     return (
-      <header className="relative min-h-[82vh] sm:min-h-[78vh] flex items-end sm:items-center px-5 sm:px-6 pt-24 pb-14 sm:py-24 overflow-hidden"
-        style={imageUrl ? undefined : { background: `linear-gradient(135deg, ${p.primary}, ${alpha(p.text, 0.92)})` }}>
+      <header className={`relative flex px-5 sm:px-6 overflow-hidden ${bleed ? 'min-h-[88vh] items-end pt-24 pb-12 sm:pb-20' : 'min-h-[82vh] sm:min-h-[78vh] items-end sm:items-center pt-24 pb-14 sm:py-24'}`}
+        style={imageUrl ? undefined : { background: `linear-gradient(135deg, ${p.primary}, ${alpha(d.mode === 'dark' ? p.background : p.text, 0.94)})` }}>
         {imageUrl && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(0,0,0,${overlay * 0.6}), rgba(0,0,0,${Math.min(overlay + 0.15, 0.8)}))` }} />
+            <div className="absolute inset-0" style={{ background: bleed
+              ? `linear-gradient(180deg, rgba(0,0,0,${overlay * 0.25}) 0%, rgba(0,0,0,${overlay * 0.2}) 40%, rgba(0,0,0,${Math.min(overlay + 0.35, 0.9)}) 100%)`
+              : `linear-gradient(180deg, rgba(0,0,0,${overlay * 0.6}), rgba(0,0,0,${Math.min(overlay + 0.15, 0.8)}))` }} />
           </>
         )}
-        <div className="relative max-w-5xl mx-auto w-full">{heroText(true)}</div>
+        <div className={`relative mx-auto w-full ${bleed ? 'max-w-6xl [&_h1]:sm:text-6xl [&_h1]:max-w-3xl' : 'max-w-5xl'}`}>{heroText(true)}</div>
+      </header>
+    );
+  }
+  if (d.heroLayout === 'editorial') {
+    return (
+      <header className="px-5 sm:px-6 pt-10 pb-14 sm:pt-20 sm:pb-24">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-12 gap-8 md:gap-12 items-end">
+          <div className="md:col-span-7">
+            <p className="flex items-center gap-3 text-[11px] font-bold tracking-[0.3em] mb-6" style={{ color: p.primary }}>
+              <span aria-hidden className="inline-block w-10 h-px" style={{ background: p.primary }} />{eyebrow || lp.businessName}
+            </p>
+            <h1 style={{ ...headingStyle, color: p.text }} className="text-[2.5rem] sm:text-6xl leading-[1.12] mb-6 whitespace-pre-line">{lp.heroTitle}</h1>
+            {subcopy && <p style={{ color: alpha(p.text, 0.75) }} className="text-[15px] sm:text-lg leading-relaxed mb-7 max-w-xl">{subcopy}</p>}
+            {lp.socialProof && <p className="text-sm font-bold mb-7" style={{ color: p.primary }}>{lp.socialProof}</p>}
+            <CtaLink lp={lp} tokens={tokens} large />
+          </div>
+          <div className="md:col-span-5 relative mt-4 md:mt-0">
+            <div aria-hidden className="absolute -bottom-4 -right-4 w-2/3 h-2/3" style={{ background: alpha(p.primary, 0.14), borderRadius: r.box }} />
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="relative w-full aspect-[4/5] object-cover" style={{ borderRadius: r.box }} />
+            ) : (
+              <div className="relative w-full aspect-[4/5] flex items-end p-6" style={{ background: p.surface, border: `1px solid ${alpha(p.text, 0.1)}`, borderRadius: r.box }}>
+                <span style={{ ...headingStyle, color: p.primary }} className="text-7xl leading-none">{lp.businessName.slice(0, 1)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+    );
+  }
+  if (d.heroLayout === 'stage') {
+    return (
+      <header className="px-5 sm:px-6 pt-8 pb-12 sm:pt-20 sm:pb-20">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 md:gap-14 items-center">
+          <div className="order-2 md:order-1">{heroText(false)}</div>
+          <div className="order-1 md:order-2 relative p-5 sm:p-8" style={{ background: alpha(p.primary, 0.08), borderRadius: r.box }}>
+            <div aria-hidden className="absolute inset-x-10 bottom-4 h-6 rounded-[50%]" style={{ background: alpha(p.text, 0.2), filter: 'blur(14px)' }} />
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imageUrl} alt="" className="relative w-full aspect-square object-cover shadow-2xl" style={{ borderRadius: r.box }} />
+            ) : (
+              <div className="relative w-full aspect-square flex items-center justify-center shadow-2xl" style={{ background: p.surface, borderRadius: r.box }}>
+                <span style={{ ...headingStyle, color: p.primary }} className="text-7xl">{lp.businessName.slice(0, 1)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+    );
+  }
+  if (d.heroLayout === 'glass') {
+    const onDark = d.mode !== 'light';
+    return (
+      <header className="relative overflow-hidden px-5 sm:px-6 pt-16 pb-16 sm:pt-28 sm:pb-24 text-center"
+        style={{ background: `linear-gradient(160deg, ${p.background} 0%, ${alpha(p.primary, 0.55)} 55%, ${p.background} 100%)` }}>
+        <div aria-hidden className="absolute -top-24 -left-24 w-80 h-80 rounded-full" style={{ background: alpha(p.primary, 0.5), filter: 'blur(90px)' }} />
+        <div aria-hidden className="absolute -bottom-32 -right-16 w-96 h-96 rounded-full" style={{ background: 'rgba(255,255,255,0.12)', filter: 'blur(100px)' }} />
+        <div className="relative max-w-3xl mx-auto [&_p.max-w-xl]:mx-auto [&_.flex]:justify-center">{heroText(onDark)}</div>
+        {imageUrl && (
+          <div className="relative max-w-4xl mx-auto mt-10 sm:mt-14 p-2 sm:p-3" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: `calc(${r.box} + 8px)`, backdropFilter: 'blur(12px)' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="" className="w-full aspect-[16/9] object-cover" style={{ borderRadius: r.box }} />
+          </div>
+        )}
       </header>
     );
   }
@@ -220,6 +354,9 @@ export function HeroSection({ lp, imageUrl, tokens }: { lp: Lp; imageUrl: string
 export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
   const { d, p, headingStyle } = tokens;
   const strengths = lp.strengths.filter(Boolean);
+  // AWPが付けた短い見出し（あれば、見出し＋説明文の2段で見せる）
+  const labels = lp.design.copy?.strengthLabels ?? [];
+  const title = (i: number) => (labels[i] ? <p style={{ ...headingStyle, color: p.text }} className="text-lg md:text-xl mb-1.5">{labels[i]}</p> : null);
   let block: ReactNode;
   if (d.strengthsStyle === 'numbered') {
     block = (
@@ -227,7 +364,7 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
         {strengths.map((s, i) => (
           <li key={i} className="flex md:block gap-5 items-start md:text-center">
             <span style={{ ...headingStyle, color: p.primary }} className="block text-4xl md:text-5xl md:mb-4 leading-none shrink-0 w-12 md:w-auto">{String(i + 1).padStart(2, '0')}</span>
-            <p className="font-bold text-[17px] md:text-lg leading-relaxed">{s}</p>
+            <div>{title(i)}<p className={`leading-relaxed ${labels[i] ? 'text-[15px]' : 'font-bold text-[17px] md:text-lg'}`} style={labels[i] ? { color: alpha(p.text, 0.75) } : undefined}>{s}</p></div>
           </li>
         ))}
       </ol>
@@ -237,8 +374,8 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
       <ul className="max-w-2xl mx-auto divide-y" style={{ borderColor: alpha(p.text, 0.12) }}>
         {strengths.map((s, i) => (
           <li key={i} className="py-6 flex gap-5 items-baseline" style={{ borderColor: alpha(p.text, 0.12) }}>
-            <span style={{ color: p.primary }} className="text-sm font-bold tracking-widest">POINT {i + 1}</span>
-            <p className="text-lg leading-relaxed">{s}</p>
+            <span style={{ color: p.primary }} className="text-sm font-bold tracking-widest shrink-0">POINT {i + 1}</span>
+            <div>{title(i)}<p className={`leading-relaxed ${labels[i] ? 'text-[15px]' : 'text-lg'}`} style={labels[i] ? { color: alpha(p.text, 0.75) } : undefined}>{s}</p></div>
           </li>
         ))}
       </ul>
@@ -250,7 +387,7 @@ export function StrengthsSection({ lp, tokens }: { lp: Lp; tokens: Tokens }) {
           <div key={i} style={{ ...tokens.boxStyle, borderTop: `3px solid ${p.primary}` }} className="p-6 sm:p-8 shadow-sm flex md:block gap-4 items-start">
             <span aria-hidden style={{ background: alpha(p.primary, 0.12), color: p.primary, borderRadius: tokens.r.button }}
               className="inline-flex w-10 h-10 items-center justify-center font-bold md:mb-5 shrink-0">{i + 1}</span>
-            <p className="font-bold text-[17px] md:text-lg leading-relaxed">{s}</p>
+            <div>{title(i)}<p className={`leading-relaxed ${labels[i] ? 'text-[15px]' : 'font-bold text-[17px] md:text-lg'}`} style={labels[i] ? { color: alpha(p.text, 0.75) } : undefined}>{s}</p></div>
           </div>
         ))}
       </div>
@@ -478,8 +615,10 @@ export function SiteNav({ lp, tokens, current }: { lp: Lp; tokens: Tokens; curre
 export default function LandingView({ lp, imageUrl, extra, posts, postsPlacement = 'top' }: { lp: Lp; imageUrl: string | null; extra?: ReactNode; posts?: ReactNode; postsPlacement?: string }) {
   const tokens = buildTokens(lp.design);
   return (
-    <div style={{ background: tokens.p.background, color: tokens.p.text, fontFamily: tokens.font.body }} className="min-h-screen">
+    <div id="top" style={{ background: tokens.p.background, color: tokens.p.text, fontFamily: tokens.font.body }} className="min-h-screen">
+      <TopBar lp={lp} tokens={tokens} />
       <HeroSection lp={lp} imageUrl={imageUrl} tokens={tokens} />
+      <FeatureStrip lp={lp} tokens={tokens} />
       <StrengthsSection lp={lp} tokens={tokens} />
       {postsPlacement === 'top' && posts}
       {lp.sections.map((s, i) => <FeatureSection key={s.feature} section={s} index={i} tokens={tokens} />)}

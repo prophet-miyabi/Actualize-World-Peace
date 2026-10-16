@@ -4,7 +4,8 @@ import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
 import { fetchWithRetry } from './cloudflareFetch';
 import { aiClient, recordAiCost } from '../lib/aiUsage';
-import { playbookBriefForDesign, type Playbook } from './playbook';
+import { classifyIndustryByRules, playbookBriefForDesign, type Playbook } from './playbook';
+import { LEGACY_STYLE, STYLES, STYLE_KEYS, hueBucket, isHex, paletteFor, styleForIndustry, styleOf, type StyleSpec } from './styles';
 
 // ---------------------------------------------------------------------------
 // デザインは「AWPが自由にHTMLを書く」のではなく、検証済みの部品の組み合わせをAWPが選ぶ方式。
@@ -14,11 +15,12 @@ import { playbookBriefForDesign, type Playbook } from './playbook';
 //   - どちらも使えない／失敗した場合: 業種に合うプリセットを使う（見た目が崩れることはない）
 // ---------------------------------------------------------------------------
 
-export const FONTS = ['modern', 'elegant', 'friendly', 'bold'] as const;
+export const FONTS = ['modern', 'elegant', 'friendly', 'bold', 'editorial', 'grotesk'] as const;
 export const CORNERS = ['sharp', 'soft', 'round'] as const;
-export const HERO_LAYOUTS = ['centered', 'split', 'imageBackground'] as const;
+export const HERO_LAYOUTS = ['centered', 'split', 'imageBackground', 'editorial', 'stage', 'glass', 'fullBleed'] as const;
 export const STRENGTH_STYLES = ['cards', 'numbered', 'minimal'] as const;
 export const OVERLAYS = ['none', 'light', 'medium', 'strong'] as const;
+export const MOTIFS = ['rules', 'pills', 'cards', 'glass', 'none'] as const;
 
 export type Design = {
   palette: { primary: string; onPrimary: string; background: string; surface: string; text: string };
@@ -29,8 +31,15 @@ export type Design = {
   // 写真の上に文字を載せるときの暗幕の濃さ（画像を見たClaudeが決める）
   heroOverlay: (typeof OVERLAYS)[number];
   imagePrompt: string;
+  // ページの型（styles.ts）・明暗・ユーザーが選んだメインカラー・飾り・特徴ストリップの有無
+  style: string;
+  mode: 'light' | 'dark';
+  accent: string;
+  motif: (typeof MOTIFS)[number];
+  featureStrip: boolean;
   // ファーストビューの補助コピー（ユーザーが伝えた事実だけから作る）。無ければ画面側が既定の文言を使う
-  copy?: { eyebrow: string; subcopy: string; ctaLabel: string; secondaryCtaLabel: string };
+  // strengthLabels = 強みそれぞれの短い見出し（特徴ストリップと強みカードの見出しに使う）
+  copy?: { eyebrow: string; subcopy: string; ctaLabel: string; secondaryCtaLabel: string; strengthLabels?: string[] };
   // 同業種の人気ページに合わせたセクションの並び（publicLpで並べ替えに使う）
   sectionOrder?: string[];
 };
@@ -55,83 +64,52 @@ const AiDesignSchema = z.object({
   eyebrow: z.string().describe('見出しの上に置く小さな一行（業種・地域・対象など、伝えられた事実だけで。16文字以内。作れなければ空文字）'),
   subcopy: z.string().describe('見出しの下の補足文（強みの中で最も差がつく1つを、お客様の得になる言い方で1〜2文・80文字以内。新しい事実・数字を足さない）'),
   ctaLabel: z.string().describe('主ボタンの文言（12文字以内。例: 予約・相談する）'),
-  secondaryCtaLabel: z.string().describe('補助ボタンの文言（10文字以内。例: メニューを見る）')
+  secondaryCtaLabel: z.string().describe('補助ボタンの文言（10文字以内。例: メニューを見る）'),
+  strengthLabels: z.array(z.string()).describe('強みそれぞれの短い見出し（各8文字以内、強みと同じ順・同じ数。例: 「髪質に合わせる」「完全予約制」）。強みの文から要約するだけで、新しい事実は足さない')
 });
 
-// --- プリセット（intelligence が使えないときも、業種に合う洗練された見た目にする） --------------------
+// --- 型（スタイル）とメインカラーからの既定デザイン ----------------------------------------------
+// intelligence が使えないときもこの既定で公開でき、使えるときは Claude がこれを土台に店らしく仕上げる
 
-const PRESETS: Record<string, Omit<Design, 'palette' | 'heroOverlay'> & { palette: Omit<Design['palette'], 'onPrimary'> }> = {
-  trust: {
-    palette: { primary: '#1d4ed8', background: '#f8fafc', surface: '#ffffff', text: '#0f172a' },
-    font: 'modern', corner: 'soft', heroLayout: 'split', strengthsStyle: 'cards',
-    imagePrompt: 'bright modern small office interior with natural light, professional and trustworthy atmosphere'
-  },
-  elegant: {
-    palette: { primary: '#9a6b2f', background: '#fbf8f3', surface: '#ffffff', text: '#1c1917' },
-    font: 'elegant', corner: 'sharp', heroLayout: 'imageBackground', strengthsStyle: 'minimal',
-    imagePrompt: 'elegant beauty salon interior with soft warm lighting, minimal and luxurious, shallow depth of field'
-  },
-  fresh: {
-    palette: { primary: '#15803d', background: '#f6fbf7', surface: '#ffffff', text: '#14281d' },
-    font: 'friendly', corner: 'round', heroLayout: 'centered', strengthsStyle: 'cards',
-    imagePrompt: 'cozy neighborhood cafe with fresh food on a wooden table, warm morning light'
-  },
-  bold: {
-    palette: { primary: '#e11d48', background: '#0c0a0f', surface: '#1c1a22', text: '#fafafa' },
-    font: 'bold', corner: 'sharp', heroLayout: 'imageBackground', strengthsStyle: 'numbered',
-    imagePrompt: 'dynamic modern fitness studio with dramatic lighting, energetic mood'
-  },
-  warm: {
-    palette: { primary: '#c2410c', background: '#fff8f1', surface: '#ffffff', text: '#1f2937' },
-    font: 'friendly', corner: 'round', heroLayout: 'split', strengthsStyle: 'numbered',
-    imagePrompt: 'clean and friendly clinic reception with plants and soft daylight, welcoming atmosphere'
-  },
-  calm: {
-    palette: { primary: '#0f766e', background: '#f2fbf9', surface: '#ffffff', text: '#123c38' },
-    font: 'elegant', corner: 'soft', heroLayout: 'centered', strengthsStyle: 'minimal',
-    imagePrompt: 'serene wellness spa room with natural materials, calm green tones, soft light'
-  }
+type Preset = Omit<Design, 'heroOverlay' | 'copy' | 'sectionOrder' | 'palette'> & {
+  palette: Omit<Design['palette'], 'onPrimary'>;
+  // ユーザーがメインカラーを選んだ場合は、AWPが別の色を返しても必ずその色を使う
+  accentLocked: boolean;
 };
 
-const PRESET_KEYWORDS: [string, RegExp][] = [
-  ['elegant', /美容|サロン|ネイル|エステ|まつ|ヘア|ブライダル|ジュエリー|着物|フラワー|花/],
-  ['fresh', /カフェ|レストラン|食|パン|ベーカリー|居酒屋|料理|弁当|スイーツ|菓子|農|野菜|ラーメン|寿司/],
-  ['bold', /ジム|フィットネス|トレーニング|格闘|ボクシング|ダンス|スポーツ|車|バイク|音楽|ライブ/],
-  ['warm', /歯科|クリニック|病院|保育|塾|教室|介護|子ども|こども|家族|ペット|動物/],
-  ['calm', /ヨガ|整体|マッサージ|スパ|鍼|針|接骨|カウンセリング|瞑想|ピラティス/]
-];
-
-export type PresetKey = keyof typeof PRESETS;
-export const PRESET_KEYS = Object.keys(PRESETS) as PresetKey[];
-
-// 完成例ギャラリー（見本一覧）の表示用ラベル。ここに載る文言だけが画面に出るため、誇張は書かない。
-export const PRESET_META: Record<PresetKey, { label: string; description: string }> = {
-  trust: { label: '信頼感のある', description: '誠実さが伝わる、落ち着いた定番スタイル' },
-  elegant: { label: '上品な', description: '美容・サロンなど、質の高さを伝えたい業種向け' },
-  fresh: { label: '親しみやすい', description: '飲食・カフェなど、あたたかい雰囲気を出したい業種向け' },
-  bold: { label: '力強い', description: 'ジム・スポーツなど、エネルギッシュに見せたい業種向け' },
-  warm: { label: 'あたたかい', description: 'クリニック・教室など、安心感を伝えたい業種向け' },
-  calm: { label: '落ち着いた', description: 'ヨガ・整体など、静けさを伝えたい業種向け' }
-};
-
-function presetKeyFor(input: DesignInput): PresetKey {
-  const text = [input.businessName, input.heroTitle, input.description ?? '', ...input.strengths].join(' ');
-  return PRESET_KEYWORDS.find(([, re]) => re.test(text))?.[0] as PresetKey ?? 'trust';
+function presetFor(style: StyleSpec, accent?: string | null): Preset {
+  const a = isHex(accent) ? accent.toLowerCase() : style.defaultAccent;
+  return {
+    palette: paletteFor(a, style),
+    font: style.font, corner: style.corner, heroLayout: style.heroLayout, strengthsStyle: style.strengthsStyle,
+    imagePrompt: style.imagery,
+    style: style.key, mode: style.mode, accent: a, motif: style.motif, featureStrip: style.featureStrip,
+    accentLocked: isHex(accent)
+  };
 }
 
-// ユーザーが完成例ギャラリーで明示的に選んだテンプレートは、業種からの自動推測より優先する
-function baseKeyFor(input: DesignInput, templateKey?: string | null): PresetKey {
-  if (templateKey && (PRESET_KEYS as string[]).includes(templateKey)) return templateKey as PresetKey;
-  return presetKeyFor(input);
+export type PresetKey = string;
+// 画面から指定できる型のキー（新しい12種類＋以前の6種類の名前も受け付ける）
+export const PRESET_KEYS: string[] = [...STYLE_KEYS, ...Object.keys(LEGACY_STYLE)];
+
+// 見本一覧の表示用。ここに載る文言だけが画面に出るため、誇張は書かない
+export const PRESET_META: Record<string, { label: string; description: string; bestFor: string; mode: 'light' | 'dark'; defaultAccent: string }> =
+  Object.fromEntries(STYLES.map((st) => [st.key, { label: st.label, description: st.description, bestFor: st.bestFor, mode: st.mode, defaultAccent: st.defaultAccent }]));
+
+// ユーザーが選んだ型を優先し、未選択なら入力文から業種を推定して相性の良い型にする
+export function baseStyleFor(input: DesignInput, templateKey?: string | null): StyleSpec {
+  if (templateKey && PRESET_KEYS.includes(templateKey)) return styleOf(templateKey);
+  const text = [input.businessName, input.heroTitle, input.description ?? '', ...input.strengths].join(' ');
+  return styleForIndustry(classifyIndustryByRules(text));
 }
 
 // 外部から受け取ったデザインの値を検証・補正する（読みにくい配色の自動修正を含む）
-export function normalizeDesign(raw: unknown, input: DesignInput, templateKey?: string | null): Design {
-  return finalize(raw, PRESETS[baseKeyFor(input, templateKey)]);
+export function normalizeDesign(raw: unknown, input: DesignInput, templateKey?: string | null, accent?: string | null): Design {
+  return finalize(raw, presetFor(baseStyleFor(input, templateKey), accent));
 }
 
-export function presetDesign(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null): Design {
-  const preset = PRESETS[baseKeyFor(input, templateKey)];
+export function presetDesign(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null, accent?: string | null): Design {
+  const preset = presetFor(baseStyleFor(input, templateKey), accent);
   const d = finalize(preset, preset);
   if (playbook) {
     d.sectionOrder = playbook.sectionOrder;
@@ -169,12 +147,12 @@ const LIGHT = '#ffffff';
 const bestOn = (bg: string) => (contrast(LIGHT, bg) >= contrast(DARK, bg) ? LIGHT : DARK);
 
 // AWPやプリセットの値を検証し、読みにくい配色はサーバー側で自動補正する
-function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
+function finalize(raw: any, preset: Preset): Design {
   const p = preset.palette;
   const background = normalizeHex(raw?.palette?.background ?? raw?.background, p.background);
   let surface = normalizeHex(raw?.palette?.surface ?? raw?.surface, p.surface);
   let text = normalizeHex(raw?.palette?.text ?? raw?.text, p.text);
-  let primary = normalizeHex(raw?.palette?.primary ?? raw?.primary, p.primary);
+  let primary = preset.accentLocked ? p.primary : normalizeHex(raw?.palette?.primary ?? raw?.primary, p.primary);
 
   // 本文（通常サイズの文字）は4.5:1以上
   if (contrast(text, background) < 4.5) text = bestOn(background);
@@ -189,11 +167,15 @@ function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
 
   const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
   const rawCopy = raw?.copy ?? raw;
+  const strengthLabels = Array.isArray(rawCopy?.strengthLabels)
+    ? (rawCopy.strengthLabels as unknown[]).map((v) => clean(v, 10)).filter(Boolean).slice(0, 4)
+    : [];
   const copy = {
     eyebrow: clean(rawCopy?.eyebrow, 20),
     subcopy: clean(rawCopy?.subcopy, 100),
     ctaLabel: clean(rawCopy?.ctaLabel, 14),
-    secondaryCtaLabel: clean(rawCopy?.secondaryCtaLabel, 12)
+    secondaryCtaLabel: clean(rawCopy?.secondaryCtaLabel, 12),
+    ...(strengthLabels.length ? { strengthLabels } : {})
   };
   const sectionOrder = Array.isArray(raw?.sectionOrder) ? (raw.sectionOrder as unknown[]).filter((s): s is string => typeof s === 'string').slice(0, 20) : undefined;
 
@@ -205,7 +187,12 @@ function finalize(raw: any, preset: (typeof PRESETS)[string]): Design {
     strengthsStyle: pick(STRENGTH_STYLES, raw?.strengthsStyle, preset.strengthsStyle),
     heroOverlay: pick(OVERLAYS, raw?.heroOverlay, 'medium'),
     imagePrompt: (typeof raw?.imagePrompt === 'string' && raw.imagePrompt.trim() ? raw.imagePrompt : preset.imagePrompt).slice(0, 500),
-    ...(copy.eyebrow || copy.subcopy || copy.ctaLabel ? { copy } : {}),
+    style: preset.style,
+    mode: preset.mode,
+    accent: primary,
+    motif: pick(MOTIFS, raw?.motif, preset.motif),
+    featureStrip: typeof raw?.featureStrip === 'boolean' ? raw.featureStrip : preset.featureStrip,
+    ...(copy.eyebrow || copy.subcopy || copy.ctaLabel || copy.strengthLabels ? { copy } : {}),
     ...(sectionOrder?.length ? { sectionOrder } : {})
   };
 }
@@ -225,11 +212,25 @@ const ART_DIRECTOR_PROMPT = [
   'imagePromptは、メイン画像を生成するための英語の指示文です。被写体・光・色調・構図を具体的に書き、',
   '人物の顔のアップ、文字、ロゴ、看板、特定の実在ブランドは含めないでください。',
   '「同業種の人気ページに共通する型」が渡されたら、その型（構成・見せ方・配色の方向）を土台にしつつ、この店らしさを加えて仕上げてください。',
-  '型はあくまで手本です。他社の文章や数字は使わず、eyebrow / subcopy はユーザーが伝えた事実（事業名・キャッチコピー・強み・事業内容）だけから作ってください。'
+  '型はあくまで手本です。他社の文章や数字は使わず、eyebrow / subcopy / strengthLabels はユーザーが伝えた事実（事業名・キャッチコピー・強み・事業内容）だけから作ってください。',
+  '「ページの型」が指定されたら、ヒーローの組み方・書体・角はその型に従い、配色と写真と言葉でこの店らしさを出します。',
+  '「メインカラー（固定）」が指定されたら primary はその色のまま。背景・面・文字はその色と型の明暗（light/dark）に調和させてください。',
+  '「最近のページに多い組み合わせ」が渡されたら、同じ見た目にならないよう、書体・強みの見せ方・写真の被写体・言葉のトーンのいずれかで差をつけてください。'
 ].join('\n');
 
-export async function designWithClaude(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null): Promise<Design> {
+export type DesignOptions = { accent?: string | null; avoid?: string | null };
+
+export async function designWithClaude(input: DesignInput, templateKey?: string | null, playbook?: Playbook | null, opts: DesignOptions = {}): Promise<Design> {
   const client = aiClient();
+  const style = baseStyleFor(input, templateKey);
+  const preset = presetFor(style, opts.accent);
+  const styleBrief = [
+    `【ページの型: ${style.label}（${style.key}）】${style.description}`,
+    `明暗: ${style.mode} / ヒーロー: ${style.heroLayout} / 書体: ${style.font} / 角: ${style.corner} / 強み: ${style.strengthsStyle} / 飾り: ${style.motif} / 特徴ストリップ: ${style.featureStrip ? 'あり' : 'なし'}`,
+    `写真の方向: ${style.imagery}`,
+    preset.accentLocked ? `【メインカラー（固定）】${preset.palette.primary}` : `メインカラーの候補: ${preset.palette.primary}（業種と店らしさでより良い色があれば変えてよい）`,
+    `既定の配色（土台）: 背景 ${preset.palette.background} / 面 ${preset.palette.surface} / 文字 ${preset.palette.text}`
+  ].join('\n');
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
     max_tokens: 2048,
@@ -244,6 +245,8 @@ export async function designWithClaude(input: DesignInput, templateKey?: string 
         `キャッチコピー: ${input.heroTitle}`,
         `強み: ${input.strengths.filter(Boolean).join(' / ')}`,
         input.description ? `事業内容: ${input.description}` : '',
+        `\n${styleBrief}`,
+        opts.avoid ? `\n【最近のページに多い組み合わせ（同じ見た目を避ける）】\n${opts.avoid}` : '',
         playbook ? `\n${playbookBriefForDesign(playbook)}` : ''
       ].filter(Boolean).join('\n')
     }],
@@ -252,10 +255,22 @@ export async function designWithClaude(input: DesignInput, templateKey?: string 
   if (response.stop_reason === 'refusal' || !response.parsed_output) {
     throw new Error(`design not produced (stop_reason=${response.stop_reason})`);
   }
-  // AWPの値が不正・読みにくい場合は、業種に合うプリセット（明示選択があればそれ）の値で補う
-  const design = finalize(response.parsed_output, PRESETS[baseKeyFor(input, templateKey)]);
+  // AWPの値が不正・読みにくい場合は、型（明示選択があればそれ）の既定値で補う。型のヒーロー・書体・角は固定
+  const design = finalize({ ...response.parsed_output, heroLayout: style.heroLayout, font: response.parsed_output.font || style.font, corner: style.corner }, preset);
   if (playbook) design.sectionOrder = playbook.sectionOrder;
   return design;
+}
+
+// 似たページだらけにならないための材料: 最近のページで多い「型×色相×書体」の組み合わせを文章にする
+export function describeUsedCombos(designs: unknown[]): string | null {
+  const count = new Map<string, number>();
+  for (const d of designs as Partial<Design>[]) {
+    if (!d?.palette?.primary) continue;
+    const key = `${d.style ?? '?'} × 色相${hueBucket(d.palette.primary)} × ${d.font ?? '?'} × 強み${d.strengthsStyle ?? '?'}`;
+    count.set(key, (count.get(key) ?? 0) + 1);
+  }
+  const top = [...count.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return top.length ? top.map(([k, n]) => `- ${k}（${n}ページ）`).join('\n') : null;
 }
 
 // --- Claude: Geminiの画像のレビューと、画像に合わせた配色の調整 ------------------------------
@@ -306,7 +321,7 @@ export async function reviewImageWithClaude(input: DesignInput, design: Design, 
     acceptable: r.acceptable,
     issues: r.issues,
     // 調整後も必ず読みやすさの検査を通す
-    design: finalize({ ...design, palette: { ...design.palette, primary: r.primary }, heroOverlay: r.heroOverlay }, PRESETS[baseKeyFor(input, templateKey)])
+    design: finalize({ ...design, palette: { ...design.palette, primary: r.primary }, heroOverlay: r.heroOverlay }, { ...presetFor(baseStyleFor(input, templateKey), design.accent), accentLocked: false })
   };
 }
 
