@@ -8,6 +8,7 @@ import { emitEvent } from './tools';
 import { runTask } from './runtime';
 import { seedCompany } from './seed';
 import { getCompanySettings } from './settings';
+import { adminInstagramAccount, instagramTaskInstructions } from '../social/instagramOps';
 
 // AWP企業の運営サイクル:
 // - 1分ごと: 実行待ちのタスクを（同時 CONCURRENCY 件まで）実行する。検証待ちのタスクには監査役のタスクを作る
@@ -97,6 +98,19 @@ export async function ceoDailyCycle(day: string) {
   });
 }
 
+// AWP 公式 Instagram が連携されていれば、SNS担当に定例タスクを出す（月曜は週間計画、他の日は準備）
+export async function instagramCycle(day: string, weekday: number) {
+  const account = await adminInstagramAccount();
+  if (!account) return;
+  const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
+  const kind = weekday === 1 ? 'weekly' : 'daily';
+  await createIfAbsent({
+    assignee: 'instagram', createdBy: 'system', goalId: goal?.id ?? null,
+    title: kind === 'weekly' ? `Instagram 今週の投稿計画 ${day}` : `Instagram 投稿の準備 ${day}`,
+    instructions: instagramTaskInstructions(day, kind)
+  });
+}
+
 export async function weeklyCycle(day: string) {
   const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
   await createIfAbsent({
@@ -128,6 +142,7 @@ export async function companyTick(now = new Date()) {
       await setState('company:ceoDay', day);
       await ceoDailyCycle(day);
       if (weekday === 1) await weeklyCycle(day);
+      await instagramCycle(day, weekday).catch((e) => console.error('instagram cycle failed', e?.message));
     }
 
     // 再起動などで途中のまま残った実行を戻す（20分を超えて running のもの）

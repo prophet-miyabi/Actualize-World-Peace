@@ -46,7 +46,7 @@ export async function ensureEnvironment(client = createAnthropic()): Promise<str
 // Platform に保存するエージェント定義。タスクごとに変わる情報（目標・戦略・メモリの一覧・日付）は最初のメッセージで渡す
 // COO はコーディネータ: 専門職をロスター（チーム）として持ち、1セッションの中で並列に委任できる（Managed Agents のマルチエージェント）
 export const COORDINATOR_KEY = 'coo';
-export const ROSTER_KEYS = ['research', 'product', 'engineering', 'qa', 'data', 'marketing', 'content', 'growth', 'cs', 'finance', 'partnership', 'security', 'legal'];
+export const ROSTER_KEYS = ['research', 'product', 'engineering', 'qa', 'data', 'marketing', 'content', 'instagram', 'growth', 'cs', 'finance', 'partnership', 'security', 'legal'];
 // 会議室: 議長がコーディネータ、5人の博士がロスター
 export const COORDINATORS: Record<string, string[]> = { [COORDINATOR_KEY]: ROSTER_KEYS, chair: ['psychology', 'sociology', 'economics', 'geopolitics', 'astronomy'] };
 

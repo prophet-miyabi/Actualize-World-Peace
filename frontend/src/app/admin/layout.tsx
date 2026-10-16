@@ -12,6 +12,7 @@ const SECTIONS: { label: string | null; items: { href: string; label: string; da
   { label: null, items: [{ href: '/admin', label: 'ダッシュボード' }, { href: '/admin/company', label: 'AWP企業' }, { href: '/admin/company/chat', label: 'AWP Intelligence' }, { href: '/admin/council', label: 'AWP 会議室' }, { href: '/admin/crew', label: 'ローンチ・クルー' }, { href: '/admin/ops', label: 'AWPオペレーター' }] },
   { label: '対応', items: [{ href: '/admin/harness', label: 'Harness 申し込み・料金' }, { href: '/admin/reports', label: '通報' }, { href: '/admin/monitoring', label: 'エラー監視' }] },
   { label: '収益', items: [{ href: '/admin/billing', label: 'プランと請求' }, { href: '/admin/revenue', label: '収益と分配' }, { href: '/admin/tools', label: '提携ツール' }, { href: '/admin/domains', label: '独自ドメイン' }] },
+  { label: 'SNS', items: [{ href: '/admin/instagram', label: 'Instagram運用' }] },
   { label: 'サイト', items: [{ href: '/admin/playbooks', label: '業種別の手本' }, { href: '/admin/assets', label: '外装画像' }] },
   { label: '設定', items: [{ href: '/admin/emergency', label: '緊急コントロール', danger: true }] }
 ];

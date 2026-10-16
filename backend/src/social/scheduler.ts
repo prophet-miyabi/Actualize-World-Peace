@@ -1,6 +1,6 @@
 import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
 import prisma from '../prisma';
-import { postToInstagramReels } from './platforms/instagram';
+import { postToInstagram } from './platforms/instagram';
 import { postToFacebookPage } from './platforms/facebook';
 import { postToTikTok } from './platforms/tiktok';
 import { postToX } from './platforms/x';
@@ -17,7 +17,7 @@ const MAX_ATTEMPTS = 3;
 
 const POSTERS: Record<Platform, (account: any, input: any) => Promise<PostResult>> = {
   x: postToX,
-  instagram: postToInstagramReels,
+  instagram: postToInstagram,
   facebook: postToFacebookPage,
   youtube: postToYouTubeShorts,
   tiktok: postToTikTok

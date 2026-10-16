@@ -4,7 +4,9 @@ import prisma from '../prisma';
 import { authenticate, AuthRequest, JWT_SECRET } from '../middlewares/auth';
 import { requireActiveSubscription } from '../middlewares/subscription';
 import { PLATFORMS, type Platform } from '../social/types';
-import { instagramAuthorizeUrl, exchangeInstagramCode } from '../social/platforms/instagram';
+import { instagramAuthorizeUrl, exchangeInstagramCode, verifyInstagramToken, refreshInstagramToken } from '../social/platforms/instagram';
+import { requireAdmin } from '../middlewares/admin';
+import { adminInstagramAccount, awpMediaPosts, instagramOverview, instagramTaskInstructions, queueInstagramPost } from '../social/instagramOps';
 import { facebookAuthorizeUrl, exchangeFacebookCode } from '../social/platforms/facebook';
 import { xAuthorizeUrl, exchangeXCode, generatePkce } from '../social/platforms/x';
 import { tiktokAuthorizeUrl, exchangeTikTokCode } from '../social/platforms/tiktok';
@@ -199,6 +201,82 @@ router.post('/posts', authenticate, requireActiveSubscription, async (req: AuthR
     data: { userId, text: text.trim().slice(0, 2000), mediaUrl: mediaUrl || null, platforms, scheduledAt: when }
   });
   res.status(201).json({ post });
+});
+
+// ---------- 運営者向け: AWP 公式 Instagram の運用 ----------
+// Meta for Developers で発行した長期トークンを貼り付けて連携する（OAuthアプリの審査・公開設定が不要）
+router.post('/instagram/manual', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const token = String(req.body?.accessToken ?? '').trim();
+  if (!token) return res.status(400).json({ error: 'アクセストークンを入力してください' });
+  const r = await verifyInstagramToken(token);
+  if (!r.ok) return res.status(400).json({ error: r.error });
+  const userId = req.user!.id;
+  await prisma.socialAccount.upsert({
+    where: { userId_platform: { userId, platform: 'instagram' } },
+    update: { accessToken: r.accessToken, externalId: r.externalId, accountLabel: r.accountLabel, expiresAt: r.expiresAt, refreshToken: null },
+    create: { userId, platform: 'instagram', accessToken: r.accessToken, externalId: r.externalId, accountLabel: r.accountLabel, expiresAt: r.expiresAt }
+  });
+  res.json({ ok: true, username: r.accountLabel, externalId: r.externalId });
+});
+
+router.get('/instagram/overview', authenticate, requireAdmin, async (_req: AuthRequest, res) => {
+  const [overview, media] = await Promise.all([instagramOverview(), awpMediaPosts(12)]);
+  res.json({ ...overview, awpMedia: media, publicBaseSet: !!process.env.PUBLIC_BASE_URL });
+});
+
+router.post('/instagram/refresh', authenticate, requireAdmin, async (_req: AuthRequest, res) => {
+  const account = await adminInstagramAccount();
+  if (!account) return res.status(404).json({ error: '未連携です' });
+  const r = await refreshInstagramToken(account.accessToken);
+  if (!r.ok) return res.status(400).json({ error: r.error });
+  await prisma.socialAccount.update({ where: { id: account.id }, data: { accessToken: r.accessToken, expiresAt: r.expiresAt } });
+  res.json({ ok: true, expiresAt: r.expiresAt.toISOString() });
+});
+
+// 自動公開（オン: エージェントの投稿を承認なしで予約に入れる / オフ: 下書きで承認待ち）
+router.put('/instagram/settings', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const account = await adminInstagramAccount();
+  if (!account) return res.status(404).json({ error: '未連携です' });
+  if (typeof req.body?.autoPublish !== 'boolean') return res.status(400).json({ error: 'autoPublish を true / false で指定' });
+  await prisma.user.update({ where: { id: account.userId }, data: { autoPublishEnabled: req.body.autoPublish } });
+  res.json({ ok: true, autoPublish: req.body.autoPublish });
+});
+
+// 運営者が手で投稿を入れる（審査は通す）
+router.post('/instagram/queue', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const r = await queueInstagramPost({ caption: String(req.body?.caption ?? ''), mediaUrl: String(req.body?.mediaUrl ?? ''), scheduledAt: req.body?.scheduledAt ?? null, by: 'owner' });
+  if (!r.ok) return res.status(400).json({ error: r.error });
+  res.status(201).json(r);
+});
+
+// 下書きの承認（文面・日時を直してから予約に入れられる）／却下／予約の取り消し
+router.post('/instagram/posts/:id/approve', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const account = await adminInstagramAccount();
+  const post = account ? await prisma.scheduledPost.findFirst({ where: { id: String(req.params.id), userId: account.userId } }) : null;
+  if (!post || !['draft', 'rejected'].includes(post.status)) return res.status(400).json({ error: '承認できる下書きがありません' });
+  const text = typeof req.body?.text === 'string' && req.body.text.trim() ? req.body.text.trim().slice(0, 2200) : post.text;
+  let when = req.body?.scheduledAt ? new Date(req.body.scheduledAt) : post.scheduledAt;
+  if (Number.isNaN(when.getTime()) || when.getTime() < Date.now()) when = new Date(Date.now() + 5 * 60_000);
+  const updated = await prisma.scheduledPost.update({ where: { id: post.id }, data: { status: 'pending', text, scheduledAt: when, attempts: 0, results: { ...(post.results as object), approvedAt: new Date().toISOString() } as any } });
+  res.json({ ok: true, post: { id: updated.id, status: updated.status, scheduledAt: updated.scheduledAt } });
+});
+
+router.post('/instagram/posts/:id/reject', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const account = await adminInstagramAccount();
+  const r = account ? await prisma.scheduledPost.updateMany({ where: { id: String(req.params.id), userId: account.userId, status: { in: ['draft', 'pending'] } }, data: { status: 'rejected' } }) : { count: 0 };
+  if (r.count === 0) return res.status(400).json({ error: '取り消せませんでした' });
+  res.json({ ok: true });
+});
+
+// 今すぐ「SNS担当（Instagram）」に投稿計画を作らせる（AWP企業のタスクとして実行）
+router.post('/instagram/plan', authenticate, requireAdmin, async (_req: AuthRequest, res) => {
+  const account = await adminInstagramAccount();
+  if (!account) return res.status(404).json({ error: '未連携です' });
+  const day = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+  const title = `Instagram 投稿計画 ${day} ${new Date().toISOString().slice(11, 16)}`;
+  const goal = await prisma.companyGoal.findFirst({ where: { status: 'active' }, orderBy: { createdAt: 'desc' } });
+  const task = await prisma.companyTask.create({ data: { assignee: 'instagram', createdBy: 'owner', title, instructions: instagramTaskInstructions(day, 'weekly'), risk: 'low', goalId: goal?.id ?? null } });
+  res.status(201).json({ ok: true, taskId: task.id, title });
 });
 
 // 予約の取り消し（実行前のみ）

@@ -5,6 +5,8 @@ import { ACCOUNTS, accountBalance } from '../lib/ledger';
 import { getPlanConfig, planPrices, setPlanConfig, PLAN_KEYS, type PlanConfig } from '../lib/plans';
 import { ALL_SETTING_KEYS, SETTING_LABEL, setFlag, type SettingKey } from '../lib/systemSettings';
 import { AGENT_BY_KEY, isAgentKey, type AgentDef, type Risk } from './registry';
+import { awpMediaPosts, instagramOverview, publicBase, queueInstagramPost } from '../social/instagramOps';
+import { generateImage } from '../ai/design';
 
 // エージェントの「手」（Hands）。エージェントがシステムに触れる唯一の方法。
 // 読む道具は low、記録や依頼を作る道具は medium、設定・お金・公開に触る道具は high（人間の承認後に execute が走る）
@@ -263,6 +265,48 @@ export const TOOLS: ToolDef[] = [
       await prisma.companyMemory.create({ data: { scope: 'dept:marketing', key, content: `# ${text(i.title, 120)}\n\n${text(i.body, 20_000)}`, updatedBy: ctx.agent.key } });
       await emitEvent('content.drafted', ctx.agent.key, { key, kind: i.kind, title: text(i.title, 120) }, ctx.taskId);
       return { ok: true, key };
+    }
+  },
+  // ---------- AWP 公式 Instagram の運用 ----------
+  {
+    name: 'instagram_overview', risk: 'low',
+    description: 'AWP公式Instagramの現状: プロフィール（フォロワー数等）、最近の投稿とその反応、直近7日のインサイト、予約列（下書き・予約済み・公開済み・失敗）。未連携なら connected=false',
+    input_schema: { type: 'object', properties: {} },
+    run: async () => {
+      const o = await instagramOverview();
+      if (!o.connected) return o;
+      return { ...o, media: o.media.map((m) => ({ ...m, caption: m.caption.slice(0, 300), mediaUrl: undefined })) };
+    }
+  },
+  {
+    name: 'list_awp_posts', risk: 'low',
+    description: 'Instagram に載せられるメディア（AWP公式アカウントと運営者がAWPに投稿した写真・動画）の一覧。mediaUrl をそのまま queue_instagram_post に渡せる',
+    input_schema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 30 } } },
+    run: (i) => awpMediaPosts(Math.min(30, Math.max(1, Number(i?.limit) || 20)))
+  },
+  {
+    name: 'make_image', risk: 'low',
+    description: 'Instagram 投稿用の画像を1枚作る（英語の指示文。文字・ロゴ・人物の顔は入れない）。公開URLを返す。1枚あたり数円。合う写真が list_awp_posts に無いときだけ使う',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string' } }, required: ['prompt'] },
+    run: async (i, ctx) => {
+      const prompt = text(i.prompt, 1500);
+      if (!prompt) return { ok: false, error: 'prompt が必要です' };
+      if (!publicBase()) return { ok: false, error: 'PUBLIC_BASE_URL が未設定のため公開URLを作れません' };
+      const img = await generateImage(`${prompt}. Square composition suitable for Instagram. No text, no letters, no logos, no watermarks, no faces.`);
+      const key = `ig-${Date.now().toString(36)}`;
+      await prisma.siteAsset.create({ data: { key, image: img.data, mimeType: img.mimeType, prompt } });
+      await emitEvent('instagram.image_made', ctx.agent.key, { key }, ctx.taskId);
+      return { ok: true, key, mediaUrl: `${publicBase()}/api/site-assets/${key}` };
+    }
+  },
+  {
+    name: 'queue_instagram_post', risk: 'medium',
+    description: 'AWP公式Instagramの投稿を予約列に入れる。caption（日本語・ハッシュタグ含む・2200字以内）、mediaUrl（list_awp_posts か make_image のURL）、scheduledAt（ISO、任意）。コンプライアンス審査に通らないと差し戻される。既定では運営者の承認待ち（下書き）になる',
+    input_schema: { type: 'object', properties: { caption: { type: 'string' }, mediaUrl: { type: 'string' }, scheduledAt: { type: 'string' } }, required: ['caption', 'mediaUrl'] },
+    run: async (i, ctx) => {
+      const r = await queueInstagramPost({ caption: text(i.caption, 2200), mediaUrl: text(i.mediaUrl, 500), scheduledAt: i.scheduledAt ? text(i.scheduledAt, 40) : null, by: `agent:${ctx.agent.key}`, taskId: ctx.taskId });
+      await emitEvent(r.ok ? 'instagram.queued' : 'instagram.rejected', ctx.agent.key, r as any, ctx.taskId);
+      return r;
     }
   },
   {
