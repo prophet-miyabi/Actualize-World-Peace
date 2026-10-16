@@ -70,7 +70,7 @@ export async function runDesignJob(lpId: string, description?: string) {
       if (!process.env.ANTHROPIC_API_KEY || source !== 'ai') {
         image = first;
       } else {
-        const review = await reviewImageWithClaude(input, design, first, templateKey).catch((e) => {
+        const review = await reviewImageWithClaude(input, design, first, templateKey, !!lp.accent).catch((e) => {
           console.error('Claude review failed, accepting image as is', lpId, e?.message);
           return null;
         });
@@ -80,7 +80,7 @@ export async function runDesignJob(lpId: string, description?: string) {
         } else {
           console.log('Hero image rejected by review, regenerating once', lpId, review.issues);
           const second = await generateHeroImage(design.imagePrompt, review.issues);
-          const review2 = await reviewImageWithClaude(input, design, second, templateKey).catch(() => null);
+          const review2 = await reviewImageWithClaude(input, design, second, templateKey, !!lp.accent).catch(() => null);
           if (review2?.acceptable) {
             image = second;
             design = { ...review2.design, copy: design.copy, sectionOrder: design.sectionOrder };

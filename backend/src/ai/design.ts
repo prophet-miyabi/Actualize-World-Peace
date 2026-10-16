@@ -284,7 +284,7 @@ const ReviewSchema = z.object({
 
 export type Review = { acceptable: boolean; issues: string; design: Design };
 
-export async function reviewImageWithClaude(input: DesignInput, design: Design, image: { data: Buffer; mimeType: string }, templateKey?: string | null): Promise<Review> {
+export async function reviewImageWithClaude(input: DesignInput, design: Design, image: { data: Buffer; mimeType: string }, templateKey?: string | null, lockAccent = false): Promise<Review> {
   const client = aiClient();
   const response = await client.beta.messages.parse({
     model: process.env.CLAUDE_MODEL || 'claude-opus-5',
@@ -321,7 +321,7 @@ export async function reviewImageWithClaude(input: DesignInput, design: Design, 
     acceptable: r.acceptable,
     issues: r.issues,
     // 調整後も必ず読みやすさの検査を通す
-    design: finalize({ ...design, palette: { ...design.palette, primary: r.primary }, heroOverlay: r.heroOverlay }, { ...presetFor(baseStyleFor(input, templateKey), design.accent), accentLocked: false })
+    design: finalize({ ...design, palette: { ...design.palette, primary: r.primary }, heroOverlay: r.heroOverlay }, { ...presetFor(baseStyleFor(input, templateKey), design.accent), accentLocked: lockAccent })
   };
 }
 
