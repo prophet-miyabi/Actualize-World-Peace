@@ -36,6 +36,11 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("login", help="YouTube Music にログイン(初回のみ)")
+    st = sub.add_parser("studio", help="歌詞(テキスト)から 解説・教材・英語+和訳の歌詞動画 を作る")
+    st.add_argument("--title", required=True)
+    st.add_argument("--artist", required=True)
+    st.add_argument("--lyrics-file", type=Path, required=True, help="歌詞のテキストファイル")
+    st.add_argument("--audio-url", help="音源のURL(省略時は自動検索)")
     sub.add_parser("adb-setup", help="[Android] ワイヤレスデバッグのペアリングと接続")
     sub.add_parser("adb-check", help="[Android] 録画の前提(adb/YouTube Musicアプリ/screenrecord)を点検")
     sub.add_parser("adb-inspect", help="[Android] 歌詞画面を出した状態で、読み取れるテキストと対応を表示")
@@ -62,6 +67,13 @@ def main(argv=None):
     if getattr(a, "bg_color", None):
         cfg.bg_color = a.bg_color
 
+    if a.cmd == "studio":
+        from .studio.project import Project
+        from .studio.studio import Studio
+        studio = Studio(a.work)
+        res = studio.run_pipeline(Project.create(a.work, a.title, a.artist, a.lyrics_file.read_text(encoding="utf-8"), a.audio_url))
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return
     if a.cmd == "adb-setup":
         from .android import setup
         return setup(cfg)

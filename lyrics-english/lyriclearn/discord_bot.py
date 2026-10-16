@@ -19,12 +19,14 @@ from .agent import Agent
 from .compose import probe_duration
 from .jobs import JobManager
 from .team.orchestrator import STAGES, PipelineError, run_pipeline
+from .studio.studio import PipelineError as StudioError, Studio
 from .team.roles import Team
 
 UPLOAD_LIMIT = 24 * 1024 * 1024
 
 # 担当エージェントごとのチャンネル(!setup で作成)
-LAB = {"lobby": ("lyrics-lobby", "全自動の起動 (!auto) と進捗の確認"),
+LAB = {"studio": ("lyrics-studio", "歌詞を貼ると、解説・英語教材・英語+和訳の歌詞動画を作る(ディレクターと対話)"),
+       "lobby": ("lyrics-lobby", "全自動の起動 (!auto) と進捗の確認"),
        "curator": ("1-curator", "曲選定担当: 日本で今聞かれている英語の曲を選ぶ"),
        "recorder": ("2-recorder", "録画担当: YouTube Music の歌詞(和訳)画面を録画"),
        "editor": ("3-editor", "編集担当: 背景を抜いてジャケット/アーティスト写真を挿入"),
@@ -53,6 +55,7 @@ class Bot(discord.Client):
         self.locks: dict[int, asyncio.Lock] = {}
         self.jobs = JobManager(work, profile, on_event=self._on_event, on_finish=self._on_finish)
         self.work, self.team, self.pipeline_running = work, None, False
+        self.studio = None
         self.reg_path = work / "discord_channels.json"
         self.channels: dict[str, int] = json.loads(self.reg_path.read_text()) if self.reg_path.exists() else {}
 
@@ -108,8 +111,13 @@ class Bot(discord.Client):
         if role:                                              # 担当チャンネル: その担当と直接話す
             if text.startswith("!"):
                 return await self._command(m.channel, text)
+            if role == "studio":
+                for a in m.attachments:                       # 長い歌詞は .txt 添付でもよい(テキストとして読むだけ)
+                    if a.filename.lower().endswith(".txt") and a.size <= 200_000:
+                        text += "\n" + (await a.read()).decode("utf-8", "replace")
+                return await self._studio_chat(text)
             if role == "lobby":
-                return await m.channel.send("全自動は `!auto`。個別の指示は各担当のチャンネルへ。")
+                return await m.channel.send("全自動の録画パイプラインは `!auto`。歌詞から作るなら lyrics-studio へ。")
             return await self._team_chat(role, text)
         if self.channel_id and m.channel.id != self.channel_id:
             return
@@ -119,6 +127,28 @@ class Bot(discord.Client):
             return await self._command(m.channel, text)
         if text:
             await self._turn(m.channel.id, text)
+
+    # ---- 歌詞スタジオ(歌詞 → 解説/教材/和訳つき歌詞動画) ----
+    def _studio(self) -> Studio:
+        if self.studio is None:
+            loop = self.loop
+
+            def post(role, text, files=None):
+                msg = f"**[{role}]** {text}" if role != "director" else text
+                files = [f for f in (files or []) if f.exists()]
+                asyncio.run_coroutine_threadsafe(self._send("studio", msg, files), loop).result(timeout=300)
+            self.studio = Studio(self.work, post=post)
+        return self.studio
+
+    async def _studio_chat(self, text: str):
+        ch = self.get_channel(self.channels["studio"])
+        studio = self._studio()
+        async with ch.typing():
+            try:
+                reply = await asyncio.to_thread(studio.chat, text)
+            except StudioError as e:
+                reply = f"制作が途中で止まりました: {e}"
+        await self._send("studio", reply, studio.take_files())
 
     # ---- 担当チーム ----
     def _team(self) -> Team:
@@ -166,7 +196,7 @@ class Bot(discord.Client):
         finally:
             self.pipeline_running = False
 
-    HELP = ("`!setup` 担当チャンネルを作成 / `!auto [ヒント]` 全自動 / `!auto resume <curator|recorder|editor|teacher>` 途中から再開 / "
+    HELP = ("`!setup` 担当チャンネルを作成(lyrics-studio に歌詞を貼ると解説・教材・和訳動画を作る) / `!auto [ヒント]` 全自動 / `!auto resume <curator|recorder|editor|teacher>` 途中から再開 / "
             "`!status` 端末の状態 / `!update` GitHub の最新コードを取り込んで再起動 / "
             "`!adb` adb 接続確認 / `!restart` 再起動")
 
