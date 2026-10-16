@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { OWNER_KEY, OWNER_NAME, setOwnerTaskStatus, syncOwnerTasksFromCrew } from '../company/ownerTasks';
 import { describeAiError } from '../lib/aiUsage';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
@@ -27,11 +28,12 @@ router.use(async (req: AuthRequest, res, next) => {
 
 router.get('/status', async (_req, res) => {
   await seedCompany();
+  await syncOwnerTasksFromCrew().catch((e) => console.error('owner task sync failed', e?.message));
   const since30 = new Date(Date.now() - 30 * 86_400_000);
   const since24 = new Date(Date.now() - 86_400_000);
   const [goals, tasks, actions, decided, events, costs, metrics, paused, configs, settings, reports, lastTick, counts, stats, lastRuns, selftests] = await Promise.all([
     prisma.companyGoal.findMany({ orderBy: { createdAt: 'desc' } }),
-    prisma.companyTask.findMany({ orderBy: { createdAt: 'desc' }, take: 120, select: { id: true, title: true, assignee: true, createdBy: true, status: true, risk: true, result: true, verification: true, error: true, parentId: true, costUsd: true, runAt: true, createdAt: true, finishedAt: true } }),
+    prisma.companyTask.findMany({ orderBy: [{ createdAt: 'desc' }], take: 220, select: { id: true, title: true, assignee: true, createdBy: true, status: true, risk: true, result: true, verification: true, error: true, parentId: true, costUsd: true, runAt: true, createdAt: true, finishedAt: true } }),
     prisma.companyAction.findMany({ where: { status: 'pending' }, orderBy: { createdAt: 'asc' }, include: { task: { select: { title: true } } } }),
     prisma.companyAction.findMany({ where: { status: { not: 'pending' } }, orderBy: { decidedAt: 'desc' }, take: 20, include: { task: { select: { title: true } } } }),
     prisma.companyEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 60 }),
@@ -69,6 +71,8 @@ router.get('/status', async (_req, res) => {
   const managedEnv = await prisma.systemSetting.findUnique({ where: { key: 'company_managed_environment' } });
   res.json({
     configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
+    // タスクの担当として選べる一覧（オーナー＋エージェント）
+    assignees: [{ key: OWNER_KEY, name: OWNER_NAME }, ...AGENTS.map((a) => ({ key: a.key, name: a.name }))],
     monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },
     health: { lastTickAt: lastTick?.value ?? null, queued: countBy.queued ?? 0, running: countBy.running ?? 0, awaitingApproval: countBy.awaiting_approval ?? 0, verifying: countBy.verifying ?? 0, failed24h, lastCeoDay: ceoDay?.value ?? null },
     models: COMPANY_MODELS,
@@ -205,7 +209,7 @@ router.put('/goals/:id', async (req: AuthRequest, res) => {
 // 人間からの直接の指示（CEO または任意のエージェントへ）
 router.post('/tasks', async (req: AuthRequest, res) => {
   const assignee = String(req.body?.assignee ?? 'ceo');
-  if (!isAgentKey(assignee)) return res.status(400).json({ error: '担当が正しくありません' });
+  if (!isAgentKey(assignee) && assignee !== OWNER_KEY) return res.status(400).json({ error: '担当が正しくありません' });
   const title = String(req.body?.title ?? '').trim().slice(0, 120);
   const instructions = String(req.body?.instructions ?? '').trim().slice(0, 6000);
   if (!title || !instructions) return res.status(400).json({ error: '題名と指示を入力してください' });
@@ -221,6 +225,16 @@ router.post('/tasks/:id/run', async (req: AuthRequest, res) => {
   if (t.status !== 'queued') await prisma.companyTask.update({ where: { id: t.id }, data: { status: 'queued', runAt: new Date(), error: null } });
   void runTask(t.id).catch((e) => console.error('run task failed', e?.message));
   res.json({ ok: true });
+});
+
+// オーナー自身のタスクの状態を変える（未着手 / 進行中 / 完了 / 取り消し）。メモを付けられる
+router.put('/tasks/:id/owner-status', async (req: AuthRequest, res) => {
+  const status = String(req.body?.status ?? '');
+  if (!['queued', 'running', 'done', 'canceled'].includes(status)) return res.status(400).json({ error: '状態が正しくありません' });
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 2000) : undefined;
+  const t = await setOwnerTaskStatus(String(req.params.id), status as any, note || undefined);
+  if (!t) return res.status(404).json({ error: 'オーナーのタスクが見つかりません' });
+  res.json({ task: t });
 });
 
 router.post('/tasks/:id/cancel', async (req: AuthRequest, res) => {

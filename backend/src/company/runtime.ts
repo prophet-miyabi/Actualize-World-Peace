@@ -117,6 +117,10 @@ export async function buildAgentContext(agent: AgentDef) {
 }
 
 export async function runTask(taskId: string): Promise<void> {
+  {
+    const head = await prisma.companyTask.findUnique({ where: { id: taskId }, select: { assignee: true } });
+    if (head?.assignee === 'owner') return; // オーナーの仕事はエージェントが実行しない
+  }
   const task = await prisma.companyTask.findUnique({ where: { id: taskId } });
   if (!task || task.status !== 'queued') return;
   const agent = AGENT_BY_KEY.get(task.assignee);

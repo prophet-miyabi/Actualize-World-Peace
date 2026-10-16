@@ -37,7 +37,7 @@ async function createIfAbsent(data: { assignee: string; title: string; instructi
 
 // 検証待ちのタスクに、監査役の検証タスクを付ける（作った本人は検証しない）
 async function queueAudits() {
-  const waiting = await prisma.companyTask.findMany({ where: { status: 'verifying' }, take: 10 });
+  const waiting = await prisma.companyTask.findMany({ where: { status: 'verifying', assignee: { not: 'owner' } }, take: 10 });
   for (const t of waiting) {
     const existing = await prisma.companyTask.findFirst({ where: { assignee: 'auditor', parentId: t.id, status: { in: ['queued', 'running'] } } });
     if (existing) continue;
@@ -155,7 +155,7 @@ export async function companyTick(now = new Date()) {
     const slots = settings.concurrency - active;
     if (slots > 0) {
       // intelligence が止まっている間は新しいタスクを始めない（10分ごとに1件だけ試す）
-      const due = aiOutageActive() ? [] : await prisma.companyTask.findMany({ where: { status: 'queued', runAt: { lte: now } }, orderBy: [{ createdAt: 'asc' }], take: slots });
+      const due = aiOutageActive() ? [] : await prisma.companyTask.findMany({ where: { status: 'queued', assignee: { not: 'owner' }, runAt: { lte: now } }, orderBy: [{ createdAt: 'asc' }], take: slots });
       await Promise.all(due.map((t) => runTask(t.id).catch((e) => console.error('company task failed', t.id, e?.message))));
     }
   } catch (e: any) {
@@ -168,7 +168,7 @@ export async function companyTick(now = new Date()) {
 
 // 実行中のまま止まったタスクを待機に戻す（起動時は全部、通常は一定時間を超えたもの）
 export async function recoverStaleRuns(olderThanMs: number) {
-  const stale = await prisma.companyTask.findMany({ where: { status: 'running', startedAt: { lt: new Date(Date.now() - olderThanMs) } }, select: { id: true, attempts: true } });
+  const stale = await prisma.companyTask.findMany({ where: { status: 'running', assignee: { not: 'owner' }, startedAt: { lt: new Date(Date.now() - olderThanMs) } }, select: { id: true, attempts: true } });
   for (const t of stale) {
     await prisma.companyTask.update({ where: { id: t.id }, data: t.attempts >= 3 ? { status: 'failed', error: '実行が途中で止まりました（再試行の上限）' } : { status: 'queued', runAt: new Date() } });
     await prisma.agentRun.updateMany({ where: { taskId: t.id, finishedAt: null }, data: { status: 'error', error: '中断', finishedAt: new Date() } });

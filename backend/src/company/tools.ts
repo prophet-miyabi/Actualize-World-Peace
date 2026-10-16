@@ -180,7 +180,7 @@ export const TOOLS: ToolDef[] = [
     input_schema: {
       type: 'object',
       properties: {
-        assignee: { type: 'string', description: 'エージェントのキー（research/product/engineering/qa/data/marketing/content/growth/cs/finance/partnership/security/legal/coo）' },
+        assignee: { type: 'string', description: 'エージェントのキー（research/product/engineering/qa/data/marketing/content/instagram/growth/cs/finance/partnership/security/legal/coo）。人にしかできないこと（PRのマージ・契約・支払い・外部サービスの設定）は owner（Miyabi）に頼める' },
         title: { type: 'string' }, instructions: { type: 'string' },
         risk: { type: 'string', enum: ['low', 'medium'], description: '成果が外部に影響するなら medium（監査役が検証する）' },
         runInHours: { type: 'number', description: '何時間後に実行するか（既定: すぐ）' }
@@ -189,7 +189,7 @@ export const TOOLS: ToolDef[] = [
     },
     run: async (i, ctx) => {
       const assignee = text(i.assignee, 30);
-      if (!isAgentKey(assignee) || assignee === 'ceo' || assignee === 'auditor') return { error: `${assignee} には割り当てられません` };
+      if ((!isAgentKey(assignee) && assignee !== 'owner') || assignee === 'ceo' || assignee === 'auditor') return { error: `${assignee} には割り当てられません` };
       // 同じ担当に同じ題名の未完了タスクがあれば作らない
       const dup = await prisma.companyTask.findFirst({ where: { assignee, title: text(i.title, 120), status: { in: ['queued', 'running', 'awaiting_approval', 'verifying'] } } });
       if (dup) return { error: '同じ題名の未完了タスクがあります', existingId: dup.id };

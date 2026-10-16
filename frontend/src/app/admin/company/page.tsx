@@ -17,7 +17,7 @@ type Task = { id: string; title: string; assignee: string; createdBy: string; st
 type Action = { id: string; taskId: string; agent: string; tool: string; input: any; reason: string; risk: string; status: string; result?: any; decidedAt?: string | null; createdAt: string; task: { title: string } };
 type Settings = { ceoHour: number; monthlyCapUsd: number; concurrency: number; discordApprovals: boolean; discordActivity: boolean };
 type Status = {
-  configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; tasks: Task[]; actions: Action[]; decided: Action[];
+  configured: boolean; paused: boolean; goals: Goal[]; org: Agent[]; assignees?: { key: string; name: string }[]; tasks: Task[]; actions: Action[]; decided: Action[];
   events: { id: string; type: string; actor: string; payload: any; createdAt: string }[];
   costs: { companyAgents30d: { agent: string; runs: number; costUsd: number }[]; userFacingAi30d: { costUsd: number; calls: number } };
   metrics: { totals: { users: number; publishedPages: number; activeUsers7d: number }; period: { signups: number; pages: number; posts: number; bookings: number; orders: number } };
@@ -84,7 +84,10 @@ export default function CompanyPage() {
     active7_rate: s.metrics.totals.users ? Math.round((s.metrics.totals.activeUsers7d / s.metrics.totals.users) * 100) : 0
   };
   const cost30 = s.costs.companyAgents30d.reduce((a, c) => a + c.costUsd, 0);
-  const agentName = (k: string) => s.org.find((a) => a.key === k)?.name ?? (k === 'owner' || k === 'human' ? 'あなた' : k === 'system' ? '定期' : k);
+  const assignees = s.assignees ?? s.org.map((a) => ({ key: a.key, name: a.name }));
+  const agentName = (k: string) => assignees.find((a) => a.key === k)?.name ?? (k === 'owner' ? 'Miyabi（オーナー）' : k === 'human' ? 'あなた' : k === 'system' ? '定期' : k === 'crew' ? 'ローンチ・クルー' : k);
+  // オーナーのタスクは「実行」ではなく人がやる仕事なので、状態の言葉を変える
+  const statusLabel = (t: Task) => t.assignee === 'owner' ? ({ queued: '未着手', running: '進行中', done: '完了', canceled: '取り消し' } as Record<string, string>)[t.status] ?? t.status : STATUS[t.status] ?? t.status;
   const tickAge = s.health.lastTickAt ? Math.round((Date.now() - new Date(s.health.lastTickAt).getTime()) / 60_000) : null;
   const selftestDone = s.org.filter((a) => a.selftest?.status === 'done').length;
 
@@ -253,7 +256,7 @@ export default function CompanyPage() {
             <p className="font-bold">エージェントに指示する（バックグラウンドで実行。会話で指示したいときは「AWP Intelligence」）</p>
             <div className="flex gap-2">
               <select value={newTask.assignee} onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })} className="border rounded-lg px-2 py-2 text-sm">
-                {s.org.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
+                {assignees.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
               </select>
               <input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="題名" maxLength={120} className="flex-1 border rounded-lg px-3 py-2 text-base" required />
             </div>
@@ -262,7 +265,8 @@ export default function CompanyPage() {
           </form>
           <div className="flex flex-wrap gap-2 text-xs">
             <select value={taskFilter.status} onChange={(e) => setTaskFilter({ ...taskFilter, status: e.target.value })} className="border rounded-lg px-2 py-1.5 bg-white"><option value="">すべての状態</option>{Object.entries(STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-            <select value={taskFilter.assignee} onChange={(e) => setTaskFilter({ ...taskFilter, assignee: e.target.value })} className="border rounded-lg px-2 py-1.5 bg-white"><option value="">すべての担当</option>{s.org.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}</select>
+            <select value={taskFilter.assignee} onChange={(e) => setTaskFilter({ ...taskFilter, assignee: e.target.value })} className="border rounded-lg px-2 py-1.5 bg-white"><option value="">すべての担当</option>{assignees.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}</select>
+            <button type="button" onClick={() => setTaskFilter({ ...taskFilter, assignee: 'owner', status: '' })} className={`rounded-lg px-2 py-1.5 font-bold ${taskFilter.assignee === 'owner' ? 'bg-violet-600 text-white' : 'bg-white border'}`}>私のタスク {s.tasks.filter((t) => t.assignee === 'owner' && (t.status === 'queued' || t.status === 'running')).length}</button>
             <input value={taskFilter.q} onChange={(e) => setTaskFilter({ ...taskFilter, q: e.target.value })} placeholder="題名で検索" className="border rounded-lg px-2 py-1.5 flex-1 min-w-[8rem]" />
           </div>
           <ul className="bg-white border rounded-2xl divide-y">
@@ -274,10 +278,18 @@ export default function CompanyPage() {
                     <span className="block font-bold truncate">{t.title}</span>
                     <span className="block text-[11px] text-gray-500">{agentName(t.assignee)}・from {agentName(t.createdBy)}・{when(t.createdAt)}{t.costUsd ? `・${usd(t.costUsd)}` : ''}</span>
                   </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{STATUS[t.status] ?? t.status}{t.verification?.passed === false ? '（監査NG）' : t.verification?.passed === true ? '（監査OK）' : ''}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_CLS[t.status] ?? ''}`}>{statusLabel(t)}{t.verification?.passed === false ? '（監査NG）' : t.verification?.passed === true ? '（監査OK）' : ''}</span>
                 </button>
                 {open === t.id && (
                   <div className="mt-3 space-y-2 text-xs">
+                    {t.assignee === 'owner' && (
+                      <div className="flex flex-wrap gap-2">
+                        {t.status !== 'running' && t.status !== 'done' && <button type="button" disabled={!!busy} onClick={() => run('owner-' + t.id, () => api.put(`/company/tasks/${t.id}/owner-status`, { status: 'running' }), '進行中にしました。')} className="rounded-full bg-sky-600 text-white font-bold px-3 py-1.5">着手する</button>}
+                        {t.status !== 'done' && <button type="button" disabled={!!busy} onClick={() => { const note = window.prompt('完了のメモ（任意）') ?? undefined; run('owner-' + t.id, () => api.put(`/company/tasks/${t.id}/owner-status`, { status: 'done', note }), '完了にしました。'); }} className="rounded-full bg-green-600 text-white font-bold px-3 py-1.5">完了にする</button>}
+                        {t.status !== 'queued' && <button type="button" disabled={!!busy} onClick={() => run('owner-' + t.id, () => api.put(`/company/tasks/${t.id}/owner-status`, { status: 'queued' }), '未着手に戻しました。')} className="rounded-full border font-bold px-3 py-1.5">未着手に戻す</button>}
+                        {t.status !== 'canceled' && t.status !== 'done' && <button type="button" disabled={!!busy} onClick={() => run('owner-' + t.id, () => api.put(`/company/tasks/${t.id}/owner-status`, { status: 'canceled' }), '取り消しました。')} className="rounded-full border text-red-600 font-bold px-3 py-1.5">取り消す</button>}
+                      </div>
+                    )}
                     {detail?.task?.instructions && <pre className="whitespace-pre-wrap bg-gray-50 rounded-xl p-3 font-sans">{detail.task.instructions}</pre>}
                     {t.result && (
                       <div className="bg-violet-50 rounded-xl p-3 space-y-1">
