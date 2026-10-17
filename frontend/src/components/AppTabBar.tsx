@@ -28,7 +28,8 @@ function token() {
 export default function AppTabBar() {
   const pathname = usePathname() || '/';
   const [unread, setUnread] = useState(0);
-  const show = APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`));
+  // /preview/style と /showcase は iframe で描く見本なので、タブバーは出さない
+  const show = !pathname.startsWith('/preview/style') && !pathname.startsWith('/showcase') && APP_PREFIXES.some((p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`));
 
   // 未読の通知の数（ログイン中だけ。60秒ごと・通知画面を開いたら消える）
   useEffect(() => {

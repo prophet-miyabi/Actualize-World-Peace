@@ -8,6 +8,7 @@ import { isGenerating, publicLp, runDesignJob, storedSections, type StoredSectio
 import { classifyIndustryByRules, getPlaybook, industryOf } from '../ai/playbook';
 import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
 import { ACCENT_SWATCHES, STYLE_KEYS, isHex } from '../ai/styles';
+import { showcasePayload } from '../lib/showcase';
 import { writeSection } from '../ai/sectionWriter';
 import { FEATURES, getFeature, publicCatalog } from '../features/catalog';
 import { authenticate, AuthRequest } from '../middlewares/auth';
@@ -258,6 +259,12 @@ router.post('/admin/domains/:id/:action', authenticate, async (req: AuthRequest,
   res.json({ ok: true });
 });
 
+// トップページのスマホ見本（9パターン・架空）。実際のページ部品で描くためのデータ
+router.get('/showcase', async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({ items: await showcasePayload((process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')) });
+});
+
 // ページの型（12種類）とメインカラーの候補
 router.get('/templates', (req, res) => {
   res.json({ templates: STYLE_KEYS.map((key) => ({ key, ...PRESET_META[key] })), swatches: ACCENT_SWATCHES });
@@ -339,7 +346,7 @@ const LINE_URL_ERROR = 'LINEの友だち追加URL（https://lin.ee/... の形式
 export const RESERVED_SLUGS = [
   'login', 'dashboard', 'wizard', 'billing', 'domain', 'by-domain', 'tls-ask', 'ai-generate', 'design',
   'features', 'templates', 'preview', 'line', 'list', 'public-slugs', 'notify-search-engines', 'social',
-  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'analytics', 'bookings', 'products', 'posts', 'feed', 'chat', 'shop', 'reserve', 'plans', 'order', 'orders', 'shop-settings', 'sell', 'cart', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt', 'me', 'create', 'notifications', 'p', 'u',
+  'agents', 'automation', 'growth', 'photos', 'tools', 'export', 'contact', 'icon', 'apple-icon', 'forgot-password', 'harness', 'discover', 'profile', 'terms', 'builder', 'wallet', 'community', 'analytics', 'bookings', 'products', 'posts', 'feed', 'chat', 'shop', 'reserve', 'plans', 'order', 'orders', 'shop-settings', 'sell', 'cart', 'dev-login', 'api', 'admin', 'privacy', 'legal', 'sitemap.xml', 'robots.txt', 'me', 'create', 'notifications', 'p', 'u', 'showcase',
   // slugは {slug}.MAIN_DOMAIN のサブドメインとしても使われるため（frontend/src/proxy.ts）、
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',

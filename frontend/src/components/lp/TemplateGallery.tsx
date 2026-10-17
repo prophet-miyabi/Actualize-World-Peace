@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import api from '@/lib/api';
-import { buildTokens, FeatureStrip, HeroSection, StrengthsSection, TopBar, type Lp } from './LandingView';
+import { buildTokens } from './LandingView';
 
 type TemplateOption = { key: string; label: string; description: string; bestFor: string; mode: 'light' | 'dark'; defaultAccent: string; design: any };
 type Swatch = { hex: string; label: string };
@@ -102,23 +102,15 @@ export default function TemplateGallery({ businessName, heroTitle, strengths, pu
         <div className="grid grid-cols-2 gap-3 sm:gap-5">
           {templates.map((t) => {
             const tokens = buildTokens(t.design);
-            const previewLp: Lp = {
-              slug: '', businessName, heroTitle, strengths, purpose,
-              socialProof: null, scarcityOffer: null,
-              design: { ...t.design, copy: { ...(t.design.copy ?? {}), strengthLabels: strengths.filter(Boolean).map(shortLabel) } },
-              hasImage: false, imageVersion: 0, sections: []
-            };
+            // 見本は /preview/style を幅420pxの iframe で描く（大きな画面でもスマホ用のスタイルのまま縮小される）
+            const qs = new URLSearchParams({ style: t.key, name: businessName, title: heroTitle, s: strengths.filter(Boolean).join('|'), purpose: purpose ?? 'business', ...(accent ? { accent } : {}) });
             const selected = value === t.key;
             return (
               <button key={t.key} type="button" onClick={() => onChange(t.key)}
                 className={`relative text-left rounded-2xl overflow-hidden border-2 transition-all ${selected ? 'border-violet-500 ring-2 ring-violet-200' : 'border-gray-200 hover:border-gray-300'}`}>
                 <ScaledPreview background={tokens.p.background}>
-                  <div style={{ color: tokens.p.text, fontFamily: tokens.font.body }}>
-                    <TopBar lp={previewLp} tokens={tokens} />
-                    <HeroSection lp={previewLp} imageUrl={null} tokens={tokens} />
-                    <FeatureStrip lp={previewLp} tokens={tokens} />
-                    <StrengthsSection lp={previewLp} tokens={tokens} />
-                  </div>
+                  <iframe src={`/preview/style?${qs.toString()}`} title={`${t.label}の見本`} tabIndex={-1} aria-hidden scrolling="no" loading="lazy"
+                    style={{ width: PREVIEW_WIDTH, height: PREVIEW_WIDTH * 1.25, border: 0, pointerEvents: 'none', background: tokens.p.background }} />
                 </ScaledPreview>
                 {selected && (
                   <span className="absolute top-2 right-2 bg-violet-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow">選択中</span>

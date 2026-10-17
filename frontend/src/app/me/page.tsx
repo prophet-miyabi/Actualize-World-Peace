@@ -153,6 +153,9 @@ export default function MePage() {
             : d.posts.map((p) => <PostCard key={p.id} post={p} onDelete={removePost} />)}
         </section>
 
+        <div className="text-center">
+          <button type="button" onClick={() => { try { localStorage.removeItem('token'); localStorage.removeItem('adminToken'); } catch { /* 無視 */ } router.replace('/'); }} className="text-xs font-bold text-gray-500 underline">ログアウト</button>
+        </div>
         <p className="text-[11px] text-gray-500 text-center"><Link href="/terms" className="underline">利用規約</Link>・<Link href="/privacy" className="underline">プライバシー</Link>・アカウントの削除とデータの持ち出しはダッシュボードの「データの書き出し」から</p>
       </div>
     </main>

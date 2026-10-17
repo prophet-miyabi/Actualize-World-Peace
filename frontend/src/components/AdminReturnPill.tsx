@@ -11,13 +11,20 @@ export default function AdminReturnPill() {
   const [mode, setMode] = useState<'none' | 'tester' | 'admin'>('none');
 
   useEffect(() => {
-    if (pathname.startsWith('/admin')) { setMode('none'); return; }
+    // 運営者画面の中と、見本を iframe で描く画面（/showcase, /preview）には出さない
+    if (pathname.startsWith('/admin') || pathname.startsWith('/showcase') || pathname.startsWith('/preview')) { setMode('none'); return; }
     let stop = false;
     try {
       if (localStorage.getItem('adminToken')) { setMode('tester'); return; }
       const t = localStorage.getItem('token');
       if (!t) { setMode('none'); return; }
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${t}` } }).then((r) => r.json()).then((d) => { if (!stop) setMode(d?.isAdmin ? 'admin' : 'none'); }).catch(() => {});
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${t}` } }).then(async (r) => {
+        if (stop) return;
+        // 期限切れ・無効なトークンは捨てて、何も出さない（管理者としてログイン中のときだけ表示する）
+        if (r.status === 401) { try { localStorage.removeItem('token'); localStorage.removeItem('adminToken'); } catch { /* 無視 */ } setMode('none'); return; }
+        const d = await r.json().catch(() => ({}));
+        setMode(d?.isAdmin === true ? 'admin' : 'none');
+      }).catch(() => { if (!stop) setMode('none'); });
     } catch { setMode('none'); }
     return () => { stop = true; };
   }, [pathname]);

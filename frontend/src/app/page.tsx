@@ -2,6 +2,22 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteAssetImage from '@/components/SiteAssetImage';
 import SalonMockup from '@/components/SalonMockup';
+import PhoneShowcase, { type ShowcaseItem } from '@/components/PhoneShowcase';
+import HeaderAuthLinks from '@/components/HeaderAuthLinks';
+
+// スマホ見本のデータ（9パターン）。取れないときは従来のサロン見本を出す
+const API = process.env.API_INTERNAL_URL || 'http://localhost:8000/api';
+async function fetchShowcase(): Promise<ShowcaseItem[]> {
+  try {
+    const res = await fetch(`${API}/lp/showcase`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const d = await res.json();
+    // 画像URLは公開側のオリジンに合わせる（同じ /api 配下で配信される）
+    return (d.items as ShowcaseItem[]).map((it) => ({ ...it, imageUrl: it.imageUrl ? it.imageUrl.replace(/^https?:\/\/[^/]+/, '') : null }));
+  } catch {
+    return [];
+  }
+}
 import Logo from '@/components/Logo';
 
 // AWP 自体のLP（ログイン画面の前に表示するサービス紹介）。
@@ -101,7 +117,8 @@ function Cta({ className = '' }: { className?: string }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const showcase = await fetchShowcase();
   return (
     <div className="bg-white text-gray-900" style={{ fontFamily: 'var(--font-sans-jp)' }}>
       {/* ヘッダー */}
@@ -111,8 +128,8 @@ export default function Home() {
           <nav className="flex items-center gap-5 text-sm">
             <a href="#features" className="hidden sm:inline text-gray-600 hover:text-gray-900">機能</a>
             <a href="#pricing" className="hidden sm:inline text-gray-600 hover:text-gray-900">料金</a>
-            <Link href="/login" className="text-gray-700 font-bold">ログイン</Link>
-            <Link href={SIGNUP} className="bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white font-bold px-4 py-2 rounded-full hover:brightness-110">はじめる</Link>
+            {/* ログイン状態で出し分け（未ログイン: ログイン／はじめる、ログイン中: マイページ、管理者: 運営者画面も） */}
+            <HeaderAuthLinks signupHref={SIGNUP} />
           </nav>
         </div>
       </header>
@@ -143,7 +160,7 @@ export default function Home() {
 
           {/* 画面イメージ（スマホの枠の中に、作成されるページの完成度を表示） */}
           <div aria-hidden className="flex justify-center">
-            <SalonMockup />
+            {showcase.length > 0 ? <PhoneShowcase items={showcase} /> : <SalonMockup />}
           </div>
         </div>
       </section>
