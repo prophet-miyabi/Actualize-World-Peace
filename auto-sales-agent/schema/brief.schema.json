@@ -2,43 +2,210 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "案件ブリーフ（analyzer の出力）",
   "type": "object",
-  "required": ["id", "source", "client", "pain", "screen", "target", "facts", "assumptions"],
+  "required": [
+    "id",
+    "source",
+    "client",
+    "pain",
+    "screen",
+    "target",
+    "facts",
+    "assumptions"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "案件ID（YYYYMMDD-媒体-短い英数字）" },
-    "source": { "type": "object", "properties": { "platform": { "type": "string", "enum": ["crowdworks", "lancers", "coconala", "direct", "other"] }, "url": { "type": "string" }, "title": { "type": "string" } } },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "案件ID（YYYYMMDD-媒体-短い英数字）"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "crowdworks",
+            "lancers",
+            "coconala",
+            "direct",
+            "other"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
     "client": {
-      "type": "object", "required": ["brand", "industry"],
+      "type": "object",
+      "required": [
+        "brand",
+        "industry"
+      ],
       "properties": {
-        "brand": { "type": "string", "description": "屋号・会社名（不明なら「（御社名）」）" },
-        "industry": { "type": "string", "description": "業種（例: リフォーム業、整体院、人材派遣）" },
-        "area": { "type": "string", "description": "地域（不明なら空）" },
-        "services": { "type": "array", "items": { "type": "string" }, "description": "主なサービス・商品名（業界用語で）" },
-        "terms": { "type": "array", "items": { "type": "string" }, "description": "画面に使う業界用語（例: 現調、見積、着工、キャスト、枠）" }
+        "brand": {
+          "type": "string",
+          "description": "屋号・会社名（不明なら「（御社名）」）"
+        },
+        "industry": {
+          "type": "string",
+          "description": "業種（例: リフォーム業、整体院、人材派遣）"
+        },
+        "area": {
+          "type": "string",
+          "description": "地域（不明なら空）"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "主なサービス・商品名（業界用語で）"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "画面に使う業界用語（例: 現調、見積、着工、キャスト、枠）"
+        }
       }
     },
-    "pain": { "type": "array", "items": { "type": "string" }, "description": "解決したい課題。案件文の言葉を引用する" },
+    "pain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "解決したい課題。案件文の言葉を引用する"
+    },
     "screen": {
-      "type": "object", "required": ["template"],
+      "type": "object",
+      "required": [
+        "template"
+      ],
       "properties": {
-        "template": { "type": "string", "enum": ["lp", "crm", "booking"], "description": "lp=集客LP / crm=案件・顧客・架電・スタッフの業務管理 / booking=予約・マッチング・顧客管理" },
-        "must_have": { "type": "array", "items": { "type": "string" }, "description": "必要な画面・機能" },
-        "nice_to_have": { "type": "array", "items": { "type": "string" } }
+        "template": {
+          "type": "string",
+          "enum": [
+            "lp",
+            "crm",
+            "booking",
+            "lp_drm"
+          ],
+          "description": "lp=集客LP / crm=案件・顧客・架電・スタッフの業務管理 / booking=予約・マッチング・顧客管理 / lp_drm=10セクションの高成約LP（新PASONA×BEAF。brief.drm に全コピーを入れる）"
+        },
+        "must_have": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "必要な画面・機能"
+        },
+        "nice_to_have": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-    "target": { "type": "string", "description": "エンドユーザー（LPなら来店客、業務系なら社内の誰が使うか）" },
-    "budget": { "type": "object", "properties": { "min": { "type": "number" }, "max": { "type": "number" }, "note": { "type": "string" } } },
-    "deadline": { "type": "string", "description": "希望納期（原文のまま。不明なら空）" },
-    "tone": { "type": "string", "description": "見た目の方向（例: 信頼感・清潔・力強い・やわらかい）" },
-    "palette": { "type": "object", "properties": { "primary": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }, "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" } } },
-    "facts": { "type": "array", "items": { "type": "string" }, "description": "案件文に明記されている事実" },
-    "assumptions": { "type": "array", "items": { "type": "string" }, "description": "推測した事項（提案文では『〜と想定』と書く）" },
-    "demo_data": {
-      "type": "object", "description": "テンプレートに流し込むダミーデータ（業界用語で）",
+    "target": {
+      "type": "string",
+      "description": "エンドユーザー（LPなら来店客、業務系なら社内の誰が使うか）"
+    },
+    "budget": {
+      "type": "object",
       "properties": {
-        "menu": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "price": { "type": "string" }, "note": { "type": "string" } } } },
-        "staff": { "type": "array", "items": { "type": "string" } },
-        "statuses": { "type": "array", "items": { "type": "string" }, "description": "案件/予約の状態（例: 新規, 現調予定, 見積提出, 受注, 着工, 完了）" },
-        "records": { "type": "array", "items": { "type": "object" }, "description": "一覧に出す行（キーは自由。テンプレートが参照するのは name, status, staff, date, amount, memo, phone_masked）" }
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "deadline": {
+      "type": "string",
+      "description": "希望納期（原文のまま。不明なら空）"
+    },
+    "tone": {
+      "type": "string",
+      "description": "見た目の方向（例: 信頼感・清潔・力強い・やわらかい）"
+    },
+    "palette": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "案件文に明記されている事実"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "推測した事項（提案文では『〜と想定』と書く）"
+    },
+    "demo_data": {
+      "type": "object",
+      "description": "テンプレートに流し込むダミーデータ（業界用語で）",
+      "properties": {
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "price": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "staff": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "案件/予約の状態（例: 新規, 現調予定, 見積提出, 受注, 着工, 完了）"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "一覧に出す行（キーは自由。テンプレートが参照するのは name, status, staff, date, amount, memo, phone_masked）"
+        }
       }
     }
   }

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{brand}}｜{{tagline}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script id="brief" type="application/json">{{brief_json}}</script>
+<style>
+  :root { --primary: {{primary}}; --accent: {{accent}}; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+  .serif { font-family: 'Noto Serif JP', serif; }
+  .bg-primary { background: var(--primary); } .text-primary { color: var(--primary); } .border-primary { border-color: var(--primary); }
+  .bg-accent { background: var(--accent); } .text-accent { color: var(--accent); }
+  .ring-primary:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); }
+  [x-cloak] { display: none !important; }
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+  .tint { background: color-mix(in srgb, var(--primary) 5%, white); }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .3em; color: var(--primary); }
+</style>
+</head>
+<body class="text-slate-800 bg-white" x-data="lp()" x-init="init()">
+
+<!-- 上部バー -->
+<header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-slate-100">
+  <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between gap-3">
+    <a href="#top" class="font-black tracking-wide text-[15px] truncate">{{brand}}</a>
+    <nav class="hidden md:flex items-center gap-6 text-sm text-slate-600">
+      <a href="#benefit" class="hover:text-slate-900">できること</a>
+      <a href="#reasons" class="hover:text-slate-900">選ばれる理由</a>
+      <a href="#pricing" class="hover:text-slate-900">料金・流れ</a>
+      <a href="#faq" class="hover:text-slate-900">よくある質問</a>
+    </nav>
+    <a href="#form" class="bg-primary text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full shadow-sm hover:brightness-110" x-text="cta.primary"></a>
+  </div>
+</header>
+
+<!-- Sec 1: ファーストビュー -->
+<section id="top" class="relative overflow-hidden">
+  <div class="absolute inset-0 -z-10" style="background: radial-gradient(900px 420px at 85% 0%, color-mix(in srgb, var(--primary) 14%, white), transparent 60%), linear-gradient(180deg, #fff, #f8fafc);"></div>
+  <div class="max-w-6xl mx-auto px-5 pt-10 pb-12 md:pt-20 md:pb-24 grid md:grid-cols-12 gap-10 items-center">
+    <div class="md:col-span-7 reveal">
+      <div class="flex flex-wrap gap-2 mb-5">
+        <template x-for="b in hero.badges" :key="b"><span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary bg-white border border-slate-200 rounded-full px-3 py-1"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span><span x-text="b"></span></span></template>
+      </div>
+      <p class="text-sm font-bold text-slate-500 mb-3" x-text="hero.eyebrow"></p>
+      <h1 class="text-[2rem] md:text-5xl font-black leading-[1.25] tracking-tight mb-5 whitespace-pre-line" x-text="hero.headline"></h1>
+      <p class="text-slate-600 text-[15px] md:text-lg leading-relaxed mb-7 max-w-xl whitespace-pre-line" x-text="hero.sub"></p>
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <a href="#form" class="bg-primary text-white font-bold px-8 py-4 rounded-full shadow-lg hover:brightness-110 text-base text-center" x-text="cta.primary"></a>
+        <a href="#benefit" class="inline-flex items-center justify-center font-bold px-8 py-4 rounded-full border border-slate-300 bg-white hover:bg-slate-50" x-text="cta.secondary"></a>
+      </div>
+      <p class="text-xs text-slate-500 mt-3" x-text="cta.micro"></p>
+    </div>
+    <div class="md:col-span-5 reveal">
+      <div class="relative aspect-[4/3] rounded-3xl shadow-2xl overflow-hidden" style="background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 85%, black), var(--primary) 50%, color-mix(in srgb, var(--accent) 70%, white));">
+        <div class="absolute inset-0 opacity-25" style="background-image: linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px); background-size: 40px 40px;"></div>
+        <svg viewBox="0 0 400 300" class="absolute inset-0 w-full h-full" aria-hidden><polyline fill="none" stroke="rgba(255,255,255,.9)" stroke-width="4" stroke-linecap="round" points="20,230 80,210 130,220 180,170 230,160 280,120 330,110 380,60"/><polyline fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3" stroke-dasharray="6 8" points="20,240 80,235 130,228 180,222 230,210 280,200 330,196 380,185"/></svg>
+        <div class="absolute left-5 bottom-5 right-5 text-white">
+          <p class="text-[11px] tracking-[0.3em] opacity-80 mb-1" x-text="hero.visualLabel"></p>
+          <p class="text-lg font-black leading-snug" x-text="hero.visualCaption"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 2: 実績・信頼 -->
+<section class="px-5 -mt-6 md:-mt-10 relative z-10">
+  <div class="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <template x-for="(s, i) in stats" :key="i">
+      <div class="p-4 md:p-6 text-center" :class="i > 0 && 'border-l border-slate-100'">
+        <p class="text-2xl md:text-3xl font-black text-primary"><span x-text="s.value"></span><span class="text-sm font-bold ml-0.5" x-text="s.unit"></span></p>
+        <p class="text-[12px] md:text-sm font-bold mt-1" x-text="s.label"></p>
+        <p class="text-[10px] text-slate-400 mt-1" x-text="s.note"></p>
+      </div>
+    </template>
+  </div>
+  <p class="max-w-5xl mx-auto text-[11px] text-slate-400 mt-2 text-right" x-text="statsNote"></p>
+</section>
+
+<!-- Sec 3: 共感・問題提起 -->
+<section id="pain" class="px-5 py-16 md:py-24">
+  <div class="max-w-4xl mx-auto">
+    <p class="eyebrow text-center mb-3">CHECK</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-3" x-text="pain.title"></h2>
+    <p class="text-center text-slate-600 mb-8" x-text="pain.sub"></p>
+    <div class="grid md:grid-cols-2 gap-3">
+      <template x-for="(c, i) in pain.checks" :key="i">
+        <button type="button" @click="toggleCheck(i)" class="text-left flex items-start gap-3 rounded-2xl border p-4 bg-white transition" :class="checked.has(i) ? 'border-primary shadow-sm' : 'border-slate-200'">
+          <span class="mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0" :class="checked.has(i) ? 'bg-primary border-primary text-white' : 'border-slate-300'"><span x-show="checked.has(i)">✓</span></span>
+          <span class="text-[15px] font-bold leading-relaxed" x-text="c"></span>
+        </button>
+      </template>
+    </div>
+    <div class="mt-6 rounded-2xl p-5 md:p-6 border" :class="checked.size >= 2 ? 'bg-amber-50 border-amber-200' : 'tint border-slate-100'">
+      <p class="font-bold mb-1" x-text="checked.size >= 2 ? pain.riskTitleChecked.replace('{n}', checked.size) : pain.riskTitle"></p>
+      <p class="text-sm text-slate-700 leading-relaxed" x-text="pain.risk"></p>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 4: 解決策とベネフィット -->
+<section id="benefit" class="px-5 py-16 md:py-24 tint">
+  <div class="max-w-5xl mx-auto">
+    <p class="eyebrow text-center mb-3">SOLUTION</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-3 whitespace-pre-line" x-text="solution.title"></h2>
+    <p class="text-center text-slate-600 mb-10 max-w-2xl mx-auto" x-text="solution.sub"></p>
+    <div class="grid md:grid-cols-3 gap-4 md:gap-6">
+      <template x-for="(b, i) in solution.benefits" :key="i">
+        <div class="reveal rounded-2xl bg-white border border-slate-100 p-6 shadow-sm">
+          <p class="text-xs font-bold text-slate-400 mb-2">BEFORE</p>
+          <p class="text-sm text-slate-500 line-through decoration-slate-300 mb-3" x-text="b.before"></p>
+          <p class="text-xs font-bold text-primary mb-1">AFTER</p>
+          <p class="font-bold text-lg leading-snug mb-2" x-text="b.after"></p>
+          <p class="text-sm text-slate-600 leading-relaxed" x-text="b.body"></p>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 5: 選ばれる3つの理由 -->
+<section id="reasons" class="px-5 py-16 md:py-24">
+  <div class="max-w-5xl mx-auto">
+    <p class="eyebrow text-center mb-3">REASON</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-10">選ばれる<span x-text="reasons.length"></span>つの理由</h2>
+    <div class="space-y-5">
+      <template x-for="(r, i) in reasons" :key="i">
+        <div class="reveal grid md:grid-cols-12 gap-5 items-center rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div class="md:col-span-2"><span class="serif text-5xl text-primary" x-text="String(i + 1).padStart(2, '0')"></span></div>
+          <div class="md:col-span-7"><p class="font-bold text-lg mb-1" x-text="r.title"></p><p class="text-sm text-slate-600 leading-relaxed" x-text="r.body"></p></div>
+          <div class="md:col-span-3 text-xs rounded-xl p-3 tint"><p class="font-bold text-primary mb-1">根拠</p><p class="text-slate-600" x-text="r.proof"></p></div>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 6: 他社比較表 -->
+<section id="compare" class="px-5 py-16 md:py-24 tint">
+  <div class="max-w-5xl mx-auto">
+    <p class="eyebrow text-center mb-3">COMPARE</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-2" x-text="compare.title"></h2>
+    <p class="text-center text-xs text-slate-500 mb-8" x-text="compare.note"></p>
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <table class="w-full text-sm min-w-[560px]">
+        <thead><tr class="text-left"><th class="p-4 font-bold text-slate-500 w-1/3">比較項目</th><template x-for="(c, i) in compare.columns" :key="c"><th class="p-4 font-black" :class="i === 0 ? 'text-primary bg-primary/5' : ''" x-text="c"></th></template></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          <template x-for="row in compare.rows" :key="row.label">
+            <tr><td class="p-4 font-bold" x-text="row.label"></td><template x-for="(v, i) in row.values" :key="i"><td class="p-4" :class="i === 0 ? 'bg-primary/5 font-bold' : 'text-slate-600'"><span :class="v.startsWith('◎') ? 'text-primary font-black' : v.startsWith('×') ? 'text-slate-400' : ''" x-text="v"></span></td></template></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 7: お客様の声・事例 -->
+<section id="voice" class="px-5 py-16 md:py-24">
+  <div class="max-w-5xl mx-auto">
+    <p class="eyebrow text-center mb-3">VOICE</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-2" x-text="voices.title"></h2>
+    <p class="text-center text-xs text-slate-500 mb-8" x-text="voices.note"></p>
+    <div class="grid md:grid-cols-3 gap-4">
+      <template x-for="(v, i) in voices.items" :key="i">
+        <div class="reveal rounded-2xl bg-white border border-slate-100 p-6 shadow-sm flex flex-col">
+          <div class="flex items-center gap-3 mb-4"><span class="w-11 h-11 rounded-full bg-slate-200 font-black flex items-center justify-center text-slate-600" x-text="v.name.slice(0,1)"></span><div><p class="font-bold text-sm" x-text="v.name"></p><p class="text-[11px] text-slate-500" x-text="v.attr"></p></div></div>
+          <div class="grid grid-cols-2 gap-2 text-xs mb-4"><div class="rounded-xl bg-slate-50 p-3"><p class="font-bold text-slate-400 mb-1">BEFORE</p><p x-text="v.before"></p></div><div class="rounded-xl p-3 tint"><p class="font-bold text-primary mb-1">AFTER</p><p x-text="v.after"></p></div></div>
+          <p class="text-sm text-slate-700 leading-relaxed flex-1" x-text="v.quote"></p>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 8: 流れ・料金 -->
+<section id="pricing" class="px-5 py-16 md:py-24 tint">
+  <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-10">
+    <div>
+      <p class="eyebrow mb-3">FLOW</p>
+      <h2 class="text-2xl md:text-3xl font-black mb-8">ご利用の流れ</h2>
+      <ol>
+        <template x-for="(s, i) in flow" :key="i">
+          <li class="flex gap-5 reveal">
+            <div class="flex flex-col items-center"><span class="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center shrink-0" x-text="i + 1"></span><span class="w-0.5 flex-1 my-2" style="background: color-mix(in srgb, var(--primary) 25%, white);" x-show="i < flow.length - 1"></span></div>
+            <div class="pb-8"><p class="font-bold text-lg" x-text="s.title"></p><p class="text-slate-600 mt-1 text-sm leading-relaxed" x-text="s.body"></p><p class="text-[11px] text-slate-400 mt-1" x-text="s.time"></p></div>
+          </li>
+        </template>
+      </ol>
+    </div>
+    <div>
+      <p class="eyebrow mb-3">PRICE</p>
+      <h2 class="text-2xl md:text-3xl font-black mb-8">料金</h2>
+      <div class="space-y-3">
+        <template x-for="(p, i) in pricing.plans" :key="i">
+          <div class="rounded-2xl border bg-white p-5 shadow-sm" :class="p.recommended ? 'border-primary ring-2 ring-primary/20' : 'border-slate-200'">
+            <div class="flex items-baseline justify-between gap-3"><p class="font-bold" x-text="p.name"></p><span x-show="p.recommended" class="text-[10px] font-bold bg-primary text-white rounded-full px-2 py-0.5">おすすめ</span></div>
+            <p class="text-2xl font-black text-primary mt-1"><span x-text="p.price"></span><span class="text-sm font-bold text-slate-500 ml-1" x-text="p.unit"></span></p>
+            <ul class="mt-3 space-y-1 text-sm text-slate-600"><template x-for="f in p.features" :key="f"><li class="flex gap-2"><span class="text-primary">✓</span><span x-text="f"></span></li></template></ul>
+          </div>
+        </template>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-3 leading-relaxed" x-text="pricing.note"></p>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 9: FAQ と保証 -->
+<section id="faq" class="px-5 py-16 md:py-24">
+  <div class="max-w-3xl mx-auto">
+    <div class="rounded-2xl border-2 border-primary/30 bg-white p-6 md:p-8 mb-10 text-center shadow-sm">
+      <p class="eyebrow mb-2">GUARANTEE</p>
+      <p class="text-xl md:text-2xl font-black mb-2" x-text="guarantee.title"></p>
+      <p class="text-sm text-slate-600 leading-relaxed" x-text="guarantee.body"></p>
+    </div>
+    <p class="eyebrow text-center mb-3">FAQ</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-8">よくある質問</h2>
+    <div class="space-y-3">
+      <template x-for="(q, i) in faq" :key="i">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <button @click="faqOpen = faqOpen === i ? null : i" class="w-full text-left p-5 flex justify-between gap-4 font-bold"><span><span class="text-primary mr-2">Q.</span><span x-text="q.q"></span></span><span class="text-primary transition-transform" :class="faqOpen === i && 'rotate-45'">＋</span></button>
+          <div x-show="faqOpen === i" x-collapse x-cloak class="px-5 pb-5 text-slate-600 leading-relaxed text-sm" x-text="q.a"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- Sec 10: クロージング・EFO 一体型フォーム -->
+<section id="form" class="px-5 py-16 md:py-24 text-white" style="background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 90%, black), var(--primary));">
+  <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-10 items-start">
+    <div>
+      <p class="text-[11px] font-bold tracking-[0.3em] opacity-80 mb-3">OFFER</p>
+      <h2 class="text-2xl md:text-4xl font-black leading-snug mb-4 whitespace-pre-line" x-text="closing.title"></h2>
+      <p class="opacity-90 leading-relaxed mb-5" x-text="closing.body"></p>
+      <div class="rounded-2xl bg-white/10 border border-white/20 p-4 mb-5" x-show="closing.offer">
+        <p class="text-xs font-bold opacity-80 mb-1">いまお申し込みの方へ</p>
+        <p class="font-bold" x-text="closing.offer"></p>
+        <p class="text-xs opacity-80 mt-1" x-text="closing.offerNote"></p>
+      </div>
+      <ul class="space-y-2 text-sm opacity-90"><template x-for="p in closing.points" :key="p"><li class="flex gap-2"><span>✓</span><span x-text="p"></span></li></template></ul>
+    </div>
+    <form @submit.prevent="submit()" class="bg-white text-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl">
+      <p class="font-black text-lg mb-1" x-text="form.title"></p>
+      <p class="text-xs text-slate-500 mb-4" x-text="form.sub"></p>
+      <div class="flex gap-1.5 mb-4"><template x-for="n in 2" :key="n"><span class="h-1.5 flex-1 rounded-full" :class="n <= form.step ? 'bg-primary' : 'bg-slate-200'"></span></template></div>
+      <div x-show="form.step === 1" class="space-y-3">
+        <div><p class="text-xs font-bold mb-1.5" x-text="form.q1"></p><div class="grid grid-cols-2 gap-2"><template x-for="o in form.options1" :key="o"><button type="button" @click="form.a1 = o" class="p-3 rounded-xl border text-sm font-bold" :class="form.a1 === o ? 'border-primary bg-slate-50' : 'border-slate-200'" x-text="o"></button></template></div></div>
+        <div><p class="text-xs font-bold mb-1.5" x-text="form.q2"></p><div class="grid grid-cols-2 gap-2"><template x-for="o in form.options2" :key="o"><button type="button" @click="form.a2 = o" class="p-3 rounded-xl border text-sm font-bold" :class="form.a2 === o ? 'border-primary bg-slate-50' : 'border-slate-200'" x-text="o"></button></template></div></div>
+        <button type="button" @click="form.step = 2" :disabled="!form.a1 || !form.a2" class="w-full bg-primary text-white font-bold py-3.5 rounded-full disabled:opacity-40">つぎへ（あと1ステップ）</button>
+      </div>
+      <div x-show="form.step === 2" x-cloak class="space-y-3">
+        <input x-model="form.name" placeholder="お名前（姓だけでも可）" class="w-full border rounded-xl px-3 py-3 ring-primary" autocomplete="family-name">
+        <input x-model="form.contact" placeholder="メールアドレス または 電話番号" class="w-full border rounded-xl px-3 py-3 ring-primary" autocomplete="email" inputmode="email">
+        <p class="text-[11px] text-slate-500 leading-relaxed" x-text="form.privacy"></p>
+        <button type="submit" :disabled="!form.name || !form.contact" class="w-full bg-primary text-white font-bold py-3.5 rounded-full disabled:opacity-40" x-text="cta.submit"></button>
+        <button type="button" @click="form.step = 1" class="w-full text-xs text-slate-500 underline">もどる</button>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-3 text-center">プロトタイプのため送信は行われません</p>
+    </form>
+  </div>
+</section>
+
+<footer class="px-5 py-8 text-xs text-slate-500 bg-slate-900 text-center">
+  <p class="max-w-3xl mx-auto leading-relaxed text-slate-400 mb-3 whitespace-pre-line" x-text="legal"></p>
+  <p>© <span x-text="new Date().getFullYear()"></span> {{brand}}　|　このページは制作見本（プロトタイプ）です。社名・数値・声はすべて架空です</p>
+</footer>
+
+<!-- スマホ追従CTA -->
+<div class="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-white/95 backdrop-blur border-t border-slate-200 flex gap-2">
+  <a href="#form" class="flex-1 bg-primary text-white font-bold py-3 rounded-full text-sm text-center" x-text="cta.primary"></a>
+  <a href="{{line_url}}" target="_blank" rel="noopener" class="flex-1 bg-[#06C755] text-white font-bold py-3 rounded-full text-sm text-center">LINEで相談</a>
+</div>
+<div class="h-16 md:hidden"></div>
+<div class="fixed right-3 bottom-20 md:bottom-3 z-40 text-[10px] font-bold bg-slate-900/80 text-white rounded-full px-2.5 py-1">プロトタイプ（見本データ）</div>
+<div x-show="toast" x-cloak x-transition class="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-bold px-5 py-3 rounded-full shadow-xl" x-text="toast"></div>
+
+<script>
+function lp() {
+  const brief = JSON.parse(document.getElementById('brief').textContent || '{}');
+  const d = brief.drm || {};
+  return {
+    brief,
+    hero: d.hero || { badges: [], eyebrow: '', headline: '{{tagline}}', sub: '', visualLabel: 'PROTOTYPE', visualCaption: '' },
+    cta: d.cta || { primary: '無料で相談する', secondary: '詳しく見る', micro: '相談は無料・しつこい営業はしません', submit: '送信する（見本）' },
+    stats: d.stats || [], statsNote: d.statsNote || '',
+    pain: d.pain || { title: '', sub: '', checks: [], riskTitle: '', riskTitleChecked: '', risk: '' },
+    solution: d.solution || { title: '', sub: '', benefits: [] },
+    reasons: d.reasons || [],
+    compare: d.compare || { title: '', note: '', columns: [], rows: [] },
+    voices: d.voices || { title: '', note: '', items: [] },
+    flow: d.flow || [], pricing: d.pricing || { plans: [], note: '' },
+    guarantee: d.guarantee || { title: '', body: '' }, faq: d.faq || [],
+    closing: d.closing || { title: '', body: '', offer: '', offerNote: '', points: [] },
+    form: Object.assign({ step: 1, a1: '', a2: '', name: '', contact: '' }, d.form || {}),
+    legal: d.legal || '',
+    checked: new Set(), faqOpen: null, toast: '',
+    init() {
+      const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } }), { threshold: 0.1 });
+      this.$nextTick(() => document.querySelectorAll('.reveal').forEach((el) => io.observe(el)));
+    },
+    toggleCheck(i) { const s = new Set(this.checked); s.has(i) ? s.delete(i) : s.add(i); this.checked = s; },
+    submit() { this.say('送信を受け付けました（見本）。本番ではメール／LINEで担当者から連絡します'); this.form = Object.assign(this.form, { step: 1, a1: '', a2: '', name: '', contact: '' }); },
+    say(m) { this.toast = m; setTimeout(() => (this.toast = ''), 3400); }
+  };
+}
+</script>
+</body>
+</html>
