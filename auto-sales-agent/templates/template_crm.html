@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{brand}} 業務管理（プロトタイプ）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script id="brief" type="application/json">{{brief_json}}</script>
+<style>
+  :root { --primary: {{primary}}; --accent: {{accent}}; }
+  body { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+  .bg-primary { background: var(--primary); } .text-primary { color: var(--primary); } .border-primary { border-color: var(--primary); }
+  [x-cloak] { display: none !important; }
+  .chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; white-space: nowrap; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800" x-data="crm()" x-init="init()">
+
+<div class="min-h-screen md:flex">
+  <!-- サイドバー -->
+  <aside class="hidden md:flex md:flex-col w-60 shrink-0 bg-white border-r border-slate-200 min-h-screen sticky top-0">
+    <div class="h-16 px-5 flex items-center gap-2 border-b border-slate-100"><span class="w-8 h-8 rounded-lg bg-primary text-white font-black flex items-center justify-center text-sm" x-text="brand.slice(0,1)"></span><div class="min-w-0"><p class="font-black text-sm truncate">{{brand}}</p><p class="text-[11px] text-slate-500">業務管理システム</p></div></div>
+    <nav class="p-3 space-y-1 text-sm">
+      <template x-for="t in tabs" :key="t.id"><button @click="tab = t.id" class="w-full text-left px-3 py-2.5 rounded-xl font-bold flex items-center justify-between" :class="tab === t.id ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'"><span x-text="t.label"></span><span x-show="t.count !== undefined" class="text-[11px] rounded-full px-2 py-0.5" :class="tab === t.id ? 'bg-white/20' : 'bg-slate-100'" x-text="t.count"></span></button></template>
+    </nav>
+    <div class="mt-auto p-4 text-[11px] text-slate-400">ログイン中: 管理者（見本）<br>最終同期 たった今</div>
+  </aside>
+
+  <div class="flex-1 min-w-0">
+    <!-- ヘッダー -->
+    <header class="h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center gap-3 sticky top-0 z-30">
+      <p class="md:hidden font-black text-sm truncate">{{brand}}</p>
+      <div class="flex-1 max-w-md relative"><input x-model="q" placeholder="顧客名・担当・電話・メモで検索" class="w-full border border-slate-200 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2" style="--tw-ring-color: color-mix(in srgb, var(--primary) 40%, transparent);"><span class="absolute left-3 top-2.5 text-slate-400 text-sm">⌕</span></div>
+      <button @click="openNew()" class="ml-auto bg-primary text-white text-sm font-bold px-4 py-2 rounded-full shadow-sm">＋ 新規登録</button>
+    </header>
+
+    <!-- スマホ用タブ -->
+    <div class="md:hidden flex gap-2 px-4 py-3 overflow-x-auto bg-white border-b border-slate-100">
+      <template x-for="t in tabs" :key="t.id"><button @click="tab = t.id" class="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap" :class="tab === t.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" x-text="t.label + (t.count !== undefined ? ' ' + t.count : '')"></button></template>
+    </div>
+
+    <main class="p-4 md:p-6 space-y-5">
+
+      <!-- ダッシュボード -->
+      <section x-show="tab === 'dash'" class="space-y-5">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <template x-for="k in kpis" :key="k.label"><div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm"><p class="text-xs text-slate-500" x-text="k.label"></p><p class="text-2xl font-black mt-1" x-text="k.value"></p><p class="text-[11px] mt-1" :class="k.delta >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="(k.delta >= 0 ? '+' : '') + k.delta + ' 前週比（見本）'"></p></div></template>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <p class="font-bold mb-3">ステータス別の件数</p>
+            <div class="space-y-2">
+              <template x-for="s in statuses" :key="s"><div class="flex items-center gap-3 text-sm"><span class="w-24 md:w-32 text-slate-600 truncate" x-text="s"></span><div class="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full bg-primary transition-all" :style="`width:${pct(countBy(s))}%`"></div></div><span class="w-10 text-right font-bold" x-text="countBy(s)"></span></div></template>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <p class="font-bold mb-3">担当者の稼働</p>
+            <ul class="space-y-2 text-sm">
+              <template x-for="st in staff" :key="st"><li class="flex items-center gap-2"><span class="w-7 h-7 rounded-full bg-slate-200 text-[11px] font-bold flex items-center justify-center" x-text="st.slice(0,1)"></span><span class="flex-1" x-text="st"></span><span class="font-bold" x-text="records.filter(r => r.staff === st && !isClosed(r)).length + ' 件'"></span></li></template>
+            </ul>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+          <p class="font-bold mb-3">今日の予定（見本）</p>
+          <ul class="divide-y divide-slate-100 text-sm">
+            <template x-for="r in records.filter(r => r.next).slice(0, 5)" :key="r.id"><li class="py-2 flex items-center gap-3"><span class="font-mono text-xs text-slate-500 w-12" x-text="r.next"></span><span class="font-bold flex-1 truncate" x-text="r.name"></span><span class="chip" :style="chipStyle(r.status)" x-text="r.status"></span><button @click="open(r)" class="text-xs text-primary font-bold">開く</button></li></template>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 案件一覧 -->
+      <section x-show="tab === 'list'" class="space-y-3">
+        <div class="flex flex-wrap gap-2 items-center">
+          <button @click="filter = ''" class="px-3 py-1.5 rounded-full text-xs font-bold border" :class="filter === '' ? 'bg-slate-900 text-white border-transparent' : 'bg-white border-slate-200'">すべて <span x-text="records.length"></span></button>
+          <template x-for="s in statuses" :key="s"><button @click="filter = s" class="px-3 py-1.5 rounded-full text-xs font-bold border" :class="filter === s ? 'bg-slate-900 text-white border-transparent' : 'bg-white border-slate-200'" x-text="s + ' ' + countBy(s)"></button></template>
+          <select x-model="staffFilter" class="ml-auto border border-slate-200 rounded-full px-3 py-1.5 text-xs bg-white"><option value="">担当: 全員</option><template x-for="st in staff" :key="st"><option :value="st" x-text="st"></option></template></select>
+          <select x-model="sort" class="border border-slate-200 rounded-full px-3 py-1.5 text-xs bg-white"><option value="date_desc">新しい順</option><option value="date_asc">古い順</option><option value="amount_desc">金額が大きい順</option></select>
+        </div>
+        <!-- PC: テーブル -->
+        <div class="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="text-left px-4 py-3 font-bold">顧客・案件</th><th class="text-left px-4 py-3 font-bold">ステータス</th><th class="text-left px-4 py-3 font-bold">担当</th><th class="text-left px-4 py-3 font-bold">次回</th><th class="text-right px-4 py-3 font-bold">金額</th><th class="px-4 py-3"></th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              <template x-for="r in filtered" :key="r.id">
+                <tr class="hover:bg-slate-50 cursor-pointer" @click="open(r)">
+                  <td class="px-4 py-3"><p class="font-bold" x-text="r.name"></p><p class="text-xs text-slate-500 truncate max-w-xs" x-text="r.memo"></p></td>
+                  <td class="px-4 py-3" @click.stop><select :value="r.status" @change="setStatus(r, $event.target.value)" class="chip border-0 cursor-pointer" :style="chipStyle(r.status)"><template x-for="s in statuses" :key="s"><option :value="s" x-text="s"></option></template></select></td>
+                  <td class="px-4 py-3" x-text="r.staff"></td>
+                  <td class="px-4 py-3 font-mono text-xs" x-text="r.next || '-'"></td>
+                  <td class="px-4 py-3 text-right font-bold" x-text="r.amount ? '¥' + Number(r.amount).toLocaleString() : '-'"></td>
+                  <td class="px-4 py-3 text-right"><button @click.stop="call(r)" class="text-xs font-bold text-primary">架電</button></td>
+                </tr>
+              </template>
+              <tr x-show="filtered.length === 0"><td colspan="6" class="px-4 py-8 text-center text-slate-400">該当する案件はありません</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- スマホ: カード -->
+        <div class="md:hidden space-y-2">
+          <template x-for="r in filtered" :key="r.id">
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm" @click="open(r)">
+              <div class="flex items-start justify-between gap-2"><p class="font-bold" x-text="r.name"></p><span class="chip" :style="chipStyle(r.status)" x-text="r.status"></span></div>
+              <p class="text-xs text-slate-500 mt-1 line-clamp-2" x-text="r.memo"></p>
+              <div class="flex items-center gap-3 mt-2 text-xs text-slate-600"><span x-text="'担当 ' + r.staff"></span><span x-text="r.next ? '次回 ' + r.next : ''"></span><span class="ml-auto font-bold text-slate-800" x-text="r.amount ? '¥' + Number(r.amount).toLocaleString() : ''"></span></div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- 架電履歴 -->
+      <section x-show="tab === 'calls'" class="bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between"><p class="font-bold">架電・対応履歴</p><span class="text-xs text-slate-500" x-text="calls.length + ' 件'"></span></div>
+        <ul class="divide-y divide-slate-100">
+          <template x-for="c in calls" :key="c.id"><li class="p-4 flex gap-3 text-sm"><span class="font-mono text-xs text-slate-500 w-24 shrink-0" x-text="c.at"></span><div class="min-w-0 flex-1"><p><span class="font-bold" x-text="c.name"></span> <span class="chip ml-1" :class="c.result === '通話' ? 'bg-emerald-100 text-emerald-700' : c.result === '不在' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'" x-text="c.result"></span></p><p class="text-slate-600 mt-0.5" x-text="c.note"></p></div><span class="text-xs text-slate-500 shrink-0" x-text="c.staff"></span></li></template>
+          <li x-show="calls.length === 0" class="p-8 text-center text-slate-400 text-sm">まだ履歴がありません。一覧の「架電」から記録できます</li>
+        </ul>
+      </section>
+
+      <!-- スタッフ配置 -->
+      <section x-show="tab === 'staff'" class="grid md:grid-cols-3 gap-4">
+        <template x-for="st in staff" :key="st">
+          <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm" @dragover.prevent @drop="dropTo(st)">
+            <div class="flex items-center gap-2 mb-3"><span class="w-9 h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center" x-text="st.slice(0,1)"></span><div><p class="font-bold" x-text="st"></p><p class="text-[11px] text-slate-500" x-text="records.filter(r => r.staff === st && !isClosed(r)).length + ' 件を担当中'"></p></div></div>
+            <ul class="space-y-2 min-h-[80px]">
+              <template x-for="r in records.filter(r => r.staff === st && !isClosed(r))" :key="r.id"><li draggable="true" @dragstart="drag = r.id" class="p-3 rounded-xl bg-slate-50 border border-slate-100 text-sm cursor-grab active:cursor-grabbing"><p class="font-bold truncate" x-text="r.name"></p><div class="flex items-center justify-between mt-1"><span class="chip" :style="chipStyle(r.status)" x-text="r.status"></span><select :value="r.staff" @change="r.staff = $event.target.value; say(r.name + ' を ' + r.staff + ' に変更')" class="text-[11px] border rounded px-1 md:hidden"><template x-for="s2 in staff" :key="s2"><option :value="s2" x-text="s2"></option></template></select></div></li></template>
+            </ul>
+            <p class="text-[11px] text-slate-400 mt-3 hidden md:block">カードをドラッグして担当を変更</p>
+          </div>
+        </template>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- 詳細モーダル -->
+<div x-show="detail" x-cloak class="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 md:p-6" @keydown.escape.window="detail = null">
+  <div class="bg-white w-full md:max-w-xl rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto" @click.outside="detail = null">
+    <template x-if="detail">
+      <div>
+        <div class="p-5 border-b border-slate-100 flex items-start justify-between gap-3"><div><p class="text-xs text-slate-500" x-text="'#' + detail.id"></p><p class="font-black text-lg" x-text="detail.name"></p></div><button @click="detail = null" class="text-slate-400 text-xl">×</button></div>
+        <div class="p-5 grid grid-cols-2 gap-3 text-sm">
+          <div><p class="text-xs text-slate-500">ステータス</p><select :value="detail.status" @change="setStatus(detail, $event.target.value)" class="mt-1 w-full border rounded-xl px-3 py-2"><template x-for="s in statuses" :key="s"><option :value="s" x-text="s"></option></template></select></div>
+          <div><p class="text-xs text-slate-500">担当</p><select x-model="detail.staff" class="mt-1 w-full border rounded-xl px-3 py-2"><template x-for="s in staff" :key="s"><option :value="s" x-text="s"></option></template></select></div>
+          <div><p class="text-xs text-slate-500">電話</p><p class="mt-1 font-mono" x-text="detail.phone_masked || '090-****-****'"></p></div>
+          <div><p class="text-xs text-slate-500">金額</p><p class="mt-1 font-bold" x-text="detail.amount ? '¥' + Number(detail.amount).toLocaleString() : '-'"></p></div>
+          <div class="col-span-2"><p class="text-xs text-slate-500">メモ</p><textarea x-model="detail.memo" rows="3" class="mt-1 w-full border rounded-xl px-3 py-2"></textarea></div>
+        </div>
+        <div class="px-5 pb-5">
+          <p class="font-bold text-sm mb-2">架電履歴</p>
+          <ul class="space-y-1 text-sm mb-3"><template x-for="c in calls.filter(c => c.rid === detail.id)" :key="c.id"><li class="flex gap-2"><span class="font-mono text-xs text-slate-500" x-text="c.at"></span><span class="chip" :class="c.result === '通話' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'" x-text="c.result"></span><span class="text-slate-600 truncate" x-text="c.note"></span></li></template><li x-show="calls.filter(c => c.rid === detail.id).length === 0" class="text-slate-400 text-xs">まだありません</li></ul>
+          <div class="flex gap-2"><select x-model="callForm.result" class="border rounded-xl px-2 py-2 text-sm"><option>通話</option><option>不在</option><option>折返し待ち</option></select><input x-model="callForm.note" placeholder="内容（例: 見積を送付、来週再連絡）" class="flex-1 border rounded-xl px-3 py-2 text-sm"><button @click="addCall(detail)" class="bg-primary text-white text-sm font-bold px-4 rounded-xl">追加</button></div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- 新規登録モーダル -->
+<div x-show="creating" x-cloak class="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 md:p-6" @keydown.escape.window="creating = false">
+  <div class="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-3xl shadow-2xl" @click.outside="creating = false">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between"><p class="font-black">新規登録</p><button @click="creating = false" class="text-slate-400 text-xl">×</button></div>
+    <div class="p-5 space-y-3 text-sm">
+      <input x-model="draft.name" placeholder="顧客名・案件名" class="w-full border rounded-xl px-3 py-3">
+      <div class="grid grid-cols-2 gap-2"><select x-model="draft.status" class="border rounded-xl px-3 py-3"><template x-for="s in statuses" :key="s"><option :value="s" x-text="s"></option></template></select><select x-model="draft.staff" class="border rounded-xl px-3 py-3"><template x-for="s in staff" :key="s"><option :value="s" x-text="s"></option></template></select></div>
+      <input x-model="draft.amount" type="number" placeholder="金額（円）" class="w-full border rounded-xl px-3 py-3">
+      <textarea x-model="draft.memo" rows="2" placeholder="メモ" class="w-full border rounded-xl px-3 py-3"></textarea>
+    </div>
+    <div class="p-5 border-t border-slate-100"><button @click="create()" :disabled="!draft.name" class="w-full bg-primary text-white font-bold py-3 rounded-full disabled:opacity-40">登録する</button></div>
+  </div>
+</div>
+
+<div x-show="toast" x-cloak x-transition class="fixed top-20 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-sm font-bold px-5 py-3 rounded-full shadow-xl" x-text="toast"></div>
+<div class="fixed right-3 bottom-3 z-40 text-[10px] font-bold bg-slate-900/80 text-white rounded-full px-2.5 py-1">プロトタイプ（見本データ）</div>
+
+<script>
+function crm() {
+  const brief = JSON.parse(document.getElementById('brief').textContent || '{}');
+  const d = brief.demo_data || {};
+  const statuses = (d.statuses && d.statuses.length) ? d.statuses : ['新規', '連絡済み', '見積提出', '受注', '対応中', '完了', '失注'];
+  const staff = (d.staff && d.staff.length) ? d.staff : ['佐藤', '鈴木', '高橋'];
+  const seed = (d.records && d.records.length) ? d.records : Array.from({ length: 12 }, (_, i) => ({ name: `${['田中', '山本', '中村', '小林', '加藤', '吉田', '山田', '松本', '井上', '木村', '林', '斎藤'][i]} 様`, status: statuses[i % statuses.length], staff: staff[i % staff.length], date: `2026-10-${String(1 + i).padStart(2, '0')}`, next: i % 3 === 0 ? `${9 + (i % 8)}:00` : '', amount: (i % 4 + 1) * 120000, memo: ['初回問い合わせ。現地確認の日程調整中', '見積を送付済み。返事待ち', '来週着手予定。資材手配中', '完了報告済み。請求書送付'][i % 4], phone_masked: `090-****-${String(1000 + i * 37).slice(-4)}` }));
+  const records = seed.map((r, i) => ({ id: r.id || String(1001 + i), next: '', amount: 0, memo: '', ...r }));
+  const palette = ['#2563eb', '#0891b2', '#7c3aed', '#059669', '#d97706', '#64748b', '#e11d48'];
+  return {
+    brand: '{{brand}}', statuses, staff, records, q: '', filter: '', staffFilter: '', sort: 'date_desc', tab: 'dash', detail: null, creating: false, drag: null, toast: '',
+    calls: [{ id: 1, rid: records[0].id, name: records[0].name, at: '10/20 10:12', result: '通話', note: '現地確認は 10/23 14:00 で確定', staff: records[0].staff }, { id: 2, rid: records[1].id, name: records[1].name, at: '10/20 11:40', result: '不在', note: '留守電にメッセージ。夕方に再架電', staff: records[1].staff }],
+    callForm: { result: '通話', note: '' },
+    draft: { name: '', status: statuses[0], staff: staff[0], amount: '', memo: '' },
+    get tabs() { return [{ id: 'dash', label: 'ダッシュボード' }, { id: 'list', label: '案件一覧', count: this.records.length }, { id: 'calls', label: '架電履歴', count: this.calls.length }, { id: 'staff', label: 'スタッフ配置' }]; },
+    get kpis() { const open = this.records.filter((r) => !this.isClosed(r)); return [{ label: '対応中の案件', value: open.length, delta: 2 }, { label: '今日の予定', value: this.records.filter((r) => r.next).length, delta: 1 }, { label: '今月の受注額（見本）', value: '¥' + this.records.filter((r) => /受注|完了|着工|対応中/.test(r.status)).reduce((a, r) => a + Number(r.amount || 0), 0).toLocaleString(), delta: 3 }, { label: '架電件数', value: this.calls.length, delta: 0 }]; },
+    get filtered() {
+      const q = this.q.trim();
+      let rs = this.records.filter((r) => (!this.filter || r.status === this.filter) && (!this.staffFilter || r.staff === this.staffFilter) && (!q || [r.name, r.staff, r.memo, r.phone_masked, r.status].join(' ').includes(q)));
+      if (this.sort === 'date_asc') rs = rs.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      else if (this.sort === 'amount_desc') rs = rs.sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
+      else rs = rs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      return rs;
+    },
+    init() {},
+    countBy(s) { return this.records.filter((r) => r.status === s).length; },
+    pct(n) { return this.records.length ? Math.round((n / this.records.length) * 100) : 0; },
+    isClosed(r) { return /完了|失注|キャンセル|終了/.test(r.status); },
+    chipStyle(s) { const c = palette[this.statuses.indexOf(s) % palette.length] || '#64748b'; return `background: color-mix(in srgb, ${c} 14%, white); color: ${c};`; },
+    open(r) { this.detail = r; },
+    setStatus(r, s) { r.status = s; this.say(`${r.name} を「${s}」に変更しました`); },
+    call(r) { this.detail = r; this.callForm = { result: '通話', note: '' }; },
+    addCall(r) { if (!this.callForm.note) return; const now = new Date(); this.calls.unshift({ id: Date.now(), rid: r.id, name: r.name, at: `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, result: this.callForm.result, note: this.callForm.note, staff: r.staff }); this.callForm.note = ''; this.say('架電履歴を追加しました'); },
+    openNew() { this.creating = true; this.draft = { name: '', status: this.statuses[0], staff: this.staff[0], amount: '', memo: '' }; },
+    create() { const r = { id: String(Date.now()).slice(-5), date: new Date().toISOString().slice(0, 10), next: '', phone_masked: '090-****-0000', ...this.draft, amount: Number(this.draft.amount || 0) }; this.records.unshift(r); this.creating = false; this.tab = 'list'; this.say('登録しました'); },
+    dropTo(st) { const r = this.records.find((x) => x.id === this.drag); if (r && r.staff !== st) { r.staff = st; this.say(`${r.name} を ${st} に割り当てました`); } this.drag = null; },
+    say(m) { this.toast = m; setTimeout(() => (this.toast = ''), 2600); }
+  };
+}
+</script>
+</body>
+</html>

@@ -36,3 +36,13 @@ backend/reports/
 
 # TypeScriptの増分ビルドキャッシュ
 *.tsbuildinfo
+
+# 受託ドキュメント・財務諸表の生成物（顧客情報を含むため）
+contracts/output/
+finance/output/
+
+# Auto-Sales-Agent: 案件文（個人情報を含みうる）・生成物は入れない。サンプルだけ残す
+auto-sales-agent/input/*
+!auto-sales-agent/input/sample-reform/
+auto-sales-agent/dist/
+auto-sales-agent/output/

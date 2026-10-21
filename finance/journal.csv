@@ -1,0 +1,7 @@
+date,kind,account,amount_jpy,counterparty,memo,status,evidence
+2026-10-01,資本,元入金（事業主借）,0,Miyabi,事業用口座の開設前のため期首の事業用現金は0として開始。開設後に実残高で置き換える,要確認,
+2026-10-08,経費,通信費（intelligence 利用料：Claude Max プラン）,30000,Anthropic,Claude Max（月額 200 USD）。10/08 前後に加入。為替は 1 USD = 150 円の概算。カード明細で確定させる,概算,カード明細
+2026-10-15,経費,通信費（intelligence 利用料：Claude API 従量）,3650,Anthropic,AWP企業・ページ作成の API 利用。10/1〜10/16 の実績 24.28 USD（運営者画面の月次費用より）。為替は概算,概算,Console の Usage
+2026-10-15,経費,通信費（クラウド：Render）,0,Render,backend/frontend/Postgres。プランと請求額が未確認（無料枠なら 0）,要確認,Render の Billing
+2026-10-15,経費,通信費（画像生成：Cloudflare Workers AI / Gemini）,0,Cloudflare / Google,無料枠の範囲で利用中,確認済,
+2026-10-21,売上,受託開発（LP/HP/Webアプリ/業務システム）,0,,10月の受託はまだ0件。今月中に1件以上の受注が目標,目標,
