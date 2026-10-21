@@ -1,0 +1,38 @@
+{
+  "id": "sample-ai-asset",
+  "model": "gen-4-image-turbo",
+  "slots": {
+    "hero": {
+      "ratio": "16:9",
+      "prompt": "Wide editorial photograph for a Japanese digital asset-management service: a quiet morning desk by a large window in a Tokyo apartment, a closed notebook, a cup of tea, soft sunlight falling across the table, a blurred city skyline outside. Conveys trust, calm and long-term stability. Muted navy and warm neutral palette, shallow depth of field, lots of negative space on the left for headline text. No people, no text, no logos, no screens with readable content, photorealistic, high detail."
+    },
+    "benefits-0": {
+      "ratio": "4:3",
+      "prompt": "Close-up editorial photograph: a smartphone lying face-up on a light wooden table next to a pen and a small plant, screen showing only soft abstract blue and gold shapes (no readable text). Suggests 'answer a few questions and the plan is decided'. Soft natural light, muted navy and warm neutral palette, shallow depth of field. No people, no text, no logos, photorealistic."
+    },
+    "benefits-1": {
+      "ratio": "4:3",
+      "prompt": "Close-up editorial photograph: a calm Japanese living room in the evening, a wall clock and a warm lamp, a cup of coffee on a side table, everything still and orderly. Suggests 'the system keeps running while you live your life'. Soft warm light, muted navy and warm neutral palette, shallow depth of field. No people, no text, no logos, photorealistic."
+    },
+    "benefits-2": {
+      "ratio": "4:3",
+      "prompt": "Close-up editorial photograph: a single clear glass of water on a white table beside a plain folded paper statement, bright and transparent, top-down soft daylight. Suggests 'one simple fee, nothing hidden'. Muted navy and warm neutral palette, minimal composition. No people, no readable text, no logos, photorealistic."
+    },
+    "reasons-0": {
+      "ratio": "4:3",
+      "prompt": "Editorial photograph: an open monthly report booklet with abstract line charts printed in navy and gold, resting on a desk with reading glasses and a pencil, soft side light. Suggests 'the logic is explained every month in plain words'. Charts must be abstract and non-readable. Muted palette, shallow depth of field. No people, no readable text, no logos, photorealistic."
+    },
+    "reasons-1": {
+      "ratio": "4:3",
+      "prompt": "Editorial photograph: a sturdy stone breakwater on a calm Japanese coast under an overcast sky, gentle waves, long horizon, quiet and resilient mood. Suggests 'designed for downturns'. Muted navy, grey and warm sand palette, wide negative space. No people, no text, no logos, photorealistic, high detail."
+    },
+    "reasons-2": {
+      "ratio": "4:3",
+      "prompt": "Editorial photograph: a bright, small Japanese consultation desk with two empty chairs facing each other, a warm wooden table, a cup of tea and a notepad, soft window light. Suggests 'there is a real person you can talk to'. Muted navy and warm neutral palette, shallow depth of field. No people, no text, no logos, photorealistic."
+    },
+    "closing": {
+      "ratio": "16:9",
+      "prompt": "Dark, quiet wide photograph: a Japanese city seen from a high window at dusk, deep navy sky, a few warm lights, soft bokeh, very low contrast and lots of empty space for overlaid text. Mood of peace of mind and a calm next step. No people, no text, no logos, photorealistic, cinematic."
+    }
+  }
+}
