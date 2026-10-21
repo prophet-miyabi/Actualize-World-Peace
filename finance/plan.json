@@ -1,26 +1,112 @@
 {
   "_comment": "資金計画。goal は 2026-12-31 までに法人設立の原資 300 万円を確保すること。pipeline は見込み案件（受注前は probability で期待値に換算）。prices は受託の標準価格（税別）。monthly_costs は固定費の見込み（円）。",
-  "entity": { "name": "AWP（個人事業・法人化準備中）", "owner": "Miyabi", "fiscal_year_start": "2026-01-01", "incorporation_target": "2026-12-31" },
-  "goal": { "amount_jpy": 3000000, "by": "2026-12-31", "purpose": "法人設立（資本金・登記費用・運転資金）と AWP の本格運用資金" },
+  "entity": {
+    "name": "AWP（個人事業・法人化準備中）",
+    "owner": "Miyabi",
+    "fiscal_year_start": "2026-01-01",
+    "incorporation_target": "2026-12-31"
+  },
+  "goal": {
+    "amount_jpy": 3000000,
+    "by": "2026-12-31",
+    "purpose": "法人設立（資本金・登記費用・運転資金）と AWP の本格運用資金"
+  },
   "prices": {
-    "LP": { "min": 150000, "typical": 250000, "max": 400000, "maintenance": 11000 },
-    "HP": { "min": 300000, "typical": 450000, "max": 800000, "maintenance": 33000 },
-    "WebApp": { "min": 800000, "typical": 1200000, "max": 2000000, "maintenance": 33000 },
-    "System": { "min": 1000000, "typical": 1800000, "max": 3000000, "maintenance": 77000 }
+    "LP": {
+      "min": 150000,
+      "typical": 250000,
+      "max": 400000,
+      "maintenance": 11000
+    },
+    "HP": {
+      "min": 300000,
+      "typical": 450000,
+      "max": 800000,
+      "maintenance": 33000
+    },
+    "WebApp": {
+      "min": 800000,
+      "typical": 1200000,
+      "max": 2000000,
+      "maintenance": 33000
+    },
+    "System": {
+      "min": 1000000,
+      "typical": 1800000,
+      "max": 3000000,
+      "maintenance": 77000
+    }
   },
   "monthly_costs": [
-    { "name": "Claude Max（intelligence）", "amount_jpy": 30000, "status": "概算（200 USD）" },
-    { "name": "Claude API 従量（AWP企業・ページ作成）", "amount_jpy": 5000, "status": "概算（10月実績ベース）" },
-    { "name": "Render（クラウド）", "amount_jpy": 0, "status": "要確認" },
-    { "name": "ドメイン・その他", "amount_jpy": 2000, "status": "概算" }
+    {
+      "name": "Claude Max（intelligence）",
+      "amount_jpy": 30000,
+      "status": "概算（200 USD）"
+    },
+    {
+      "name": "Claude API 従量（AWP企業・ページ作成）",
+      "amount_jpy": 5000,
+      "status": "概算（10月実績ベース）"
+    },
+    {
+      "name": "Render（クラウド）",
+      "amount_jpy": 0,
+      "status": "要確認"
+    },
+    {
+      "name": "ドメイン・その他",
+      "amount_jpy": 2000,
+      "status": "概算"
+    }
   ],
   "pipeline": [
-    { "name": "富士住設サービス 公式HP（サンプル案件）", "type": "HP", "dev_fee": 450000, "maintenance": 33000, "probability": 0.0, "expected_close": "2026-10-31", "note": "サンプル。実在の見込みに差し替える" }
+    {
+      "name": "富士住設サービス 公式HP（サンプル案件）",
+      "type": "HP",
+      "dev_fee": 450000,
+      "maintenance": 33000,
+      "probability": 0.0,
+      "expected_close": "2026-10-31",
+      "note": "サンプル。実在の見込みに差し替える"
+    },
+    {
+      "name": "CW 13546828 複数のLPページの制作",
+      "type": "LP",
+      "dev_fee": 170000,
+      "maintenance": 11000,
+      "probability": 0.05,
+      "expected_close": "2026-10-31",
+      "note": "応募172件。プロトタイプ付きで応募。1本目12万＋2本目以降5万/本"
+    },
+    {
+      "name": "CW 13543136 採用LP＋LINE公式",
+      "type": "LP",
+      "dev_fee": 100000,
+      "maintenance": 11000,
+      "probability": 0.05,
+      "expected_close": "2026-10-31",
+      "note": "応募129件。LP6万＋LINE4万"
+    },
+    {
+      "name": "CW 13544964 サブリース改善室 LP",
+      "type": "LP",
+      "dev_fee": 200000,
+      "maintenance": 11000,
+      "probability": 0.08,
+      "expected_close": "2026-10-31",
+      "note": "応募99件。期限10/24。18〜25万、GA4/GTM込み"
+    }
   ],
   "scenarios": {
     "必要受注の目安": "300万円 = HP 約7件、または WebApp 2〜3件、または 業務システム 2件（税別・開発費のみ）。保守は翌年以降の継続収入",
-    "10月": { "target_deals": 1 },
-    "11月": { "target_deals": 2 },
-    "12月": { "target_deals": 2 }
+    "10月": {
+      "target_deals": 1
+    },
+    "11月": {
+      "target_deals": 2
+    },
+    "12月": {
+      "target_deals": 2
+    }
   }
 }
