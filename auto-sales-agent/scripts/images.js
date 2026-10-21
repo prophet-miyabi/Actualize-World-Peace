@@ -40,7 +40,8 @@ function defaultPrompts() {
 
 function loadImages() {
   if (fs.existsSync(imagesPath)) return JSON.parse(fs.readFileSync(imagesPath, 'utf8'));
-  const obj = { id, model: 'gen-4-image-turbo', slots: defaultPrompts() };
+  // gen-4-image-turbo は参照画像が必須。テキストだけで作るときは gen-4（Gen-4 Image）か nano-banana-pro
+  const obj = { id, model: 'gen-4', slots: defaultPrompts() };
   fs.writeFileSync(imagesPath, JSON.stringify(obj, null, 2), 'utf8');
   console.log(`作成: ${path.relative(process.cwd(), imagesPath)}（プロンプトは編集できます）`);
   return obj;
@@ -70,7 +71,8 @@ Otherwise, for each slot below call generate_image with model "${im.model}" and 
 ${list}
 When finished print one line per slot: "<slot>: ok <path>" or "<slot>: failed <reason>", then one line "CREDITS_LEFT: <n>".`;
   console.log(`Runway で ${todo.length} 枚を生成します（claude -p を起動）…`);
-  const r = spawnSync('claude', ['-p', '--model', 'sonnet', '--allowedTools', 'mcp__runway__*,Bash(curl *)'], { input: prompt, encoding: 'utf8', shell: process.platform === 'win32', maxBuffer: 1024 * 1024 * 8 });
+  // shell:true のため、空白を含む引数は自分で引用符で囲む（囲まないと "Bash(curl" と "*)" に割れる）
+  const r = spawnSync('claude', ['-p', '--model', 'sonnet', '--allowedTools', '"mcp__runway__*,Bash(curl *)"'], { input: prompt, encoding: 'utf8', shell: process.platform === 'win32', maxBuffer: 1024 * 1024 * 8 });
   const out = (r.stdout || '') + (r.stderr || '');
   console.log(out.trim());
   if (/NO_CREDITS/.test(out)) { console.error('\nRunway のクレジットが 0 のため生成していません。https://app.runwayml.com/settings/billing でプランまたはクレジットを追加してから再実行してください。'); process.exit(2); }

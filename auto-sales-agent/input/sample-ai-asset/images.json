@@ -1,6 +1,6 @@
 {
   "id": "sample-ai-asset",
-  "model": "gen-4-image-turbo",
+  "model": "gen-4",
   "slots": {
     "hero": {
       "ratio": "16:9",
@@ -16,11 +16,11 @@
     },
     "benefits-2": {
       "ratio": "4:3",
-      "prompt": "Close-up editorial photograph: a single clear glass of water on a white table beside a plain folded paper statement, bright and transparent, top-down soft daylight. Suggests 'one simple fee, nothing hidden'. Muted navy and warm neutral palette, minimal composition. No people, no readable text, no logos, photorealistic."
+      "prompt": "Minimal editorial photograph: exactly one clear glass of still water standing alone on a white marble table, nothing else on the table, soft side daylight, gentle shadow, clean and transparent feeling. Suggests 'one simple fee, nothing hidden'. Muted navy-grey and warm neutral palette. Absolutely no paper, no documents, no text, no letters, no people, no logos. Photorealistic, shallow depth of field."
     },
     "reasons-0": {
       "ratio": "4:3",
-      "prompt": "Editorial photograph: an open monthly report booklet with abstract line charts printed in navy and gold, resting on a desk with reading glasses and a pencil, soft side light. Suggests 'the logic is explained every month in plain words'. Charts must be abstract and non-readable. Muted palette, shallow depth of field. No people, no readable text, no logos, photorealistic."
+      "prompt": "Editorial photograph: a calm wooden desk with a closed navy hardcover notebook, a fountain pen resting on it and a pair of reading glasses beside it, soft side light from a window, warm shadows. Suggests 'explained clearly, every month'. Muted navy and warm neutral palette, shallow depth of field. The notebook cover is plain with no printing. Absolutely no open pages, no charts, no text, no letters, no people, no logos. Photorealistic."
     },
     "reasons-1": {
       "ratio": "4:3",
@@ -28,7 +28,7 @@
     },
     "reasons-2": {
       "ratio": "4:3",
-      "prompt": "Editorial photograph: a bright, small Japanese consultation desk with two empty chairs facing each other, a warm wooden table, a cup of tea and a notepad, soft window light. Suggests 'there is a real person you can talk to'. Muted navy and warm neutral palette, shallow depth of field. No people, no text, no logos, photorealistic."
+      "prompt": "Editorial photograph: a bright, quiet consultation corner in a modern Japanese office, two empty light-wood chairs facing each other across a small round table, a white ceramic teapot and two cups on the table, large window with soft daylight, a green plant in the background. Suggests 'there is a real person you can talk to'. Muted navy and warm neutral palette, shallow depth of field. Absolutely no signs, no labels, no paper, no text, no letters, no people, no logos. Photorealistic."
     },
     "closing": {
       "ratio": "16:9",
