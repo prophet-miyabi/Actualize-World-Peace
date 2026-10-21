@@ -433,7 +433,15 @@ function lp() {
     form: Object.assign({ step: 1, a1: '', a2: '', name: '', contact: '' }, d.form || {}),
     legal: d.legal || '',
     checked: new Set(), faqOpen: null, toast: '', progress: 0, revealed: false,
-    img(key, i) { const v = images[key]; const u = Array.isArray(v) ? v[i] : v; return typeof u === 'string' && u ? u : ''; },
+    // 相対パスの画像は「このページのディレクトリ」基準で解決する。/demos/<id>（末尾スラッシュなしの rewrite）でも壊れないように
+    img(key, i) {
+      const v = images[key]; const u = Array.isArray(v) ? v[i] : v;
+      if (typeof u !== 'string' || !u) return '';
+      if (/^(https?:)?\//i.test(u) || /^data:/i.test(u)) return u;
+      const p = location.pathname;
+      const base = /\.[a-z0-9]+$/i.test(p) ? p.replace(/[^/]*$/, '') : (p.endsWith('/') ? p : p + '/');
+      return base + u.replace(/^\.\//, '');
+    },
     mark(v) { const m = /^[◎○△×]/.exec(v || ''); return m ? m[0] : '・'; },
     icon(i) {
       const s = 'width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
