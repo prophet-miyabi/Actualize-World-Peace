@@ -66,8 +66,12 @@
 <!-- Sec 1: ファーストビュー -->
 <section id="top" class="relative overflow-hidden">
   <div class="absolute inset-0 -z-10">
-    <template x-if="img('hero')"><img :src="img('hero')" alt="" class="img-cover" style="opacity:.14; filter:saturate(.7)"></template>
-    <div class="absolute inset-0" style="background: radial-gradient(900px 480px at 88% -10%, color-mix(in srgb, var(--primary) 16%, white), transparent 62%), radial-gradient(600px 400px at 0% 100%, color-mix(in srgb, var(--accent) 12%, white), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.6), #fff 70%);"></div>
+    <!-- 写真あり: 作業の様子を背景いっぱいに見せ、文字の乗る左側だけ白くぼかす（スマホは上側）。写真なし: 淡いグラデーション -->
+    <template x-if="img('hero')"><img :src="img('hero')" alt="" class="img-cover" style="object-position: 70% 50%"></template>
+    <div class="absolute inset-0" :class="img('hero') && 'md:hidden'" :style="img('hero')
+      ? 'background: linear-gradient(180deg, rgba(255,255,255,.97) 0%, rgba(255,255,255,.92) 38%, rgba(255,255,255,.5) 58%, rgba(255,255,255,.12) 80%, rgba(255,255,255,.3) 100%);'
+      : 'background: radial-gradient(900px 480px at 88% -10%, color-mix(in srgb, var(--primary) 16%, white), transparent 62%), radial-gradient(600px 400px at 0% 100%, color-mix(in srgb, var(--accent) 12%, white), transparent 60%), linear-gradient(180deg, rgba(255,255,255,.6), #fff 70%);'"></div>
+    <div x-show="img('hero')" class="absolute inset-0 hidden md:block" style="background: linear-gradient(90deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.94) 38%, rgba(255,255,255,.6) 56%, rgba(255,255,255,.08) 78%, rgba(255,255,255,0) 100%);"></div>
   </div>
   <div class="max-w-6xl mx-auto px-5 pt-10 pb-14 md:pt-20 md:pb-24 grid md:grid-cols-12 gap-10 md:gap-8 items-center">
     <div class="md:col-span-7 reveal">
@@ -75,7 +79,7 @@
         <template x-for="b in hero.badges" :key="b"><span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary bg-white/90 border border-slate-200 rounded-full px-3 py-1 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span><span x-text="b"></span></span></template>
       </div>
       <p class="text-[13px] md:text-sm font-bold text-slate-500 mb-3 tracking-wide" x-text="hero.eyebrow"></p>
-      <h1 class="text-[2.1rem] md:text-[3.4rem] font-black leading-[1.2] tracking-tight mb-6 whitespace-pre-line" x-text="hero.headline"></h1>
+      <h1 class="text-[1.75rem] sm:text-[2.1rem] md:text-[3.4rem] font-black leading-[1.25] md:leading-[1.2] tracking-tight mb-6 whitespace-pre-line" x-text="hero.headline"></h1>
       <p class="text-slate-600 text-[15px] md:text-lg leading-[1.9] mb-8 max-w-xl whitespace-pre-line" x-text="hero.sub"></p>
       <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
         <a href="#form" @click="track('cta_click','hero')" class="btn-primary px-8 py-4 text-base text-center" x-text="cta.primary"></a>
