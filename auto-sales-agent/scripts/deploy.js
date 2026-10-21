@@ -46,7 +46,8 @@ if (provider === 'awp') {
   } else {
     note = '変更なし（前回と同じ内容）';
   }
-  url = `${SITE}/demos/${id}/`;
+  // /demos/<id> は next.config.js の rewrite で index.html に届く（末尾スラッシュなし）
+  url = `${SITE}/demos/${id}`;
 } else if (provider === 'cloudflare') {
   if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) { console.error('CLOUDFLARE_API_TOKEN と CLOUDFLARE_ACCOUNT_ID を環境変数に設定してください'); process.exit(1); }
   const project = process.env.ASA_CF_PROJECT || 'awp-demos';
