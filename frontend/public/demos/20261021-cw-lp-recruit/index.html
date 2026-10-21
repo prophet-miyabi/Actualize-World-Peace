@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>（御社名）｜まずは LINE で、
+気軽に話を聞いてみませんか。</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script id="brief" type="application/json">{"id":"20261021-cw-lp-recruit","source":{"platform":"crowdworks","url":"https://crowdworks.jp/public/jobs/13543136","title":"採用LP作成とLINE公式の構築"},"client":{"brand":"（御社名）","industry":"採用を強化したい事業者（採用LP＋採用LINE）","area":"","services":["正社員募集","アルバイト・パート募集","業務委託パートナー募集","説明会・見学"],"terms":["採用LP","LINE公式アカウント","エントリー","カジュアル面談","応募導線"]},"pain":["採用LP（1ページ・スマホ対応）が必要","採用用のLINE公式アカウントを構築したい","公開可能な実績を持つ人に頼みたい"],"screen":{"template":"lp","must_have":["1ページ・スマホ対応の採用LP","LINE 友だち追加への導線（画面下に常時）","仕事内容・1日の流れ・待遇・FAQ","応募の3ステップフォーム"],"nice_to_have":["LINE の自動応答（あいさつ・質問の振り分け）","応募者の管理（リッチメニュー・タグ）"]},"target":"求人を探している20〜40代（スマホで閲覧、LINEで気軽に質問したい層）","budget":{"min":50000,"max":100000,"note":"LP 1〜10万円、LINE公式 1〜10万円"},"deadline":"要相談","tone":"明るく誠実。働く人の顔が見える安心感","palette":{"primary":"#0f766e","accent":"#f59e0b"},"tagline":"まずは LINE で、\n気軽に話を聞いてみませんか。","features":["LINE で質問・応募","仕事内容が具体的","選考の流れが明確"],"reasons":[{"title":"応募の前に「聞ける」","body":"履歴書より先に LINE で質問できる導線を置き、応募のハードルを下げます。友だち追加後はあいさつと質問の振り分けを自動で返します。"},{"title":"仕事の1日が想像できる","body":"業務内容・1日の流れ・一緒に働く人・待遇を、求職者の目線で順番に並べます。"},{"title":"選考の流れを先に見せる","body":"応募 → 面談 → 見学 → 内定 の流れと日数の目安を示し、不安を減らします。"}],"flow":[{"title":"LINE で友だち追加","body":"質問だけでも大丈夫。自動応答で募集中の職種と選考の流れが届きます。"},{"title":"カジュアル面談（オンライン可）","body":"30分ほど。仕事内容と働き方をお話しします。"},{"title":"職場見学","body":"実際の現場と一緒に働く人を見ていただきます。"},{"title":"内定・入社","body":"入社日や条件は相談のうえ決めます。"}],"faq":[{"q":"未経験でも応募できますか？","a":"職種により異なります。LINE で職種名を送っていただければ、条件をお返事します。"},{"q":"LINE で質問するだけでもいいですか？","a":"はい。質問だけのご利用も歓迎です。応募を強制することはありません。"},{"q":"個人情報はどう扱われますか？","a":"採用選考の目的にのみ利用し、選考終了後は規定に従って削除します。"}],"facts":["固定報酬 50,000〜100,000円（LP 1〜10万円、LINE公式 1〜10万円）","依頼事項: ①採用LP（1ページ・スマホ対応） ②採用LINE公式アカウント","公開可能な実績を持つ人のみ募集","掲載 2026-10-19、応募期限 2026-11-02","応募した人 129人（2026-10-21 時点）"],"assumptions":["募集職種は1〜3職種","LINE 公式アカウントは新規開設（あいさつメッセージ・リッチメニュー・自動応答の初期設定）","原稿・写真は一部こちらで用意する"],"demo_data":{"menu":[{"name":"正社員（営業・企画）","price":"月給 25万円〜","note":"見本の待遇。実際の条件に差し替えます","category":"募集職種"},{"name":"アルバイト・パート","price":"時給 1,200円〜","note":"週2日・1日4時間から","category":"募集職種"},{"name":"採用LP（1ページ・スマホ対応・公開まで）","price":"¥70,000〜","note":"構成案・原稿のたたき台を含む","category":"制作費"},{"name":"LINE公式アカウント構築","price":"¥50,000〜","note":"あいさつ・リッチメニュー・自動応答の初期設定","category":"制作費"}]}}</script>
+<style>
+  :root { --primary: #0f766e; --accent: #f59e0b; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Noto Sans JP', system-ui, sans-serif; }
+  .bg-primary { background: var(--primary); } .text-primary { color: var(--primary); } .border-primary { border-color: var(--primary); }
+  .bg-accent { background: var(--accent); } .text-accent { color: var(--accent); }
+  .ring-primary:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); }
+  [x-cloak] { display: none !important; }
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+</style>
+</head>
+<body class="text-slate-800 bg-white" x-data="lp()" x-init="init()">
+
+<!-- 上部バー -->
+<header class="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-slate-100">
+  <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between gap-3">
+    <a href="#top" class="font-black tracking-wide text-[15px] truncate">（御社名）</a>
+    <nav class="hidden md:flex items-center gap-6 text-sm text-slate-600">
+      <a href="#about" class="hover:text-slate-900">選ばれる理由</a>
+      <a href="#menu" class="hover:text-slate-900">メニュー・料金</a>
+      <a href="#flow" class="hover:text-slate-900">ご利用の流れ</a>
+      <a href="#faq" class="hover:text-slate-900">よくある質問</a>
+    </nav>
+    <button @click="openForm()" class="bg-primary text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full shadow-sm hover:brightness-110">無料で相談する</button>
+  </div>
+</header>
+
+<!-- ヒーロー -->
+<section id="top" class="relative overflow-hidden">
+  <div class="absolute inset-0 -z-10" style="background: radial-gradient(900px 400px at 85% 10%, color-mix(in srgb, var(--primary) 14%, white), transparent 60%), linear-gradient(180deg, #fff, #f8fafc);"></div>
+  <div class="max-w-6xl mx-auto px-5 pt-12 pb-14 md:pt-20 md:pb-24 grid md:grid-cols-12 gap-10 items-center">
+    <div class="md:col-span-7 reveal">
+      <p class="inline-flex items-center gap-2 text-xs font-bold text-primary bg-white border border-slate-200 rounded-full px-3 py-1 mb-5"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span> 採用を強化したい事業者（採用LP＋採用LINE）</p>
+      <h1 class="text-[2.1rem] md:text-5xl font-black leading-[1.25] tracking-tight mb-5">まずは LINE で、
+気軽に話を聞いてみませんか。</h1>
+      <p class="text-slate-600 text-[15px] md:text-lg leading-relaxed mb-7 max-w-xl" x-text="brief.target ? brief.target + 'のための、' + brief.client.industry + 'です。' : ''"></p>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button @click="openForm()" class="bg-primary text-white font-bold px-8 py-4 rounded-full shadow-lg hover:brightness-110 text-base">無料で見積もり・相談する</button>
+        <a href="https://lin.ee/" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 font-bold px-8 py-4 rounded-full border border-slate-300 bg-white hover:bg-slate-50"><span class="w-5 h-5 rounded-md bg-[#06C755] text-white text-[10px] font-black flex items-center justify-center">L</span>LINEで気軽に相談</a>
+      </div>
+      <p class="text-xs text-slate-500 mt-4">相談・見積もりは無料です。しつこい営業はいたしません。</p>
+    </div>
+    <div class="md:col-span-5 reveal">
+      <div class="relative aspect-[4/3] rounded-3xl shadow-2xl overflow-hidden" style="background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 85%, black), var(--primary) 50%, color-mix(in srgb, var(--accent) 70%, white));">
+        <div class="absolute inset-0 opacity-30" style="background-image: radial-gradient(circle at 20% 30%, white 2px, transparent 2px), radial-gradient(circle at 70% 60%, white 2px, transparent 2px); background-size: 48px 48px;"></div>
+        <div class="absolute left-5 bottom-5 right-5 text-white">
+          <p class="text-[11px] tracking-[0.3em] opacity-80 mb-1">PROTOTYPE</p>
+          <p class="text-xl font-black leading-snug">（御社名） 専用に<br>仮組みした画面です</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 特徴ストリップ -->
+<section class="px-5 -mt-6 md:-mt-10 relative z-10">
+  <div class="max-w-5xl mx-auto grid grid-cols-3 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+    <template x-for="(f, i) in features" :key="i">
+      <div class="p-4 md:p-6 text-center" :class="i > 0 && 'border-l border-slate-100'">
+        <div class="mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-2" style="background: color-mix(in srgb, var(--primary) 12%, white);"><span class="text-primary font-black" x-text="i + 1"></span></div>
+        <p class="text-[13px] md:text-sm font-bold leading-snug" x-text="f"></p>
+      </div>
+    </template>
+  </div>
+</section>
+
+<!-- 選ばれる理由 -->
+<section id="about" class="px-5 py-16 md:py-24">
+  <div class="max-w-5xl mx-auto">
+    <p class="text-center text-[11px] font-bold tracking-[0.3em] text-primary mb-3">REASON</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-10">選ばれる<span x-text="reasons.length"></span>つの理由</h2>
+    <div class="grid md:grid-cols-3 gap-4 md:gap-6">
+      <template x-for="(r, i) in reasons" :key="i">
+        <div class="reveal rounded-2xl border border-slate-100 bg-white p-6 shadow-sm" style="border-top: 3px solid var(--primary);">
+          <p class="text-xs font-bold text-primary tracking-widest mb-2">POINT <span x-text="String(i + 1).padStart(2, '0')"></span></p>
+          <p class="font-bold text-lg mb-2" x-text="r.title"></p>
+          <p class="text-sm text-slate-600 leading-relaxed" x-text="r.body"></p>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- メニュー・料金（タブ） -->
+<section id="menu" class="px-5 py-16 md:py-24" style="background: color-mix(in srgb, var(--primary) 5%, white);">
+  <div class="max-w-4xl mx-auto">
+    <p class="text-center text-[11px] font-bold tracking-[0.3em] text-primary mb-3">MENU</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-8">メニュー・料金</h2>
+    <div class="flex justify-center gap-2 mb-6" x-show="menuTabs.length > 1">
+      <template x-for="t in menuTabs" :key="t"><button @click="menuTab = t" class="px-4 py-2 rounded-full text-sm font-bold border" :class="menuTab === t ? 'bg-primary text-white border-transparent' : 'bg-white border-slate-200 text-slate-600'" x-text="t"></button></template>
+    </div>
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-8">
+      <template x-for="(m, i) in menuItems" :key="i">
+        <div class="py-4 border-b last:border-b-0 border-slate-100">
+          <div class="flex items-baseline gap-3">
+            <span class="font-bold" x-text="m.name"></span>
+            <span class="flex-1 border-b border-dotted border-slate-300"></span>
+            <span class="font-bold text-primary whitespace-nowrap" x-text="m.price"></span>
+          </div>
+          <p class="text-sm text-slate-500 mt-1" x-show="m.note" x-text="m.note"></p>
+        </div>
+      </template>
+      <p class="text-xs text-slate-400 mt-5">※ 金額は見本です。正式なお見積もりは内容の確認後にご提示します。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ご利用の流れ -->
+<section id="flow" class="px-5 py-16 md:py-24">
+  <div class="max-w-3xl mx-auto">
+    <p class="text-center text-[11px] font-bold tracking-[0.3em] text-primary mb-3">FLOW</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-10">ご利用の流れ</h2>
+    <ol>
+      <template x-for="(s, i) in flow" :key="i">
+        <li class="flex gap-5 reveal">
+          <div class="flex flex-col items-center"><span class="w-10 h-10 rounded-full bg-primary text-white font-bold flex items-center justify-center shrink-0" x-text="i + 1"></span><span class="w-0.5 flex-1 my-2" style="background: color-mix(in srgb, var(--primary) 25%, white);" x-show="i < flow.length - 1"></span></div>
+          <div class="pb-8"><p class="font-bold text-lg" x-text="s.title"></p><p class="text-slate-600 mt-1 leading-relaxed" x-text="s.body"></p></div>
+        </li>
+      </template>
+    </ol>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="px-5 py-16 md:py-24" style="background: color-mix(in srgb, var(--primary) 5%, white);">
+  <div class="max-w-3xl mx-auto">
+    <p class="text-center text-[11px] font-bold tracking-[0.3em] text-primary mb-3">FAQ</p>
+    <h2 class="text-center text-2xl md:text-3xl font-black mb-8">よくある質問</h2>
+    <div class="space-y-3">
+      <template x-for="(q, i) in faq" :key="i">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <button @click="faqOpen = faqOpen === i ? null : i" class="w-full text-left p-5 flex justify-between gap-4 font-bold"><span><span class="text-primary mr-2">Q.</span><span x-text="q.q"></span></span><span class="text-primary transition-transform" :class="faqOpen === i && 'rotate-45'">＋</span></button>
+          <div x-show="faqOpen === i" x-collapse x-cloak class="px-5 pb-5 text-slate-600 leading-relaxed" x-text="q.a"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="px-5 py-20 text-center text-white" style="background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 90%, black), var(--primary));">
+  <div class="max-w-2xl mx-auto">
+    <h2 class="text-2xl md:text-4xl font-black mb-4">まずは、お気軽にご相談ください</h2>
+    <p class="opacity-90 mb-8">相談・見積もりは無料です。LINEなら営業時間外でもメッセージを残せます。</p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button @click="openForm()" class="bg-white text-slate-900 font-bold px-8 py-4 rounded-full shadow-lg hover:bg-slate-100">無料で見積もり・相談する</button>
+      <a href="https://lin.ee/" target="_blank" rel="noopener" class="bg-[#06C755] text-white font-bold px-8 py-4 rounded-full shadow-lg hover:brightness-110">LINEで友だち追加</a>
+    </div>
+    <p class="text-sm opacity-80 mt-6">お電話: 0120-000-000（見本）</p>
+  </div>
+</section>
+
+<footer class="px-5 py-8 text-center text-xs text-slate-500">© <span x-text="new Date().getFullYear()"></span> （御社名）　|　このページはプロトタイプです（見本データ）</footer>
+
+<!-- スマホ固定CTA -->
+<div class="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-white/95 backdrop-blur border-t border-slate-200 flex gap-2">
+  <button @click="openForm()" class="flex-1 bg-primary text-white font-bold py-3 rounded-full text-sm">無料で相談</button>
+  <a href="https://lin.ee/" target="_blank" rel="noopener" class="flex-1 bg-[#06C755] text-white font-bold py-3 rounded-full text-sm text-center">LINEで相談</a>
+</div>
+<div class="h-16 md:hidden"></div>
+
+<!-- 見本バッジ -->
+<div class="fixed right-3 bottom-20 md:bottom-3 z-40 text-[10px] font-bold bg-slate-900/80 text-white rounded-full px-2.5 py-1">プロトタイプ（見本データ）</div>
+
+<!-- 相談フォーム（3ステップ・モーダル） -->
+<div x-show="form.open" x-cloak class="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 p-0 md:p-6" @keydown.escape.window="form.open = false">
+  <div class="bg-white w-full md:max-w-lg rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden" @click.outside="form.open = false">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <p class="font-black">無料相談・お見積もり</p>
+      <button @click="form.open = false" class="text-slate-400 text-xl leading-none">×</button>
+    </div>
+    <div class="px-5 pt-4">
+      <div class="flex gap-1.5 mb-1"><template x-for="n in 3" :key="n"><span class="h-1.5 flex-1 rounded-full" :class="n <= form.step ? 'bg-primary' : 'bg-slate-200'"></span></template></div>
+      <p class="text-xs text-slate-500" x-text="`STEP ${form.step} / 3・あと${3 - form.step}ステップで送信`"></p>
+    </div>
+    <div class="p-5 space-y-4 min-h-[220px]">
+      <template x-if="form.step === 1">
+        <div>
+          <p class="font-bold mb-3">ご相談内容をお選びください</p>
+          <div class="grid grid-cols-2 gap-2">
+            <template x-for="s in services" :key="s"><button @click="form.service = s" class="p-3 rounded-xl border text-sm font-bold text-left" :class="form.service === s ? 'border-primary bg-slate-50' : 'border-slate-200'" x-text="s"></button></template>
+          </div>
+        </div>
+      </template>
+      <template x-if="form.step === 2">
+        <div class="space-y-3">
+          <p class="font-bold">ご希望の時期と連絡方法</p>
+          <select x-model="form.when" class="w-full border rounded-xl px-3 py-3 ring-primary"><option value="">時期を選ぶ</option><option>なるべく早く</option><option>1ヶ月以内</option><option>3ヶ月以内</option><option>まだ検討中</option></select>
+          <div class="flex gap-2"><template x-for="c in ['LINE','メール','電話']" :key="c"><button @click="form.contact = c" class="flex-1 py-3 rounded-xl border text-sm font-bold" :class="form.contact === c ? 'border-primary bg-slate-50' : 'border-slate-200'" x-text="c"></button></template></div>
+        </div>
+      </template>
+      <template x-if="form.step === 3">
+        <div class="space-y-3">
+          <p class="font-bold">お名前とご連絡先</p>
+          <input x-model="form.name" placeholder="お名前" class="w-full border rounded-xl px-3 py-3 ring-primary">
+          <input x-model="form.tel" placeholder="電話番号 または メールアドレス" class="w-full border rounded-xl px-3 py-3 ring-primary">
+          <textarea x-model="form.note" rows="3" placeholder="ご要望（任意）" class="w-full border rounded-xl px-3 py-3 ring-primary"></textarea>
+          <p class="text-[11px] text-slate-500">プロトタイプのため送信は行われません（本番ではメール／LINE通知に接続します）。</p>
+        </div>
+      </template>
+    </div>
+    <div class="p-5 border-t border-slate-100 flex gap-2">
+      <button x-show="form.step > 1" @click="form.step--" class="px-5 py-3 rounded-full border font-bold">もどる</button>
+      <button x-show="form.step < 3" @click="nextStep()" :disabled="!canNext()" class="flex-1 bg-primary text-white font-bold py-3 rounded-full disabled:opacity-40">つぎへ</button>
+      <button x-show="form.step === 3" @click="submit()" :disabled="!form.name || !form.tel" class="flex-1 bg-primary text-white font-bold py-3 rounded-full disabled:opacity-40">送信する（見本）</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト -->
+<div x-show="toast" x-cloak x-transition class="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-bold px-5 py-3 rounded-full shadow-xl" x-text="toast"></div>
+
+<script>
+function lp() {
+  const brief = JSON.parse(document.getElementById('brief').textContent || '{}');
+  const d = brief.demo_data || {};
+  const pains = brief.pain || [];
+  const services = (brief.client && brief.client.services) || [];
+  return {
+    brief,
+    services: services.length ? services.slice(0, 6) : ['ご相談', 'お見積もり', 'その他'],
+    features: (brief.features || services.slice(0, 3)).length ? (brief.features || services.slice(0, 3)) : ['丁寧なヒアリング', '明確なお見積もり', 'アフターサポート'],
+    reasons: (brief.reasons || pains.slice(0, 3).map((p, i) => ({ title: ['不安を先に解消', '費用は事前に明確に', '相談しやすい窓口'][i] || 'こだわり', body: `「${p}」というお悩みに、私たちはこう応えます。（この文章は見本です。仕上げで具体化します）` }))).length ? (brief.reasons || pains.slice(0, 3).map((p, i) => ({ title: ['不安を先に解消', '費用は事前に明確に', '相談しやすい窓口'][i] || 'こだわり', body: `「${p}」というお悩みに、私たちはこう応えます。（見本）` }))) : [{ title: '丁寧なヒアリング', body: 'ご要望を伺ってから、最適なプランをご提案します。' }, { title: '明確な料金', body: '事前にお見積もりを提示し、追加費用が出る場合は必ずご相談します。' }, { title: '安心のサポート', body: 'ご利用後の疑問やトラブルにも対応します。' }],
+    menuTab: '', menuTabs: [],
+    get menuItems() { const items = (d.menu && d.menu.length) ? d.menu : [{ name: 'ご相談・お見積もり', price: '無料', note: '' }, { name: '基本プラン', price: '¥00,000〜', note: '内容により変動' }, { name: 'おまかせプラン', price: '¥00,000〜', note: '' }]; return this.menuTab ? items.filter((m) => (m.category || '') === this.menuTab) : items; },
+    flow: brief.flow || [{ title: 'お問い合わせ', body: 'LINE・フォーム・お電話からご連絡ください。' }, { title: 'ヒアリング・お見積もり', body: 'ご要望を伺い、無料でお見積もりします。' }, { title: 'ご契約・実施', body: '内容にご納得いただけたら開始します。' }, { title: 'アフターフォロー', body: '完了後のご相談も承ります。' }],
+    faq: brief.faq || [{ q: '相談だけでも大丈夫ですか？', a: 'はい。相談・お見積もりは無料です。' }, { q: '対応エリアは？', a: `${(brief.client && brief.client.area) || '周辺エリア'}を中心に対応しています。まずはご相談ください。` }, { q: '支払い方法は？', a: '現金・銀行振込に対応しています（本番で確定）。' }],
+    faqOpen: null,
+    form: { open: false, step: 1, service: '', when: '', contact: 'LINE', name: '', tel: '', note: '' },
+    toast: '',
+    init() {
+      const cats = [...new Set(((d.menu) || []).map((m) => m.category).filter(Boolean))];
+      this.menuTabs = cats; this.menuTab = cats[0] || '';
+      const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } }), { threshold: 0.1 });
+      this.$nextTick(() => document.querySelectorAll('.reveal').forEach((el) => io.observe(el)));
+    },
+    openForm() { this.form.open = true; this.form.step = 1; },
+    canNext() { return this.form.step === 1 ? !!this.form.service : !!this.form.when; },
+    nextStep() { if (this.canNext()) this.form.step++; },
+    submit() { this.form.open = false; this.say('送信を受け付けました（見本）。本番ではメール／LINEに通知が届きます'); this.form = { open: false, step: 1, service: '', when: '', contact: 'LINE', name: '', tel: '', note: '' }; },
+    say(msg) { this.toast = msg; setTimeout(() => (this.toast = ''), 3200); }
+  };
+}
+</script>
+</body>
+</html>
