@@ -55,8 +55,9 @@ async function crowdworksDetail(job) {
   let body = i >= 0 ? text.slice(i) : text;
   const cut = body.search(/この仕事の特徴|クライアント情報|最近応募したクラウドワーカー/);
   if (cut > 0) body = body.slice(0, cut);
-  // 「最近応募したクラウドワーカー」の数を提案数の目安にする（正確な提案数は一覧に無い）
-  const applicants = (html.match(/応募日時/g) || []).length;
+  // 詳細ページの「応募した人 N 人」を提案数として使う（一覧には無い）
+  const m = /応募した人\s*([\d,]+)\s*人/.exec(text);
+  const applicants = m ? Number(m[1].replace(/,/g, '')) : null;
   return { body: body.trim(), proposals: applicants };
 }
 
