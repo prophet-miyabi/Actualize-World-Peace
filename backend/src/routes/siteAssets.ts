@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import prisma from '../prisma';
-import { generateImage } from '../ai/design';
+import { generateImage, imageProvider } from '../ai/design';
+import { generateReelPost } from '../ai/reel';
+import { runwayConfigured, RUNWAY_IMAGE_MODEL, RUNWAY_VIDEO_MODEL } from '../ai/runway';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { requireAdmin } from '../middlewares/admin';
 
@@ -23,7 +25,7 @@ router.post('/generate', authenticate, requireAdmin, async (req: AuthRequest, re
   const prompt = String(req.body?.prompt || '').trim();
   if (!KEY_RE.test(key)) return res.status(400).json({ error: 'キーは半角英数字・ハイフン・アンダースコアで60文字以内にしてください。' });
   if (!prompt) return res.status(400).json({ error: 'どんな画像にするか、指示文を入力してください。' });
-  if (!process.env.GEMINI_API_KEY && !(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN)) {
+  if (!imageProvider()) {
     return res.status(400).json({ error: '画像生成 intelligenceが未設定です（CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN またはGEMINI_API_KEYを設定してください）。' });
   }
 
@@ -38,6 +40,27 @@ router.post('/generate', authenticate, requireAdmin, async (req: AuthRequest, re
   } catch (e: any) {
     console.error('site asset generation failed', key, e?.message);
     res.status(502).json({ error: `画像の生成に失敗しました: ${e?.message || e}` });
+  }
+});
+
+// 管理者向け: いまどの画像生成が使われるか（運営者画面の表示用）
+router.get('/provider', authenticate, requireAdmin, async (_req, res) => {
+  res.json({ provider: imageProvider(), runway: runwayConfigured() ? { image: RUNWAY_IMAGE_MODEL(), video: RUNWAY_VIDEO_MODEL() } : null });
+});
+
+// 管理者向け: Runway でリール（縦動画）を作り、AWP公式（または指定ユーザー）の投稿として保存する
+// body: { imagePrompt, motionPrompt?, body, duration?: 5|10, to?: 'official' | username }
+router.post('/reel', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  const imagePrompt = String(req.body?.imagePrompt || '').trim();
+  const body = String(req.body?.body || '').trim();
+  if (!imagePrompt || !body) return res.status(400).json({ error: 'imagePrompt（画像の指示文・英語）と body（投稿文）を入力してください' });
+  if (!runwayConfigured()) return res.status(503).json({ error: 'RUNWAYML_API_SECRET が未設定です（Render の環境変数に追加してください）' });
+  try {
+    const r = await generateReelPost({ imagePrompt, motionPrompt: String(req.body?.motionPrompt || ''), body, duration: req.body?.duration === 10 ? 10 : 5, to: typeof req.body?.to === 'string' ? req.body.to : 'official' });
+    res.status(201).json(r);
+  } catch (e: any) {
+    console.error('reel generation failed', e?.message);
+    res.status(502).json({ error: `動画の生成に失敗しました: ${e?.message || e}` });
   }
 });
 

@@ -38,6 +38,11 @@ export default function AdminAssets() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [version, setVersion] = useState(0);
+  // いま使われる画像生成と、リール（縦動画）の生成
+  const [provider, setProvider] = useState<{ provider: string | null; runway: { image: string; video: string } | null } | null>(null);
+  const [reel, setReel] = useState({ imagePrompt: '', motionPrompt: 'slow cinematic camera push-in, soft natural light, gentle motion', body: '', duration: 5 as 5 | 10, to: 'official' });
+  const [reelBusy, setReelBusy] = useState(false);
+  const [reelMsg, setReelMsg] = useState('');
 
   useEffect(() => {
     api.get('/auth/me').then(({ data }) => setAllowed(!!data.isAdmin)).catch(() => setAllowed(false));
@@ -47,7 +52,23 @@ export default function AdminAssets() {
     api.get('/site-assets').then(({ data }) => setAssets(data.assets)).catch(() => {});
   };
 
-  useEffect(() => { if (allowed) loadAssets(); }, [allowed]);
+  useEffect(() => { if (allowed) { loadAssets(); api.get('/site-assets/provider').then(({ data }) => setProvider(data)).catch(() => {}); } }, [allowed]);
+
+  const makeReel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReelMsg(''); setError('');
+    if (!reel.imagePrompt.trim() || !reel.body.trim()) { setError('リールの画像の指示文（英語）と投稿文を入力してください。'); return; }
+    setReelBusy(true);
+    try {
+      const { data } = await api.post('/site-assets/reel', reel);
+      setReelMsg(`リールを投稿しました（${data.seconds}秒）。公式ページとタイムラインに出ています: ${data.videoUrl}`);
+      setReel((r) => ({ ...r, imagePrompt: '', body: '' }));
+    } catch (err: any) {
+      setError(err?.response?.data?.error || '動画の生成に失敗しました。');
+    } finally {
+      setReelBusy(false);
+    }
+  };
 
   const generate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,9 +100,31 @@ export default function AdminAssets() {
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">アプリの外装画像を生成</h1>
-        <p className="text-gray-500 mb-8 text-sm">
+        <p className="text-gray-500 mb-3 text-sm">
           導入済みの画像生成 intelligenceで、マーケティングLPやウィザードの装飾画像を作成・差し替えます（顧客のLP画像とは別管理です）。
         </p>
+        <p className="text-xs mb-8">
+          <span className={`inline-block rounded-full px-3 py-1 font-bold ${provider?.provider === 'runway' ? 'bg-green-100 text-green-800' : provider?.provider ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-700'}`}>
+            いまの画像生成: {provider?.provider === 'runway' ? `Runway（画像 ${provider.runway?.image} / 動画 ${provider.runway?.video}）` : provider?.provider === 'cloudflare' ? 'Cloudflare Workers（無料枠・品質は限定的）' : provider?.provider === 'gemini' ? 'Gemini' : provider ? '未設定' : '確認中…'}
+          </span>
+          {provider && provider.provider !== 'runway' && <span className="ml-2 text-gray-500">Render の環境変数に RUNWAYML_API_SECRET を追加すると Runway に切り替わり、動画も作れます。</span>}
+        </p>
+
+        <section className="bg-white border rounded-2xl p-5 mb-8">
+          <h2 className="font-bold">リール（縦動画）を作る → AWP公式アカウントに投稿</h2>
+          <p className="text-xs text-gray-500 mt-1">Runway で画像→動画（5秒 約40円 / 10秒 約80円）。投稿はタイムラインと公式ページに出て、Instagram運用の予約列からも使えます。</p>
+          <form onSubmit={makeReel} className="mt-3 space-y-2 text-sm">
+            <textarea value={reel.imagePrompt} onChange={(e) => setReel({ ...reel, imagePrompt: e.target.value })} rows={2} placeholder="画像の指示文（英語。被写体・光・色。文字や顔は入れない）" className="w-full border rounded-lg p-2" />
+            <input value={reel.motionPrompt} onChange={(e) => setReel({ ...reel, motionPrompt: e.target.value })} placeholder="動きの指示文（英語。カメラワーク）" className="w-full border rounded-lg p-2" />
+            <textarea value={reel.body} onChange={(e) => setReel({ ...reel, body: e.target.value })} rows={2} placeholder="投稿文（日本語）" className="w-full border rounded-lg p-2" />
+            <div className="flex flex-wrap gap-2 items-center">
+              <select value={reel.duration} onChange={(e) => setReel({ ...reel, duration: Number(e.target.value) as 5 | 10 })} className="border rounded-lg px-2 py-2"><option value={5}>5秒</option><option value={10}>10秒</option></select>
+              <input value={reel.to} onChange={(e) => setReel({ ...reel, to: e.target.value })} placeholder="投稿先（official または ユーザー名）" className="border rounded-lg px-2 py-2 w-56" />
+              <button type="submit" disabled={reelBusy || provider?.provider !== 'runway'} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50">{reelBusy ? '生成中（1〜3分）…' : 'リールを生成して投稿'}</button>
+            </div>
+            {reelMsg && <p className="text-green-700 text-xs break-all">{reelMsg}</p>}
+          </form>
+        </section>
 
         <form onSubmit={generate} className="bg-white p-6 rounded-2xl border shadow-sm mb-8 space-y-4">
           <div>

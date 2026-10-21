@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod/v4';
 import { fetchWithRetry } from './cloudflareFetch';
 import { aiClient, recordAiCost } from '../lib/aiUsage';
+import { runwayConfigured, runwayImage } from './runway';
 import { classifyIndustryByRules, playbookBriefForDesign, type Playbook } from './playbook';
 import { LEGACY_STYLE, STYLES, STYLE_KEYS, hueBucket, isHex, paletteFor, styleForIndustry, styleOf, type StyleSpec } from './styles';
 
@@ -383,20 +384,32 @@ export async function heroImageWithWorkersAI(imagePrompt: string, fixInstruction
   return imageFromWorkersAI(buildImagePrompt(imagePrompt, fixInstructions));
 }
 
-// どのAWPで画像を作るかを、設定済みの環境変数から自動選択する
-// （Cloudflareの方が無料枠が大きいため優先。どちらも未設定なら画像なしで公開する）
+// どの画像生成を使うか。IMAGE_PROVIDER（runway / cloudflare / gemini）で明示でき、未指定なら
+// 品質の高い順に Runway → Cloudflare Workers（無料枠）→ Gemini の中から設定済みのものを選ぶ
+export type ImageProvider = 'runway' | 'cloudflare' | 'gemini' | null;
+export function imageProvider(): ImageProvider {
+  const forced = (process.env.IMAGE_PROVIDER || '').toLowerCase();
+  if (forced === 'runway' && runwayConfigured()) return 'runway';
+  if (forced === 'cloudflare' && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) return 'cloudflare';
+  if (forced === 'gemini' && process.env.GEMINI_API_KEY) return 'gemini';
+  if (runwayConfigured()) return 'runway';
+  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) return 'cloudflare';
+  if (process.env.GEMINI_API_KEY) return 'gemini';
+  return null;
+}
+
 export async function generateHeroImage(imagePrompt: string, fixInstructions?: string): Promise<{ data: Buffer; mimeType: string }> {
-  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
-    return heroImageWithWorkersAI(imagePrompt, fixInstructions);
-  }
+  const p = imageProvider();
+  if (p === 'runway') return runwayImage(buildImagePrompt(imagePrompt, fixInstructions), { ratio: 'landscape' });
+  if (p === 'cloudflare') return heroImageWithWorkersAI(imagePrompt, fixInstructions);
   return heroImageWithGemini(imagePrompt, fixInstructions);
 }
 
 // アプリ自体の外装（マーケティングLP・ウィザードなどの装飾画像）用。
 // 店主のLP画像とは違い、指示文をそのまま使う（「小規模事業のヒーロー画像」という前提を付けない）
-export async function generateImage(prompt: string): Promise<{ data: Buffer; mimeType: string }> {
-  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
-    return imageFromWorkersAI(prompt.slice(0, 2000));
-  }
+export async function generateImage(prompt: string, opts: { ratio?: 'landscape' | 'portrait' | 'square' } = {}): Promise<{ data: Buffer; mimeType: string }> {
+  const p = imageProvider();
+  if (p === 'runway') return runwayImage(prompt.slice(0, 1000), { ratio: opts.ratio || 'landscape' });
+  if (p === 'cloudflare') return imageFromWorkersAI(prompt.slice(0, 2000));
   return imageFromGemini(prompt.slice(0, 2000));
 }

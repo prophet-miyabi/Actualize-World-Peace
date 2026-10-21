@@ -117,7 +117,7 @@ export const AGENTS: AgentDef[] = [
 投稿の柱: ①活動報告（今週できたこと・新しくなった機能・公開されたページの実例・会議室の決定。list_events と get_overview で確かめた事実だけ） ②広報（機能の使い方・作り方のコツ・型と色の選び方。実装済みの画面名で） ③AWPの考え方（参加配当・世界平和・みんなで作るSNS・2027年の資金移動業の目標）。
 守ること: 実績・利用者数・収益の数字は instagram_overview / get_metrics で確かめた事実だけ。限定・緊急・「必ず」などの演出はしない。人工知能の略語（英字2文字）は使わず「AWP」「intelligence」。他人の写真・文章は使わない（list_awp_posts と make_image だけ）。
 投稿は queue_instagram_post で予約列に入れる（運営者が承認する。自動公開がオンのときは予約に直接入る）。1日1本まで、JST 12:00 か 19:00。反応（インサイト）を見て、柱と文体を少しずつ変えて学ぶ。`,
-    tools: ['read_memory', 'write_memory', 'get_metrics', 'get_overview', 'list_events', 'list_tasks', 'instagram_overview', 'list_awp_posts', 'make_image', 'queue_instagram_post'],
+    tools: ['read_memory', 'write_memory', 'get_metrics', 'get_overview', 'list_events', 'list_tasks', 'instagram_overview', 'list_awp_posts', 'make_image', 'make_reel', 'queue_instagram_post'],
     memoryRead: [...COMMON_READ, 'dept:marketing', 'agent:instagram', 'agent:marketing', 'agent:content'],
     memoryWrite: ['dept:marketing', 'agent:instagram'],
     maxAutoRisk: 'medium', model: BALANCED, dailyBudgetUsd: 1

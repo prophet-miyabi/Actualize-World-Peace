@@ -7,6 +7,8 @@ import { ALL_SETTING_KEYS, SETTING_LABEL, setFlag, type SettingKey } from '../li
 import { AGENT_BY_KEY, isAgentKey, type AgentDef, type Risk } from './registry';
 import { awpMediaPosts, instagramOverview, publicBase, queueInstagramPost } from '../social/instagramOps';
 import { generateImage } from '../ai/design';
+import { generateReelPost } from '../ai/reel';
+import { runwayConfigured } from '../ai/runway';
 
 // エージェントの「手」（Hands）。エージェントがシステムに触れる唯一の方法。
 // 読む道具は low、記録や依頼を作る道具は medium、設定・お金・公開に触る道具は high（人間の承認後に execute が走る）
@@ -286,17 +288,29 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'make_image', risk: 'low',
-    description: 'Instagram 投稿用の画像を1枚作る（英語の指示文。文字・ロゴ・人物の顔は入れない）。公開URLを返す。1枚あたり数円。合う写真が list_awp_posts に無いときだけ使う',
-    input_schema: { type: 'object', properties: { prompt: { type: 'string' } }, required: ['prompt'] },
+    description: 'Instagram 投稿用の画像を1枚作る（英語の指示文。文字・ロゴ・人物の顔は入れない）。公開URLを返す。1枚あたり数円〜20円。合う写真が list_awp_posts に無いときだけ使う',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string' }, ratio: { type: 'string', enum: ['square', 'portrait', 'landscape'], description: '既定 square（Instagram のフィード向け）' } }, required: ['prompt'] },
     run: async (i, ctx) => {
       const prompt = text(i.prompt, 1500);
       if (!prompt) return { ok: false, error: 'prompt が必要です' };
       if (!publicBase()) return { ok: false, error: 'PUBLIC_BASE_URL が未設定のため公開URLを作れません' };
-      const img = await generateImage(`${prompt}. Square composition suitable for Instagram. No text, no letters, no logos, no watermarks, no faces.`);
+      const ratio = (['square', 'portrait', 'landscape'] as const).includes(i.ratio) ? i.ratio : 'square';
+      const img = await generateImage(`${prompt}. ${ratio === 'square' ? 'Square composition suitable for Instagram.' : ''} No text, no letters, no logos, no watermarks, no faces.`, { ratio });
       const key = `ig-${Date.now().toString(36)}`;
       await prisma.siteAsset.create({ data: { key, image: img.data, mimeType: img.mimeType, prompt } });
       await emitEvent('instagram.image_made', ctx.agent.key, { key }, ctx.taskId);
       return { ok: true, key, mediaUrl: `${publicBase()}/api/site-assets/${key}` };
+    }
+  },
+  {
+    name: 'make_reel', risk: 'medium',
+    description: 'リール（縦動画 5〜10秒）を Runway で作り、AWP公式アカウントの投稿として保存する。imagePrompt（英語・被写体と光）、motionPrompt（英語・カメラの動き）、body（日本語の投稿文）。1本あたり約40〜80円。AWPのタイムラインと公式ページに出て、返ってくる videoUrl は queue_instagram_post の mediaUrl に使える。RUNWAYML_API_SECRET が無いと失敗する',
+    input_schema: { type: 'object', properties: { imagePrompt: { type: 'string' }, motionPrompt: { type: 'string' }, body: { type: 'string' }, duration: { type: 'integer', enum: [5, 10] } }, required: ['imagePrompt', 'body'] },
+    run: async (i, ctx) => {
+      if (!runwayConfigured()) return { ok: false, error: 'RUNWAYML_API_SECRET が未設定のため動画を作れません（オーナーに Render の環境変数の追加を依頼）' };
+      const r = await generateReelPost({ imagePrompt: text(i.imagePrompt, 1000), motionPrompt: text(i.motionPrompt, 500), body: text(i.body, 500), duration: i.duration === 10 ? 10 : 5, to: 'official' });
+      await emitEvent('reel.generated', ctx.agent.key, r, ctx.taskId);
+      return { ok: true, ...r };
     }
   },
   {

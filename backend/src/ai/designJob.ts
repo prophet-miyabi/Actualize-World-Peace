@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { describeUsedCombos, designWithClaude, generateHeroImage, presetDesign, reviewImageWithClaude, type Design } from './design';
 import { classifyIndustry, getPlaybook, type Playbook } from './playbook';
 
-const hasImageAi = () => !!((process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) || process.env.GEMINI_API_KEY);
+const hasImageAi = () => !!(process.env.RUNWAYML_API_SECRET || (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) || process.env.GEMINI_API_KEY);
 
 // 生成中のまま止まった場合（サーバー再起動など）に、再実行できるようにする時間
 const STALE_MS = 3 * 60 * 1000;
