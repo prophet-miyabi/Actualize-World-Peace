@@ -1,0 +1,152 @@
+{
+  "_comment": "案件スカウトの設定。sources の各URLを取得して条件に合う案件だけ input/queue/ に保存する。取得は礼儀正しく（1リクエストごとに数秒待つ・1回の実行で最大 max_fetch_detail 件まで詳細を読む）。",
+  "min_budget_jpy": 50000,
+  "allow_budget_unknown": true,
+  "max_age_hours": 48,
+  "max_proposals": 10,
+  "max_fetch_detail": 12,
+  "max_pick_per_run": 8,
+  "request_interval_ms": 2500,
+  "must_match_any": [
+    "LP",
+    "ランディングページ",
+    "公式LINE",
+    "LINE公式",
+    "予約システム",
+    "予約管理",
+    "予約フォーム",
+    "顧客管理",
+    "CRM",
+    "業務システム",
+    "業務管理",
+    "業務効率化",
+    "ツール開発",
+    "管理システム",
+    "ホームページ制作",
+    "HP制作",
+    "Webサイト制作",
+    "サイト制作",
+    "システム開発",
+    "Webアプリ",
+    "アプリ開発",
+    "自動化",
+    "ダッシュボード",
+    "ポータル",
+    "ネットショップ",
+    "ECサイト",
+    "EC構築",
+    "ECシステム"
+  ],
+  "must_not_match": [
+    "データ入力",
+    "文字起こし",
+    "アンケート",
+    "テレアポ",
+    "ライティングのみ",
+    "記事作成",
+    "記事執筆",
+    "ブログ記事",
+    "動画編集",
+    "翻訳",
+    "バナー",
+    "Instagram投稿画像",
+    "投稿画像",
+    "サムネイル",
+    "ロゴ作成",
+    "名刺",
+    "チラシ",
+    "イラスト",
+    "SNS運用代行",
+    "モニター",
+    "口コミ",
+    "レビュー投稿",
+    "求人",
+    "正社員",
+    "週5日",
+    "常駐",
+    "面接",
+    "営業代行",
+    "リスト作成",
+    "スクレイピングのみ",
+    "WordPressの修正のみ",
+    "PM業務",
+    "PM募集",
+    "営業パートナー",
+    "パートナー募集",
+    "学生限定",
+    "エンジニア募集",
+    "エンジニア歓迎",
+    "デザイナー募集",
+    "ディレクター募集",
+    "人材",
+    "業務委託契約で参画",
+    "参画",
+    "週3日",
+    "週4日",
+    "案件紹介"
+  ],
+  "hourly_ok_if_match": [
+    "業務効率化",
+    "ツール開発",
+    "自動化",
+    "システム開発",
+    "GAS"
+  ],
+  "sources": [
+    {
+      "platform": "crowdworks",
+      "label": "CW ホームページ・Web制作",
+      "url": "https://crowdworks.jp/public/jobs/group/web_products?order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW システム開発",
+      "url": "https://crowdworks.jp/public/jobs/group/development?order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW 検索: LP",
+      "url": "https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=LP%E5%88%B6%E4%BD%9C&order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW 検索: 予約システム",
+      "url": "https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=%E4%BA%88%E7%B4%84%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0&order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW 検索: 顧客管理",
+      "url": "https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=%E9%A1%A7%E5%AE%A2%E7%AE%A1%E7%90%86&order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW 検索: 公式LINE",
+      "url": "https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=%E5%85%AC%E5%BC%8FLINE&order=new"
+    },
+    {
+      "platform": "crowdworks",
+      "label": "CW 検索: 業務効率化",
+      "url": "https://crowdworks.jp/public/jobs/search?search%5Bkeywords%5D=%E6%A5%AD%E5%8B%99%E5%8A%B9%E7%8E%87%E5%8C%96&order=new"
+    },
+    {
+      "platform": "lancers",
+      "label": "LN システム開発",
+      "url": "https://www.lancers.jp/work/search/system?open=1&sort=started&show_description=1"
+    },
+    {
+      "platform": "lancers",
+      "label": "LN Web制作",
+      "url": "https://www.lancers.jp/work/search/web?open=1&sort=started&show_description=1"
+    },
+    {
+      "platform": "lancers",
+      "label": "LN 検索: LP",
+      "url": "https://www.lancers.jp/work/search?keyword=LP&open=1&sort=started&show_description=1"
+    },
+    {
+      "platform": "lancers",
+      "label": "LN 検索: 予約",
+      "url": "https://www.lancers.jp/work/search?keyword=%E4%BA%88%E7%B4%84%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0&open=1&sort=started&show_description=1"
+    }
+  ]
+}

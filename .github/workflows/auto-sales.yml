@@ -1,0 +1,42 @@
+# Auto-Sales-Agent をクラウド側で定期実行する（PC を起動していなくても回る）。
+# 有効化: リポジトリの Settings → Secrets に ANTHROPIC_API_KEY と DISCORD_WEBHOOK_URL を登録する。
+# 公開（awp）はこのワークフローが frontend/public/demos/ をコミットして push → Render が自動デプロイ。
+name: auto-sales
+on:
+  schedule:
+    - cron: '0 */3 * * *'   # 3時間ごと（UTC）
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  pitch:
+    runs-on: ubuntu-latest
+    if: ${{ vars.AUTO_SALES_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend deps (Anthropic SDK)
+        run: cd backend && npm ci --omit=dev --ignore-scripts
+      - name: Scout
+        run: node auto-sales-agent/scripts/scout.js
+      - name: Batch (analyze → mockup → deploy → proposal → Discord)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ASA_DEPLOY: awp
+          GIT_AUTHOR_NAME: awp-auto-sales
+          GIT_AUTHOR_EMAIL: noreply@awp
+          GIT_COMMITTER_NAME: awp-auto-sales
+          GIT_COMMITTER_EMAIL: noreply@awp
+        run: |
+          git config user.name awp-auto-sales
+          git config user.email noreply@awp
+          node auto-sales-agent/scripts/batch.js --max 3
+      - name: Keep queue state (seen.json / done.json)
+        run: |
+          git add -f auto-sales-agent/input/queue/seen.json || true
+          git diff --cached --quiet || git commit -m "auto-sales: queue state" && git push || true
