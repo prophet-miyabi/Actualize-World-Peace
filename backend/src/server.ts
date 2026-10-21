@@ -34,6 +34,7 @@ import crewRoutes, { discordInteractions } from './routes/crew';
 import planRoutes from './routes/plans';
 import shopRoutes, { sweepOrders } from './routes/shop';
 import companyRoutes from './routes/company';
+import pageIntelligenceRoutes from './routes/pageIntelligence';
 import { startCompany } from './company/loop';
 import { startCrew } from './crew/orchestrator';
 import { startScheduler } from './social/scheduler';
@@ -118,6 +119,7 @@ app.use('/api/crew', crewRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/page-intelligence', pageIntelligenceRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

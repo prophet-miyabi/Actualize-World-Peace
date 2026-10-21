@@ -23,32 +23,32 @@ model User {
 
   // ---- プロフィール（SNS） ----
   // ユーザー名は公開URL（/ユーザー名）になる。ページのURL（LandingPage.slug）と同じ名前空間なので、相互に重複させない
-  username String?  @unique
-  bio      String?
-  category String?  // business / creator / other
-  region   String?  // 地域検索用（都道府県など、本人が入力したもの）
-  links    Json?    // [{ label, url }] 本人のSNS・外部サイト
+  username        String?                @unique
+  bio             String?
+  category        String? // business / creator / other
+  region          String? // 地域検索用（都道府県など、本人が入力したもの）
+  links           Json? // [{ label, url }] 本人のSNS・外部サイト
   // 通報などで運営者が非公開にしたプロフィール
-  profileHidden Boolean @default(false)
-  following Follow[] @relation("following")
-  followers Follow[] @relation("followers")
-  pageLikes PageLike[]
+  profileHidden   Boolean                @default(false)
+  following       Follow[]               @relation("following")
+  followers       Follow[]               @relation("followers")
+  pageLikes       PageLike[]
   builderSessions BuilderSession[]
-  posts Post[]
-  postLikes     PostLike[]
-  comments      Comment[]
-  notifications Notification[]
-  contributions Contribution[]
-  harnessLinks HarnessLink[]
-  harnessPosts HarnessScheduledPost[]
+  posts           Post[]
+  postLikes       PostLike[]
+  comments        Comment[]
+  notifications   Notification[]
+  contributions   Contribution[]
+  harnessLinks    HarnessLink[]
+  harnessPosts    HarnessScheduledPost[]
 
   // AWPの有料プラン（自前の請求: 銀行振込・キャッシュ）。planUntil を過ぎると無料プランに戻る
-  plan      String    @default("free") // free / lite / standard / pro
-  planUntil DateTime?
-  planPayments PlanPayment[]
-  aiUsages     AiUsage[]
+  plan            String           @default("free") // free / lite / standard / pro
+  planUntil       DateTime?
+  planPayments    PlanPayment[]
+  aiUsages        AiUsage[]
   domainReferrals DomainReferral[]
-  sellerProfile SellerProfile?
+  sellerProfile   SellerProfile?
 
   stripeCustomerId     String? @unique
   stripeSubscriptionId String?
@@ -65,29 +65,30 @@ model User {
   // 既定はfalse（本人がダッシュボードで明示的にオンにするまで有効にならない）
   autoPublishEnabled Boolean @default(false)
 
-  landingPages        LandingPage[]
-  lineConfig          LineConfig?
-  socialAccounts      SocialAccount[]
-  scheduledPosts      ScheduledPost[]
-  agentTasks          AgentTask[]
-  automationWorkflows AutomationWorkflow[]
-  harnessOrders       HarnessOrder[]
+  landingPages             LandingPage[]
+  lineConfig               LineConfig?
+  socialAccounts           SocialAccount[]
+  scheduledPosts           ScheduledPost[]
+  agentTasks               AgentTask[]
+  automationWorkflows      AutomationWorkflow[]
+  harnessOrders            HarnessOrder[]
+  pageIntelligenceSessions PageIntelligenceSession[]
 }
 
 // 「どのサイトで、どの操作をするか」を編集できるブラウザ操作の自動化ワークフロー。
 // パスワード・カード番号・CVV等を入力する手順は保存・実行のどちらの時点でも拒否する
 // （backend/src/automation/safety.ts）。定型的な繰り返し作業（情報収集・フォーム入力の下書きなど）向け。
 model AutomationWorkflow {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  name        String
-  targetUrl   String
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  targetUrl String
   // [{ action: 'navigate'|'click'|'type'|'select'|'waitFor'|'extract', selector?, value?, label? }, ...]
-  steps       Json
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  steps     Json
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   runs AutomationRun[]
 
@@ -95,15 +96,15 @@ model AutomationWorkflow {
 }
 
 model AutomationRun {
-  id           String             @id @default(cuid())
-  workflowId   String
-  workflow     AutomationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  status       String             @default("running") // running / success / failed / blocked
+  id          String             @id @default(cuid())
+  workflowId  String
+  workflow    AutomationWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status      String             @default("running") // running / success / failed / blocked
   // 各手順の実行結果、ブロックされた場合はその理由を記録する
-  log          Json?
-  blockedStep  Int?
-  startedAt    DateTime           @default(now())
-  finishedAt   DateTime?
+  log         Json?
+  blockedStep Int?
+  startedAt   DateTime           @default(now())
+  finishedAt  DateTime?
 
   @@index([workflowId, startedAt])
 }
@@ -113,20 +114,20 @@ model AutomationRun {
 // コンプライアンス担当エージェントの審査を経たうえで、人間の承認（approve）または
 // 本人が有効にしたautoPublishEnabledによる自動承認のいずれかを経てから行う
 model AgentTask {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  role      String    // marketing / growth / compliance
-  kind      String    // sns_post_draft / lp_health_check
-  lpId      String?
-  output    Json      // エージェントが作った内容（下書き文章・分析結果など）
-  status    String    @default("pending_review") // pending_review / approved / rejected
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  role         String // marketing / growth / compliance
+  kind         String // sns_post_draft / lp_health_check
+  lpId         String?
+  output       Json // エージェントが作った内容（下書き文章・分析結果など）
+  status       String    @default("pending_review") // pending_review / approved / rejected
   // コンプライアンス担当エージェントの審査結果（sns_post_draftのみ）
   reviewPassed Boolean?
   reviewNote   String?
-  autoApproved Boolean  @default(false) // trueなら人間の承認を経ず自動で承認・投稿予約された
-  createdAt DateTime  @default(now())
-  reviewedAt DateTime?
+  autoApproved Boolean   @default(false) // trueなら人間の承認を経ず自動で承認・投稿予約された
+  createdAt    DateTime  @default(now())
+  reviewedAt   DateTime?
 
   @@index([userId, status])
 }
@@ -134,16 +135,16 @@ model AgentTask {
 // X / Instagram / YouTube / TikTok の連携。OAuthのアクセストークンを保管する。
 // トークンは平文保存（LineConfigと同様、暗号化はフェーズ2で対応）
 model SocialAccount {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  platform      String    // x / instagram / youtube / tiktok
-  accountLabel  String?   // 表示用（アカウント名・チャンネル名など）
-  externalId    String?   // プラットフォーム側のアカウントID
-  accessToken   String
-  refreshToken  String?
-  expiresAt     DateTime?
-  connectedAt   DateTime  @default(now())
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  platform     String // x / instagram / youtube / tiktok
+  accountLabel String? // 表示用（アカウント名・チャンネル名など）
+  externalId   String? // プラットフォーム側のアカウントID
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  connectedAt  DateTime  @default(now())
 
   @@unique([userId, platform])
 }
@@ -159,7 +160,7 @@ model ScheduledPost {
   scheduledAt DateTime
   status      String   @default("pending") // pending / processing / done / failed
   attempts    Int      @default(0)
-  results     Json?    // { x: {ok:true, postId}, instagram: {ok:false, error} } 形式
+  results     Json? // { x: {ok:true, postId}, instagram: {ok:false, error} } 形式
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -167,44 +168,44 @@ model ScheduledPost {
 }
 
 model LandingPage {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  slug           String   @unique
-  businessName   String
-  heroTitle      String
-  strengths      String[]
-  socialProof    String?
-  scarcityOffer  String?
-  pageViews      Int      @default(0)
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  slug          String   @unique
+  businessName  String
+  heroTitle     String
+  strengths     String[]
+  socialProof   String?
+  scarcityOffer String?
+  pageViews     Int      @default(0)
+  createdAt     DateTime @default(now())
 
   // lp = 1ページで完結（申し込み・予約への行動に集中）
   // hp = 複数ページ（ホーム＋機能ごとに専用ページ＋ナビゲーション）
-  siteType String @default("lp")
+  siteType    String  @default("lp")
   // business = お店・ビジネス / creator = クリエイター活動（音楽・イラスト・写真・動画など）。文言とAIの書き方が変わる
-  purpose String @default("business")
+  purpose     String  @default("business")
   // 持ち主のLINE公式アカウントの友だち追加URL（https://lin.ee/... など）。未登録ならLINEボタンを出さない
-  lineAddUrl String?
+  lineAddUrl  String?
   // ユーザーが完成例から選んだ土台デザイン（PRESET_METAのid）。未選択ならnull
   templateKey String?
   // 業種（IndustryPlaybook.key）。入力内容から自動判定し、同業種の人気ページの手本をデザイン・文章に反映する
   industryKey String?
   // ユーザーが選んだメインカラー（#RRGGBB）。未選択なら型の既定色か AWP が業種から選ぶ
-  accent String?
+  accent      String?
 
   // 独自ドメイン（例: www.example.jp）。DNSのCNAME確認が取れたらverified=true
-  customDomain         String?  @unique
-  customDomainVerified Boolean  @default(false)
+  customDomain            String?   @unique
+  customDomainVerified    Boolean   @default(false)
   // 独自ドメインの公開条件: affiliate = 提携リンクから取得（無料）/ paid = 有料プラン / review = 運営者の確認待ち（猶予期間あり）
-  customDomainMode     String?
-  customDomainNote     String?
+  customDomainMode        String?
+  customDomainNote        String?
   customDomainReviewUntil DateTime?
 
   // AIが作成したデザイン（配色・書体・レイアウト）。nullなら業種に合うプリセットを使う
   design          Json?
-  designSource    String?   // ai / preset
-  designStatus    String?   // generating / ready
+  designSource    String? // ai / preset
+  designStatus    String? // generating / ready
   designUpdatedAt DateTime?
   // Geminiが生成したメイン画像（JPEG）。どの公開先でも消えないようDBに保存する
   heroImage       Bytes?
@@ -221,25 +222,27 @@ model LandingPage {
   events   PageEvent[]
 
   // 通報などで運営者が非公開にしたページ（公開URL・発見・サイトマップのすべてから外れる）
-  hidden   Boolean  @default(false)
+  hidden Boolean @default(false)
 
   // 持ち主が「収益化（PR枠）」をオンにしたページ。PR表示付きで提携サービスの紹介枠を出す
-  monetizationEnabled Boolean @default(false)
+  monetizationEnabled Boolean           @default(false)
   // 持ち主が「AIチャットボット」をオンにしたページ。確定した情報だけで訪問者の質問に答える
-  postsEnabled   Boolean @default(true) // 持ち主の最新の投稿をページに表示する
+  postsEnabled        Boolean           @default(true) // 持ち主の最新の投稿をページに表示する
   // 投稿をページのどこに置くか: top = 強みのすぐ下（SNSらしく前面に）/ bottom = 問い合わせの前
-  postsPlacement String  @default("top")
-  chatbotEnabled Boolean @default(false)
-  chatbotQuestions ChatbotQuestion[]
+  postsPlacement      String            @default("top")
+  chatbotEnabled      Boolean           @default(false)
+  chatbotQuestions    ChatbotQuestion[]
   // 予約リクエスト（訪問者が希望日時を送り、持ち主が確定・お断りする）。設定: { menus: [{ name, note }], note, leadDays, maxDays }
-  bookingEnabled Boolean @default(false)
-  bookingConfig  Json?
-  bookings       Booking[]
-  products       Product[]
-  orders         Order[]
+  bookingEnabled      Boolean           @default(false)
+  bookingConfig       Json?
+  bookings            Booking[]
+  products            Product[]
+  orders              Order[]
 
   // 対話で作ったページの「事実の台帳」（AI作成ページビルダー）。項目ごとに出どころ（status）を持つ
-  brief    Json?
+  brief                Json?
+  intelligenceSessions PageIntelligenceSession[]
+  structureSuggestions PageStructureSuggestion[]
 }
 
 // ---- SNS（フォロー・いいね・閲覧/クリックの記録・通報） ----
@@ -270,9 +273,9 @@ model PageEvent {
   id        String      @id @default(cuid())
   lpId      String
   lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
-  type      String      // view / click
-  target    String?     // click の行き先の種類（tool / line / sns など）
-  source    String?     // 流入元のドメイン（例: instagram.com）。URLのパスやクエリは保存しない
+  type      String // view / click
+  target    String? // click の行き先の種類（tool / line / sns など）
+  source    String? // 流入元のドメイン（例: instagram.com）。URLのパスやクエリは保存しない
   createdAt DateTime    @default(now())
 
   @@index([lpId, createdAt])
@@ -281,9 +284,9 @@ model PageEvent {
 // 違法・有害なページやプロフィールの通報（運営者が確認して非公開にできる）
 model Report {
   id         String   @id @default(cuid())
-  targetType String   // page / profile
-  targetId   String   // page = slug, profile = username
-  reason     String   // illegal / scam / adult / harassment / copyright / other
+  targetType String // page / profile
+  targetId   String // page = slug, profile = username
+  reason     String // illegal / scam / adult / harassment / copyright / other
   detail     String?
   reporterId String?
   status     String   @default("open") // open / resolved / dismissed
@@ -298,27 +301,27 @@ model Report {
 // allowedHosts は、ユーザーが自分のサイトに貼れるURLのホスト（例: airrsv.net）。これ以外のURLは貼らせない
 // （任意のURLやHTMLを許すと、AWPドメイン上で第三者のスクリプトが動き、他ユーザーの情報を盗めてしまうため）
 model ToolCatalogItem {
-  id           String   @id @default(cuid())
-  key          String   @unique
-  name         String
-  category     String
-  description  String
-  officialUrl  String
-  affiliateUrl String?
-  allowedHosts String[]
+  id                  String   @id @default(cuid())
+  key                 String   @unique
+  name                String
+  category            String
+  description         String
+  officialUrl         String
+  affiliateUrl        String?
+  allowedHosts        String[]
   // button = ボタンでツールの画面へ移動 / embed = ページ内に埋め込み表示（iframe）も許可
-  embeddable   Boolean  @default(false)
-  enabled      Boolean  @default(true)
-  sortOrder    Int      @default(0)
+  embeddable          Boolean  @default(false)
+  enabled             Boolean  @default(true)
+  sortOrder           Int      @default(0)
   // 利用者のページのPR枠に出して、報酬を利用者と分け合ってよいか。
   // ASP・広告主の規約で「第三者サイトへの掲載・報酬の分配」が認められている案件だけ、運営者がtrueにする
-  revenueShareAllowed Boolean @default(false)
+  revenueShareAllowed Boolean  @default(false)
   // ドメインの登録サービス（このリンクから取得したドメインは、独自ドメインの公開が無料になる）
-  isDomainRegistrar Boolean @default(false)
+  isDomainRegistrar   Boolean  @default(false)
   // 取得の確認に使う、登録事業者名の一部（RDAPの registrar 名と照合。例: Xserver）
-  registrarMatch    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  registrarMatch      String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 // ユーザーが自分のサイトに追加したツール。保存するのは公開用のURLだけで、
@@ -344,10 +347,10 @@ model LpTool {
 model HarnessAddon {
   id          String   @id @default(cuid())
   key         String   @unique
-  harness     String   // line / x / instagram
+  harness     String // line / x / instagram
   name        String
   description String
-  priceYen    Int?     // 0 = 無料（導入など）、null = 料金未設定（非表示）
+  priceYen    Int? // 0 = 無料（導入など）、null = 料金未設定（非表示）
   isInstall   Boolean  @default(false) // そのHarness自体の導入メニュー
   enabled     Boolean  @default(false)
   sortOrder   Int      @default(0)
@@ -361,11 +364,11 @@ model HarnessOrder {
   id            String   @id @default(cuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items         Json     // [{ addonId, key, harness, name, priceYen }]
+  items         Json // [{ addonId, key, harness, name, priceYen }]
   totalYen      Int
   note          String?
   status        String   @default("requested") // requested / in_progress / done / canceled
-  paymentStatus String   @default("unpaid")    // unpaid / not_required / paid
+  paymentStatus String   @default("unpaid") // unpaid / not_required / paid
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -387,10 +390,10 @@ model SystemSetting {
 // setting:     承認すると SystemSetting を変更する（例: AIエージェントの一時停止）
 model OpsProposal {
   id                String   @id @default(cuid())
-  kind              String   // code_change / setting
+  kind              String // code_change / setting
   title             String
-  body              String   // 実装の指示書（code_change）や変更理由
-  payload           Json?    // setting の場合 { key, value }
+  body              String // 実装の指示書（code_change）や変更理由
+  payload           Json? // setting の場合 { key, value }
   status            String   @default("awaiting_approval") // awaiting_approval / approved / rejected / failed
   githubIssueNumber Int?
   githubIssueUrl    String?
@@ -462,7 +465,7 @@ model Photo {
   originalType  String
   enhanced      Bytes?
   enhancedType  String?
-  enhanceStatus String?     // done / rejected / failed / null(未処理)
+  enhanceStatus String? // done / rejected / failed / null(未処理)
   updatedAt     DateTime    @updatedAt
   createdAt     DateTime    @default(now())
 
@@ -496,12 +499,12 @@ model SiteAsset {
 }
 
 model Inquiry {
-  id        String   @id @default(cuid())
-  tenantId  String
+  id         String   @id @default(cuid())
+  tenantId   String
   senderName String
-  message   String
-  source    String
-  createdAt DateTime @default(now())
+  message    String
+  source     String
+  createdAt  DateTime @default(now())
 
   @@index([tenantId])
 }
@@ -518,8 +521,8 @@ model BuilderSession {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Json     // [{ role: user|assistant, content }]
-  brief     Json     // { purpose, facts: [{ key, value, status }], copy: { heroTitle, strengths, status }, suggestedSlug }
+  messages  Json // [{ role: user|assistant, content }]
+  brief     Json // { purpose, facts: [{ key, value, status }], copy: { heroTitle, strengths, status }, suggestedSlug }
   status    String   @default("active") // active / published
   lpId      String?
   createdAt DateTime @default(now())
@@ -538,9 +541,9 @@ model BuilderSession {
 // 記録した取引は書き換えない。誤りは逆仕訳（reversal）で取り消す
 model LedgerTransaction {
   id        String        @id @default(cuid())
-  kind      String        // revenue_share / harness_payment / reversal
+  kind      String // revenue_share / harness_payment / reversal
   memo      String
-  refType   String?       // revenue_event / harness_order
+  refType   String? // revenue_event / harness_order
   refId     String?
   createdBy String?
   createdAt DateTime      @default(now())
@@ -554,7 +557,7 @@ model LedgerEntry {
   txId      String
   tx        LedgerTransaction @relation(fields: [txId], references: [id], onDelete: Restrict)
   account   String
-  userId    String?           // user:<id>:cash の場合の利用者ID（残高集計用）
+  userId    String? // user:<id>:cash の場合の利用者ID（残高集計用）
   debit     Int               @default(0)
   credit    Int               @default(0)
   createdAt DateTime          @default(now())
@@ -568,12 +571,12 @@ model RevenueEvent {
   id          String   @id @default(cuid())
   toolKey     String
   lpId        String?
-  userId      String?  // 分配先（ページの持ち主）。ページなし（AWP自身の紹介）の場合はnull
+  userId      String? // 分配先（ページの持ち主）。ページなし（AWP自身の紹介）の場合はnull
   grossYen    Int
   ownerYen    Int
   platformYen Int
   occurredOn  DateTime
-  externalRef String?  // ASP側の成果ID（二重記録の防止）
+  externalRef String? // ASP側の成果ID（二重記録の防止）
   note        String?
   status      String   @default("recorded") // recorded / reversed
   txId        String
@@ -591,7 +594,7 @@ model ChatbotQuestion {
   lpId      String
   lp        LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
   question  String
-  answered  Boolean     // AIがページの情報から答えられたか（false = 情報が足りなかった）
+  answered  Boolean // AIがページの情報から答えられたか（false = 情報が足りなかった）
   createdAt DateTime    @default(now())
 
   @@index([lpId, createdAt])
@@ -605,12 +608,12 @@ model Booking {
   lp          LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
   code        String      @unique // 訪問者が状況を確認するための番号（推測されにくいランダム文字列）
   menu        String?
-  requestedAt DateTime    // 希望日時
+  requestedAt DateTime // 希望日時
   name        String
-  contact     String      // メールアドレスまたは電話番号
+  contact     String // メールアドレスまたは電話番号
   message     String?
   status      String      @default("requested") // requested / confirmed / declined / canceled
-  ownerNote   String?     // 持ち主から訪問者への一言（状況確認ページに表示）
+  ownerNote   String? // 持ち主から訪問者への一言（状況確認ページに表示）
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -620,46 +623,46 @@ model Booking {
 // ---- 商品（ページに並べる商品カタログ） ----
 // 購入は持ち主が使っているネットショップ（BASE・STORES など）で行う。AWPは代金を預からない
 model Product {
-  id          String      @id @default(cuid())
-  lpId        String
-  lp          LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
-  name        String
-  priceYen    Int?        // 持ち主が入力した価格（未入力なら価格を出さない）
-  priceNote   String?     // 例: 税込 / 送料別
-  description String?
-  image       Bytes?
-  imageType   String?
-  buyUrl      String?     // 許可したネットショップのhttps URLのみ
-  soldOut     Boolean     @default(false)
+  id               String      @id @default(cuid())
+  lpId             String
+  lp               LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
+  name             String
+  priceYen         Int? // 持ち主が入力した価格（未入力なら価格を出さない）
+  priceNote        String? // 例: 税込 / 送料別
+  description      String?
+  image            Bytes?
+  imageType        String?
+  buyUrl           String? // 許可したネットショップのhttps URLのみ
+  soldOut          Boolean     @default(false)
   // AWPで注文を受け付けるか（出品者の設定と特商法の表示がそろっている場合のみ）
-  purchasable Boolean     @default(false)
-  stock       Int?        // 在庫（null = 数を管理しない）
-  requiresShipping Boolean @default(true)
-  sortOrder   Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  purchasable      Boolean     @default(false)
+  stock            Int? // 在庫（null = 数を管理しない）
+  requiresShipping Boolean     @default(true)
+  sortOrder        Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([lpId])
 }
 
 // ---- 投稿（プロフィールとフォロワーのタイムラインに出る短い投稿） ----
 model Post {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  body      String
-  image     Bytes?
-  imageType String?
-  kind      String   @default("post") // post（文章＋写真/動画）/ reel（縦動画）
-  video     Bytes?
-  videoType String?
-  videoSize Int?
-  hidden    Boolean  @default(false) // 通報で運営者が非公開にした投稿
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body       String
+  image      Bytes?
+  imageType  String?
+  kind       String     @default("post") // post（文章＋写真/動画）/ reel（縦動画）
+  video      Bytes?
+  videoType  String?
+  videoSize  Int?
+  hidden     Boolean    @default(false) // 通報で運営者が非公開にした投稿
   // 持ち主のページ（HP/LP）の「最新の投稿」に載せるか。投稿は既定で載り、あとから外せる
-  showOnPage Boolean @default(true)
-  createdAt DateTime @default(now())
-  likes     PostLike[]
-  comments  Comment[]
+  showOnPage Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  likes      PostLike[]
+  comments   Comment[]
 
   @@index([userId, createdAt])
   @@index([createdAt])
@@ -697,11 +700,11 @@ model Notification {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String    // follow / post_like / comment / page_like / booking / order / plan / system
+  type      String // follow / post_like / comment / page_like / booking / order / plan / system
   title     String
   body      String
-  href      String?   // 開く先（/p/xxx, /bookings など）
-  actorId   String?   // 行動した人（いれば）
+  href      String? // 開く先（/p/xxx, /bookings など）
+  actorId   String? // 行動した人（いれば）
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
@@ -714,9 +717,9 @@ model Contribution {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind      String   // post / comment / like_received / follow_received / page_published / referral / order_completed
+  kind      String // post / comment / like_received / follow_received / page_published / referral / order_completed
   points    Int      @default(1)
-  refId     String?  // 対象のID（投稿・ページ・注文など）
+  refId     String? // 対象のID（投稿・ページ・注文など）
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
@@ -730,10 +733,10 @@ model HarnessLink {
   id           String   @id @default(cuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind         String   // x / instagram
-  baseUrl      String   // https://〇〇.workers.dev
-  apiKeyEnc    String   // AES-256-GCM で暗号化したAPIキー
-  accountId    String?  // Harness側のアカウントID
+  kind         String // x / instagram
+  baseUrl      String // https://〇〇.workers.dev
+  apiKeyEnc    String // AES-256-GCM で暗号化したAPIキー
+  accountId    String? // Harness側のアカウントID
   accountLabel String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -745,10 +748,10 @@ model HarnessScheduledPost {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind        String   // x / instagram
+  kind        String // x / instagram
   text        String
   scheduledAt DateTime
-  remoteId    String?  // Harness側の予約ID
+  remoteId    String? // Harness側の予約ID
   status      String   @default("scheduled") // scheduled / canceled / failed
   error       String?
   createdAt   DateTime @default(now())
@@ -759,40 +762,40 @@ model HarnessScheduledPost {
 // ---- ローンチ・クルー（Discordで動く開発チームのエージェント） ----
 // 公開までのタスク・1日の15分刻みの予定・状態を持つ。実装はGitHubの課題→Claude Code→PR→運営者のマージで行う
 model CrewTask {
-  key          String    @id // 例: T01（あなたの作業）/ A01（エージェントの作業）/ B01（不具合）
-  title        String
-  area         String    // setup / legal / dev / qa / content / ops / launch
-  epic         String    // スクワッド（Discordのスレッド）単位のまとまり
-  owner        String    // user / agent
-  agents       String[]  // 担当ペルソナ（mina / sora / kei / tetsu / ritsu / haru）
-  estimateMin  Int
-  remainingMin Int
-  priority     Int       @default(2) // 0 が最優先
-  planDay      String    // 目標日 YYYY-MM-DD（JST）
-  dueDay       String?
-  dependsOn    String[]
-  status       String    @default("todo") // todo / doing / waiting / blocked / review / done / skipped
-  steps        String?   // あなたの作業の手順
-  acceptance   String    // 完了の条件
-  notes        String?   // 完了時のメモなど（後続タスクに引き継ぐ）
-  issueNumber  Int?
-  issueUrl     String?
-  branch       String?
-  prNumber     Int?
-  prUrl        String?
-  reviewState  String?   // requested / passed / attention
+  key               String    @id // 例: T01（あなたの作業）/ A01（エージェントの作業）/ B01（不具合）
+  title             String
+  area              String // setup / legal / dev / qa / content / ops / launch
+  epic              String // スクワッド（Discordのスレッド）単位のまとまり
+  owner             String // user / agent
+  agents            String[] // 担当ペルソナ（mina / sora / kei / tetsu / ritsu / haru）
+  estimateMin       Int
+  remainingMin      Int
+  priority          Int       @default(2) // 0 が最優先
+  planDay           String // 目標日 YYYY-MM-DD（JST）
+  dueDay            String?
+  dependsOn         String[]
+  status            String    @default("todo") // todo / doing / waiting / blocked / review / done / skipped
+  steps             String? // あなたの作業の手順
+  acceptance        String // 完了の条件
+  notes             String? // 完了時のメモなど（後続タスクに引き継ぐ）
+  issueNumber       Int?
+  issueUrl          String?
+  branch            String?
+  prNumber          Int?
+  prUrl             String?
+  reviewState       String? // requested / passed / attention
   reviewRequestedAt DateTime?
-  dispatchedAt DateTime?
-  doneAt       DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  dispatchedAt      DateTime?
+  doneAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([status, planDay])
 }
 
 model CrewDayPlan {
   day        String    @id // YYYY-MM-DD（JST）
-  blocks     Json      // [{ start, end, kind, taskKey?, title }]
+  blocks     Json // [{ start, end, kind, taskKey?, title }]
   postedAt   DateTime?
   reportedAt DateTime?
   createdAt  DateTime  @default(now())
@@ -822,10 +825,10 @@ model PlanPayment {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan        String    // lite / standard / pro
+  plan        String // lite / standard / pro
   months      Int
   amountYen   Int
-  method      String    // bank / cash
+  method      String // bank / cash
   reference   String    @unique // 振込の名義に付けてもらう番号
   status      String    @default("pending") // pending / confirmed / canceled / expired
   expiresAt   DateTime? // 振込の期限
@@ -865,20 +868,20 @@ model DomainReferral {
 
 // ---- 直接払いのショップ（AWPは代金を預からない。購入者は出品者に直接支払う） ----
 model SellerProfile {
-  userId         String   @id
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enabled        Boolean  @default(false)
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enabled             Boolean  @default(false)
   // 特定商取引法に基づく表記（出品者ごと）: { sellerName, responsible, address, phone, email, priceNote, extraFees, deliveryTime, returns, paymentNote, disclosureOnRequest }
-  legal          Json
-  bankEnc        String?  // 振込先（暗号化）: { bank, branch, type, number, holder }
-  bankEnabled    Boolean  @default(false)
-  inPersonEnabled Boolean @default(false)  // 店頭・手渡しでの支払い
-  inPersonNote   String?
-  shippingFeeYen Int      @default(0)
+  legal               Json
+  bankEnc             String? // 振込先（暗号化）: { bank, branch, type, number, holder }
+  bankEnabled         Boolean  @default(false)
+  inPersonEnabled     Boolean  @default(false) // 店頭・手渡しでの支払い
+  inPersonNote        String?
+  shippingFeeYen      Int      @default(0)
   freeShippingOverYen Int?
-  paymentDays    Int      @default(7)      // 振込の期限（日）
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  paymentDays         Int      @default(7) // 振込の期限（日）
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model Order {
@@ -887,14 +890,14 @@ model Order {
   lpId          String
   lp            LandingPage @relation(fields: [lpId], references: [id], onDelete: Cascade)
   sellerId      String
-  items         Json        // [{ productId, name, priceYen, qty }]
+  items         Json // [{ productId, name, priceYen, qty }]
   subtotalYen   Int
   shippingYen   Int
   totalYen      Int
-  paymentMethod String      // bank / in_person
+  paymentMethod String // bank / in_person
   buyerName     String
   buyerContact  String
-  shipping      Json?       // { postal, address, name }
+  shipping      Json? // { postal, address, name }
   message       String?
   status        String      @default("awaiting_payment") // awaiting_payment / paid / shipped / completed / canceled
   expiresAt     DateTime?
@@ -913,40 +916,40 @@ model Order {
 // 各エージェントが道具（Hands）で実行 → 監査役（Auditor）が実際のシステム状態で検証 → CEO へ報告、のサイクル。
 // エージェント同士は直接会話せず、必ずタスク・イベント・メモリを介してやり取りする（誰が・いつ・何を・なぜ、を追跡できるように）
 model CompanyGoal {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
   description String
-  kpis        Json     // [{ key, label, target, unit, by }]
-  status      String   @default("active") // active / paused / achieved / dropped
-  setBy       String   // 人間（運営者）のID
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  kpis        Json // [{ key, label, target, unit, by }]
+  status      String        @default("active") // active / paused / achieved / dropped
+  setBy       String // 人間（運営者）のID
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   tasks       CompanyTask[]
 }
 
 model CompanyTask {
-  id            String    @id @default(cuid())
-  goalId        String?
-  goal          CompanyGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  parentId      String?
-  title         String
-  instructions  String
-  assignee      String    // エージェントのキー（registry.ts）
-  createdBy     String    // エージェントのキー または human
-  risk          String    @default("low") // low / medium / high
-  status        String    @default("queued") // queued / running / awaiting_approval / verifying / done / failed / rejected / canceled
-  runAt         DateTime  @default(now())
-  attempts      Int       @default(0)
-  result        Json?     // { summary, facts, assumptions, artifacts, nextActions }
-  verification  Json?     // 監査役の判定 { passed, findings, checkedAt }
-  error         String?
-  costUsd       Float     @default(0)
-  startedAt     DateTime?
-  finishedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  actions       CompanyAction[]
-  runs          AgentRun[]
+  id           String          @id @default(cuid())
+  goalId       String?
+  goal         CompanyGoal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  parentId     String?
+  title        String
+  instructions String
+  assignee     String // エージェントのキー（registry.ts）
+  createdBy    String // エージェントのキー または human
+  risk         String          @default("low") // low / medium / high
+  status       String          @default("queued") // queued / running / awaiting_approval / verifying / done / failed / rejected / canceled
+  runAt        DateTime        @default(now())
+  attempts     Int             @default(0)
+  result       Json? // { summary, facts, assumptions, artifacts, nextActions }
+  verification Json? // 監査役の判定 { passed, findings, checkedAt }
+  error        String?
+  costUsd      Float           @default(0)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  actions      CompanyAction[]
+  runs         AgentRun[]
 
   @@index([status, runAt])
   @@index([assignee, createdAt])
@@ -955,26 +958,26 @@ model CompanyTask {
 
 // 人間の承認が必要な操作（高リスクの道具の呼び出し）。承認されると実行され、結果はタスクに戻る
 model CompanyAction {
-  id         String      @id @default(cuid())
-  taskId     String
-  task       CompanyTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  agent      String
-  tool       String
-  input      Json
-  reason     String
-  risk       String
-  status     String      @default("pending") // pending / approved / rejected / executed / failed
-  result     Json?
-  decidedBy  String?
-  decidedAt  DateTime?
-  createdAt  DateTime    @default(now())
+  id        String      @id @default(cuid())
+  taskId    String
+  task      CompanyTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  agent     String
+  tool      String
+  input     Json
+  reason    String
+  risk      String
+  status    String      @default("pending") // pending / approved / rejected / executed / failed
+  result    Json?
+  decidedBy String?
+  decidedAt DateTime?
+  createdAt DateTime    @default(now())
 
   @@index([status, createdAt])
 }
 
 model CompanyEvent {
   id        String   @id @default(cuid())
-  type      String   // task.created / task.done / action.requested / memory.written / cycle.ceo など
+  type      String // task.created / task.done / action.requested / memory.written / cycle.ceo など
   actor     String
   taskId    String?
   payload   Json?
@@ -999,20 +1002,20 @@ model CompanyMemory {
 }
 
 model AgentRun {
-  id           String      @id @default(cuid())
+  id           String       @id @default(cuid())
   agent        String
   taskId       String?
   task         CompanyTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
   model        String
-  inputTokens  Int         @default(0)
-  outputTokens Int         @default(0)
-  costUsd      Float       @default(0)
-  toolCalls    Int         @default(0)
-  status       String      // ok / error / budget
+  inputTokens  Int          @default(0)
+  outputTokens Int          @default(0)
+  costUsd      Float        @default(0)
+  toolCalls    Int          @default(0)
+  status       String // ok / error / budget
   error        String?
-  engine       String      @default("messages") // messages（自前ループ） / managed（Claude Platform のセッション）
-  sessionId    String?     // managed のとき: Claude Platform のセッションID（Console で全過程を追える）
-  startedAt    DateTime    @default(now())
+  engine       String       @default("messages") // messages（自前ループ） / managed（Claude Platform のセッション）
+  sessionId    String? // managed のとき: Claude Platform のセッションID（Console で全過程を追える）
+  startedAt    DateTime     @default(now())
   finishedAt   DateTime?
 
   @@index([agent, startedAt])
@@ -1020,16 +1023,16 @@ model AgentRun {
 
 // エージェントごとの運用設定（コード上の定義を上書きする分だけ）
 model CompanyAgentConfig {
-  key            String  @id
-  enabled        Boolean @default(true)
-  model          String?
-  dailyBudgetUsd Float?
+  key             String    @id
+  enabled         Boolean   @default(true)
+  model           String?
+  dailyBudgetUsd  Float?
   // Claude Platform（Managed Agents）側に同期したエージェント。hash が変わると新しい版を作る
   managedAgentId  String?
   managedVersion  Int?
   managedHash     String?
   managedSyncedAt DateTime?
-  updatedAt      DateTime @updatedAt
+  updatedAt       DateTime  @updatedAt
 }
 
 // 運営者とエージェントの会話（管理画面のチャット）。会話の中でもエージェントは道具を使って実行する
@@ -1037,8 +1040,8 @@ model CompanyChat {
   id        String   @id @default(cuid())
   agent     String
   title     String
-  messages  Json     // [{ role, content, tools?: string[], actions?: [{id, tool, reason}] }]
-  taskId    String?  // 会話の中で作った操作・タスクの親になる CompanyTask
+  messages  Json // [{ role, content, tools?: string[], actions?: [{id, tool, reason}] }]
+  taskId    String? // 会話の中で作った操作・タスクの親になる CompanyTask
   costUsd   Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1059,4 +1062,108 @@ model IndustryPlaybook {
   costUsd   Float    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ---- AWP Page Intelligence（業種適合のページ構成・画像選定） ----
+// 最小の質問から、同業種の人気ページの型（IndustryPlaybook）と目的別の調査結果をもとに
+// 構成案を3つ提案し、ユーザーが選んだ案に沿って各セクションの画像候補を用意して LandingPage に反映する。
+model PageIntelligenceSession {
+  id                 String                @id @default(cuid())
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lpId               String?
+  lp                 LandingPage?          @relation(fields: [lpId], references: [id], onDelete: SetNull)
+  industry           String // ユーザーが選んだ業種（表示名）
+  industryKey        String? // IndustryPlaybook.key
+  pageGoal           String // attract / booking / purchase / inquiry / recruit / brand / portfolio / event
+  targetAudience     Json? // { ageRange, gender, area, segment(b2b|b2c), stage }
+  tone               String? // luxury / friendly / modern / calm / pop / minimal
+  valueProps         Json? // { problems, strengths, priceBand, proof }
+  requiredSections   String[] // booking / contact / map / menu / pricing / proof / reviews / posts
+  assumptions        Json? // [{ field, value, reason }] 未入力を業種と目的から仮置きしたもの
+  status             String                @default("draft") // draft / researched / structured / imaged / applied / failed
+  researchSnapshotId String?
+  researchSnapshot   PageResearchSnapshot? @relation(fields: [researchSnapshotId], references: [id], onDelete: SetNull)
+  selectedProposalId String?
+  selections         Json? // { images: { [sectionId]: suggestionId | "none" }, businessName, slug }
+  previewToken       String                @unique @default(cuid())
+  error              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  proposals PageStructureSuggestion[]
+  images    PageImageSuggestion[]
+
+  @@index([userId, createdAt])
+}
+
+model PageStructureSuggestion {
+  id            String                  @id @default(cuid())
+  sessionId     String
+  session       PageIntelligenceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  landingPageId String?
+  landingPage   LandingPage?            @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+  industry      String
+  goal          String
+  name          String // 案の名前（例: 信頼で選ばれる構成）
+  concept       String // 一言の狙い
+  whyItWorks    String // なぜこの業種・目的に効くか
+  sections      Json // [{ id, name, purpose, heading, body, bullets, image, cta, mobilePriority, postsBlock }]
+  confidence    Float                   @default(0.5)
+  sourceSummary String?
+  status        String                  @default("proposed") // proposed / selected / applied
+  createdAt     DateTime                @default(now())
+
+  images PageImageSuggestion[]
+
+  @@index([sessionId])
+}
+
+model PageImageSuggestion {
+  id           String                   @id @default(cuid())
+  sessionId    String
+  session      PageIntelligenceSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  proposalId   String?
+  proposal     PageStructureSuggestion? @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  sectionId    String // hero / menu / about / ...
+  role         String // hero / service / testimonial / team / menu / product / before_after / background / icon
+  subject      String // 被写体の説明（日本語）
+  tone         String // 雰囲気・色調
+  aspectRatio  String // 16:9 / 4:3 / 1:1 / 4:5
+  cropPolicy   String? // スマホでのトリミング方針
+  prompt       String? // 生成に使った英語の指示文
+  assetUrl     String? // 外部URL（ユーザー所有の公開画像など）
+  uploadId     String? // Photo.id（ユーザーがアップロードした写真）
+  data         Bytes? // 生成・アップロードした画像本体
+  mimeType     String?
+  width        Int?
+  height       Int?
+  licenseInfo  String // 権利・出典
+  source       String // generated / upload / none
+  reason       String // なぜこの画像か（ユーザー向け）
+  alternatives Json? // 代替案の方向性 [{ subject, tone }]
+  altText      String
+  status       String                   @default("candidate") // candidate / selected / rejected / applied / failed
+  createdAt    DateTime                 @default(now())
+
+  @@index([sessionId, sectionId])
+}
+
+model PageResearchSnapshot {
+  id              String   @id @default(cuid())
+  industryKey     String
+  goal            String
+  region          String?
+  patterns        Json // 人気ページに共通する構成パターンの要約 [string]
+  commonSections  Json // [{ id, purpose }]
+  commonCta       Json // [string]
+  trustElements   Json // [string]
+  imagePatterns   Json // [{ sectionId, role, subject, mood }]
+  differentiators Json // AWP で差別化できる点 [string]
+  sourceSummary   String
+  researchedAt    DateTime @default(now())
+
+  sessions PageIntelligenceSession[]
+
+  @@index([industryKey, goal])
 }

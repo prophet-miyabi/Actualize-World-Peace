@@ -1,0 +1,7 @@
+{
+  "id": "sample-ai-asset",
+  "provider": "awp",
+  "url": "https://awp-frontend-bf17.onrender.com/demos/sample-ai-asset",
+  "note": "git push 済み。Render の自動デプロイで 3〜5 分後に公開されます（それまでは 404）",
+  "deployedAt": "2026-10-21T11:57:47.113Z"
+}

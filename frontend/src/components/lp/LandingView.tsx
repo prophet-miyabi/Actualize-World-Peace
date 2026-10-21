@@ -409,6 +409,19 @@ export const FEATURE_LABELS: Record<string, string> = {
   about: '私たちについて', flow: 'ご利用の流れ', campaign: 'キャンペーン'
 };
 
+// セクション画像（AWP Page Intelligence が役割・代替テキスト付きで選んだもの）。
+// ファーストビュー以外なので遅延読み込みにし、width/height を必ず出してレイアウトのずれを防ぐ
+export type SectionImage = { url: string; alt: string; width?: number | null; height?: number | null };
+export function SectionImageBlock({ img, tokens, className = '', aspect = 'aspect-[16/9]' }: { img: unknown; tokens: Tokens; className?: string; aspect?: string }) {
+  const i = img as SectionImage | null | undefined;
+  if (!i || typeof i.url !== 'string' || !i.url) return null;
+  return (
+    <img src={i.url} alt={typeof i.alt === 'string' ? i.alt : ''} loading="lazy" decoding="async"
+      width={i.width ?? 1200} height={i.height ?? 900}
+      className={`w-full ${aspect} object-cover ${className}`} style={{ borderRadius: tokens.r.box }} />
+  );
+}
+
 // ---- 追加した機能（セクション） ----
 export function FeatureSection({ section, index, tokens }: { section: { feature: string; content: any }; index: number; tokens: Tokens }) {
   const { p, r, muted, boxStyle, ctaStyle, headingStyle } = tokens;
@@ -420,6 +433,7 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
         <SectionWrap tokens={tokens} tint={tint} id={section.feature}>
           <HeadingBlock tokens={tokens}>{str(c.heading) || FEATURE_LABELS.menu}</HeadingBlock>
           {str(c.intro) && <p className="text-center mb-10 leading-relaxed" style={{ color: muted }}>{str(c.intro)}</p>}
+          <div className="max-w-3xl mx-auto"><SectionImageBlock img={c.image} tokens={tokens} className="mb-6 shadow-md" aspect="aspect-[16/9] sm:aspect-[21/9]" /></div>
           <div style={boxStyle} className="max-w-3xl mx-auto p-6 sm:p-10">
             {arr(c.items).map((it, j) => (
               <div key={j} className="py-5 border-b last:border-b-0" style={{ borderColor: alpha(p.text, 0.1) }}>
@@ -456,6 +470,7 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
       return (
         <SectionWrap tokens={tokens} tint={tint} id={section.feature}>
           <HeadingBlock tokens={tokens}>{str(c.heading) || FEATURE_LABELS.access}</HeadingBlock>
+          <div className="max-w-3xl mx-auto"><SectionImageBlock img={c.image} tokens={tokens} className="mb-6 shadow-md" /></div>
           <div style={boxStyle} className="max-w-3xl mx-auto p-6 sm:p-10">
             {str(c.directions) && <p className="mb-6 leading-relaxed">{str(c.directions)}</p>}
             <dl className="divide-y" style={{ borderColor: alpha(p.text, 0.1) }}>
@@ -477,9 +492,12 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
       return (
         <SectionWrap tokens={tokens} tint={tint} id={section.feature}>
           <HeadingBlock tokens={tokens}>{str(c.heading) || FEATURE_LABELS.about}</HeadingBlock>
-          <div className="max-w-2xl mx-auto space-y-6 text-lg leading-loose">
-            {arr(c.body).map((para, j) => <p key={j}>{str(para)}</p>)}
-            {str(c.signature) && <p className="text-right font-bold" style={headingStyle}>{str(c.signature)}</p>}
+          <div className={c.image?.url ? 'max-w-5xl mx-auto grid md:grid-cols-12 gap-8 md:gap-12 items-center' : 'max-w-2xl mx-auto'}>
+            {c.image?.url && <div className="md:col-span-5"><SectionImageBlock img={c.image} tokens={tokens} className="shadow-lg" aspect="aspect-[4/3] md:aspect-[4/5]" /></div>}
+            <div className={`${c.image?.url ? 'md:col-span-7' : ''} space-y-6 text-lg leading-loose`}>
+              {arr(c.body).map((para, j) => <p key={j}>{str(para)}</p>)}
+              {str(c.signature) && <p className="text-right font-bold" style={headingStyle}>{str(c.signature)}</p>}
+            </div>
           </div>
         </SectionWrap>
       );
@@ -506,13 +524,21 @@ export function FeatureSection({ section, index, tokens }: { section: { feature:
     case 'campaign':
       return (
         <SectionWrap tokens={tokens} tint={tint} id={section.feature}>
-          <div className="max-w-3xl mx-auto p-8 sm:p-12 text-center shadow-xl"
+          <div className="relative max-w-3xl mx-auto p-8 sm:p-12 text-center shadow-xl overflow-hidden"
             style={{ borderRadius: tokens.r.box, background: `linear-gradient(135deg, ${p.primary}, ${alpha(p.primary, 0.82)})`, color: p.onPrimary }}>
+            {c.image?.url && (
+              <>
+                <img src={str(c.image.url)} alt="" aria-hidden loading="lazy" decoding="async" width={c.image.width ?? 1200} height={c.image.height ?? 900} className="absolute inset-0 w-full h-full object-cover" />
+                <div aria-hidden className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${alpha(p.primary, 0.9)}, ${alpha(p.primary, 0.72)})` }} />
+              </>
+            )}
+            <div className="relative">
             <p className="text-sm font-bold tracking-widest opacity-90 mb-3">{str(c.heading) || FEATURE_LABELS.campaign}</p>
             <p style={headingStyle} className="text-2xl sm:text-4xl mb-5">{str(c.title)}</p>
             <p className="leading-relaxed opacity-95 mb-6">{str(c.description)}</p>
             <p className="text-sm opacity-90">{str(c.conditions)}</p>
             {str(c.deadline) && <p className="text-sm font-bold mt-2">期限：{str(c.deadline)}</p>}
+            </div>
           </div>
         </SectionWrap>
       );

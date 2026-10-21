@@ -3,7 +3,8 @@ import Link from 'next/link';
 
 // 「作る」: いま何を作るかを1画面で選ぶ。最初の一歩を小さく、ゴールまでの距離を見せる
 const OPTIONS: { href: string; emoji: string; title: string; desc: string; time: string; primary?: boolean }[] = [
-  { href: '/builder', emoji: '💬', title: 'AWPとチャットしてページを作る', desc: '質問に答えるだけ。確定した情報だけがページに載る', time: '約5分', primary: true },
+  { href: '/page/create', emoji: '🧭', title: '業種に合う構成でページを作る', desc: '3〜6問に答えると、同業種の人気ページをもとに構成案を3つと画像候補を提案', time: '約4分', primary: true },
+  { href: '/builder', emoji: '💬', title: 'AWPとチャットしてページを作る', desc: '質問に答えるだけ。確定した情報だけがページに載る', time: '約5分' },
   { href: '/wizard', emoji: '✨', title: '4ステップでページを作る', desc: 'お店・活動の名前から。見た目はAWPが用意、あなたが仕上げる', time: '約3分' },
   { href: '/feed', emoji: '📝', title: 'タイムラインに投稿する', desc: '新作・お知らせ・日々のこと。写真も1枚つけられる', time: '30秒' },
   { href: '/products', emoji: '🛍️', title: '商品を並べる', desc: 'ページに商品を出して、手数料0円で直接売る', time: '約3分' },

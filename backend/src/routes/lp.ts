@@ -351,7 +351,7 @@ export const RESERVED_SLUGS = [
   // インフラ用途で使われがちな名前を横取りされないよう予約しておく
   'www', 'app', 'mail', 'smtp', 'imap', 'pop', 'pop3', 'ftp', 'sftp', 'ns', 'ns1', 'ns2', 'ns3', 'ns4',
   'mx', 'cdn', 'static', 'assets', 'media', 'support', 'help', 'status', 'blog', 'docs', 'dev', 'staging',
-  'test', 'webmail', 'autodiscover', 'autoconfig', 'vpn', 'remote', 'git', 'ci', 'console'
+  'page', 'page-intelligence', 'test', 'webmail', 'autodiscover', 'autoconfig', 'vpn', 'remote', 'git', 'ci', 'console'
 ];
 
 // 有料プランに加入している（または管理者の）ユーザーかどうか。
