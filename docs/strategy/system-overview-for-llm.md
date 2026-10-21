@@ -85,6 +85,7 @@ docs/council/      会議室の議事録
 - **会議室（Council）**: `/awp-council <議題>` で chair が心理・社会・経済・地政・天文の各エージェントを招集し議事録を `docs/council/` に残す。決定はタスクに落ちる。
 - **公式 Instagram** はエージェント `instagram` が運営（活動報告・広報）。下書きは `/admin/instagram` でオーナーが承認してから公開（自動公開の設定も可）。
 - チャット `/admin/company/chat` で任意のエージェントと対話。
+- **AWP Operations Office**（`/admin/office`、API `/api/office/*`、2026-10-21 追加）: 管理者専用の 3D 仮想オフィス（React Three Fiber、アイソメトリック。WebGL が使えない端末は 2D 図に自動切替）。8 部署（CEO席 / プロダクト開発 / ユーザー成功 / グロース・マーケティング / SNS運用・配信管理 / 収益・パートナー / コンプライアンス・リスク / データ・分析）× 33 の役割（デジタル社員）が既存 23 エージェントに対応。目的を入れると Orchestrator が 3〜7 ステップに分解して担当・承認ポイント・完了条件を提案し、管理者が承認すると CompanyTask になる。5 つのループ（プロダクト改善 / ユーザー活性化 / SNS運用 / リスク対応 / 収益改善）は `AgentLoopDefinition` として定義され、30 秒ごとの tick が次のステップを自動生成し、承認が要るステップは承認トレイ（`AgentApproval`）で止まる。警報（`OperationsAlert`: 失敗・30分超の実行・12時間超の承認待ち・SNSトークン期限・intelligence 停止）と指標（`AgentMetric`）を記録し、SSE で画面を即時更新。タスク状態は DRAFT / ASSIGNED / IN_PROGRESS / WAITING_INPUT / WAITING_APPROVAL / BLOCKED / RETRYING / COMPLETED / FAILED / CANCELLED。
 
 ### 3.2 ユーザー向け自動化・監視
 - `automation/`: ユーザーが作る自動化ワークフロー（`AutomationWorkflow`, `AutomationRun`）、安全弁 `safety.ts`。

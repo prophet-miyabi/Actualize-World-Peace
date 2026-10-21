@@ -9,7 +9,7 @@ import ViewAsUser from '@/components/admin/ViewAsUser';
 // 運営者（管理者）画面の共通の枠。L Harness の管理画面にならい、メニューを目的ごとにまとめる。
 // PCは左のサイドバー、スマホは上部の横スクロールメニュー
 const SECTIONS: { label: string | null; items: { href: string; label: string; danger?: boolean }[] }[] = [
-  { label: null, items: [{ href: '/admin', label: 'ダッシュボード' }, { href: '/admin/company', label: 'AWP企業' }, { href: '/admin/company/chat', label: 'AWP Intelligence' }, { href: '/admin/council', label: 'AWP 会議室' }, { href: '/admin/crew', label: 'ローンチ・クルー' }, { href: '/admin/ops', label: 'AWPオペレーター' }] },
+  { label: null, items: [{ href: '/admin', label: 'ダッシュボード' }, { href: '/admin/office', label: '3Dオフィス' }, { href: '/admin/company', label: 'AWP企業' }, { href: '/admin/company/chat', label: 'AWP Intelligence' }, { href: '/admin/council', label: 'AWP 会議室' }, { href: '/admin/crew', label: 'ローンチ・クルー' }, { href: '/admin/ops', label: 'AWPオペレーター' }] },
   { label: '対応', items: [{ href: '/admin/harness', label: 'Harness 申し込み・料金' }, { href: '/admin/reports', label: '通報' }, { href: '/admin/monitoring', label: 'エラー監視' }] },
   { label: '収益', items: [{ href: '/admin/billing', label: 'プランと請求' }, { href: '/admin/revenue', label: '収益と分配' }, { href: '/admin/tools', label: '提携ツール' }, { href: '/admin/domains', label: '独自ドメイン' }] },
   { label: 'SNS', items: [{ href: '/admin/instagram', label: 'Instagram運用' }] },

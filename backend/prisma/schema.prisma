@@ -928,28 +928,42 @@ model CompanyGoal {
 }
 
 model CompanyTask {
-  id           String          @id @default(cuid())
-  goalId       String?
-  goal         CompanyGoal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  parentId     String?
-  title        String
-  instructions String
-  assignee     String // エージェントのキー（registry.ts）
-  createdBy    String // エージェントのキー または human
-  risk         String          @default("low") // low / medium / high
-  status       String          @default("queued") // queued / running / awaiting_approval / verifying / done / failed / rejected / canceled
-  runAt        DateTime        @default(now())
-  attempts     Int             @default(0)
-  result       Json? // { summary, facts, assumptions, artifacts, nextActions }
-  verification Json? // 監査役の判定 { passed, findings, checkedAt }
-  error        String?
-  costUsd      Float           @default(0)
-  startedAt    DateTime?
-  finishedAt   DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  actions      CompanyAction[]
-  runs         AgentRun[]
+  id               String          @id @default(cuid())
+  goalId           String?
+  goal             CompanyGoal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  parentId         String?
+  title            String
+  instructions     String
+  assignee         String // エージェントのキー（registry.ts）
+  createdBy        String // エージェントのキー または human
+  risk             String          @default("low") // low / medium / high
+  status           String          @default("queued") // queued / running / awaiting_approval / verifying / done / failed / rejected / canceled
+  runAt            DateTime        @default(now())
+  attempts         Int             @default(0)
+  result           Json? // { summary, facts, assumptions, artifacts, nextActions }
+  verification     Json? // 監査役の判定 { passed, findings, checkedAt }
+  error            String?
+  costUsd          Float           @default(0)
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  actions          CompanyAction[]
+  runs             AgentRun[]
+  // ---- AWP Operations Office（3D 管理オフィス）で使う任意項目 ----
+  priority         Int             @default(3) // 1=最優先 … 5=低
+  dueAt            DateTime?
+  kpi              String? // 関連 KPI（表示名）
+  approvalRequired Boolean         @default(false) // 完了時に管理者の承認を必須にする
+  recurrence       String? // none / daily / weekly / monthly
+  doneCriteria     String? // 完了条件
+  feature          String? // 関連する AWP 機能
+  services         String[]        @default([]) // 関連する外部サービス
+  role             String? // オフィス上の役割キー（office.ts）
+  pausedAt         DateTime?
+  loopRunId        String?
+  loopRun          AgentLoopRun?   @relation(fields: [loopRunId], references: [id], onDelete: SetNull)
+  approvals        AgentApproval[]
 
   @@index([status, runAt])
   @@index([assignee, createdAt])
@@ -1166,4 +1180,86 @@ model PageResearchSnapshot {
   sessions PageIntelligenceSession[]
 
   @@index([industryKey, goal])
+}
+
+// ---- AWP Operations Office（運営業務の委任・ループ・承認・警報・指標） ----
+model AgentLoopDefinition {
+  key         String         @id // product_improvement / user_activation / social_ops / risk_response / revenue
+  name        String
+  department  String
+  description String
+  steps       Json // [{ role, label, instructions, approval?: boolean }]
+  schedule    String? // none / daily / weekly / monthly
+  autoRun     Boolean        @default(false)
+  enabled     Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  runs        AgentLoopRun[]
+}
+
+model AgentLoopRun {
+  id          String              @id @default(cuid())
+  loopKey     String
+  loop        AgentLoopDefinition @relation(fields: [loopKey], references: [key], onDelete: Cascade)
+  status      String              @default("running") // running / waiting_approval / completed / failed / canceled
+  currentStep Int                 @default(0)
+  startedBy   String // human / schedule
+  stats       Json? // { stepMs: number[], failures: number }
+  error       String?
+  startedAt   DateTime            @default(now())
+  finishedAt  DateTime?
+  tasks       CompanyTask[]
+
+  @@index([loopKey, startedAt])
+}
+
+model AgentApproval {
+  id        String       @id @default(cuid())
+  taskId    String?
+  task      CompanyTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  loopRunId String?
+  kind      String // task_result / loop_gate / release / budget / publish / policy / campaign / kpi / autonomy
+  title     String
+  reason    String
+  options   Json // [{ key, label, effect }]
+  impact    String // 影響範囲
+  payload   Json?
+  status    String       @default("pending") // pending / approved / rejected
+  decision  String?
+  note      String?
+  decidedBy String?
+  decidedAt DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+model AgentMetric {
+  id        String   @id @default(cuid())
+  agent     String // 役割キー（office）または registry キー
+  day       String // YYYY-MM-DD（JST）
+  done      Int      @default(0)
+  failed    Int      @default(0)
+  avgMs     Int      @default(0)
+  costUsd   Float    @default(0)
+  health    Int      @default(100) // 0〜100
+  updatedAt DateTime @updatedAt
+
+  @@unique([agent, day])
+}
+
+model OperationsAlert {
+  id        String   @id @default(cuid())
+  key       String   @unique // 重複防止（例: task_failed:<id>）
+  level     String // info / warning / critical
+  title     String
+  body      String
+  source    String // task / approval / social / ai / loop / security
+  taskId    String?
+  agent     String?
+  status    String   @default("open") // open / acked / resolved
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
 }
