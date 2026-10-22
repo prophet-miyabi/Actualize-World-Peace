@@ -63,6 +63,7 @@ docs/council/      会議室の議事録
 - 投稿（`Post`: テキスト／画像／リール）、いいね、コメント、フォロー、通知、フィード `/feed`、リール `/reels`、発見 `/discover`。
 - **投稿は既定でそのユーザーのページに埋め込まれる**（`Post.showOnPage`, `LandingPage.postsPlacement` top/bottom）。投稿単位で非表示にできる。自分のホーム `/me` はページとリンクし、ページのデザインで投稿を描画。
 - 外部 SNS 連携（`SocialAccount`, `ScheduledPost`）: Instagram（画像・リール投稿、プロフィール、インサイト、トークン更新）ほか。
+- **SNS 相互連携・カレンダー予約**（2026-10-23 追加）: Instagram / X / TikTok の投稿を AWP の `Post` に取り込み（`source` / `externalId` / `externalUrl`、手動と1時間ごとの自動）、AWP からは `/social/schedule` のカレンダーで「いつ・何を・どこへ（AWP / Instagram / X / TikTok / Facebook / YouTube）」を決めて同時配信。配信は失敗したプラットフォームだけを再試行（2分→10分→30分）、トークン失効は `SocialAccount.status` に反映、結果は CompanyEvent に記録。フィードの投稿欄からも同時配信を選べる。ページの投稿ブロックは `LandingPage.postsConfig`（件数・種類・並び）で調整し、投稿者のアイコン・名前タップでその人のページ `/[slug]` へ遷移。外部 SNS への配信は有料プラン、AWP 宛ての予約は無料。OAuth のクライアント ID は本番で未設定のため、連携画面は「準備中」。
 
 ### 2.3 お金・プラン・参加配当の土台
 - プラン（`PlanPayment`, `/plans`）: 月額。支払いは Stripe か **アプリ内キャッシュ**。
