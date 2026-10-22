@@ -7,7 +7,7 @@ import PostCard, { type PostView } from '@/components/community/PostCard';
 
 type Summary = {
   me: { username: string | null; name: string; bio: string | null; category: string | null; region: string | null; links: { label: string; url: string }[]; isAdmin: boolean; followers: number; following: number; postCount: number };
-  pages: { id: string; slug: string; businessName: string; heroTitle: string; hidden: boolean; views: number; likes: number; image: string | null; postsEnabled: boolean; postsPlacement: string }[];
+  pages: { id: string; slug: string; businessName: string; heroTitle: string; hidden: boolean; views: number; likes: number; image: string | null; postsEnabled: boolean; postsPlacement: string; postsConfig?: { count?: number; kinds?: string[]; layout?: string } | null }[];
   onPageCount: number;
   unread: number;
   contribution: { totalPoints: number; last30Points: number; byKind: { kind: string; points: number; count: number }[] };
@@ -28,8 +28,8 @@ export default function MePage() {
   }, [router]);
 
   // ページ側の設定: 投稿を載せる／載せない、載せる位置
-  const setPagePosts = async (id: string, patch: { enabled?: boolean; placement?: 'top' | 'bottom' }) => {
-    setD((prev) => prev ? { ...prev, pages: prev.pages.map((p) => p.id === id ? { ...p, ...(patch.enabled !== undefined ? { postsEnabled: patch.enabled } : {}), ...(patch.placement ? { postsPlacement: patch.placement } : {}) } : p) } : prev);
+  const setPagePosts = async (id: string, patch: { enabled?: boolean; placement?: 'top' | 'bottom'; config?: { count?: number; kinds?: string[]; layout?: string } }) => {
+    setD((prev) => prev ? { ...prev, pages: prev.pages.map((p) => p.id === id ? { ...p, ...(patch.enabled !== undefined ? { postsEnabled: patch.enabled } : {}), ...(patch.placement ? { postsPlacement: patch.placement } : {}), ...(patch.config ? { postsConfig: { ...(p.postsConfig ?? {}), ...patch.config } } : {}) } : p) } : prev);
     await api.put('/posts/page-settings', { lpId: id, ...patch }).catch(() => {});
   };
 
@@ -120,6 +120,34 @@ export default function MePage() {
                       </span>
                     )}
                   </div>
+                  {p.postsEnabled && (
+                    /* 表示の細かい設定: 件数・種類（写真と文章 / リール）・並び（格子 / リスト） */
+                    <div className="border-t px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-gray-700">
+                      <label className="inline-flex items-center gap-1">件数
+                        <select value={p.postsConfig?.count ?? 12} onChange={(e) => setPagePosts(p.id, { config: { count: Number(e.target.value) } })} className="border rounded px-1 py-0.5 bg-white">
+                          {[3, 6, 9, 12].map((n) => <option key={n} value={n}>{n}件</option>)}
+                        </select>
+                      </label>
+                      {(['post', 'reel'] as const).map((k) => {
+                        const kinds = p.postsConfig?.kinds?.length ? p.postsConfig.kinds : ['post', 'reel'];
+                        const on = kinds.includes(k);
+                        return (
+                          <label key={k} className="inline-flex items-center gap-1">
+                            <input type="checkbox" checked={on} onChange={(e) => { const next = e.target.checked ? Array.from(new Set([...kinds, k])) : kinds.filter((x) => x !== k); if (next.length) setPagePosts(p.id, { config: { kinds: next } }); }} />
+                            {k === 'post' ? '写真と文章' : 'リール'}
+                          </label>
+                        );
+                      })}
+                      <span className="inline-flex rounded-full bg-gray-100 p-0.5">
+                        {(['grid', 'list'] as const).map((v) => (
+                          <button key={v} type="button" onClick={() => setPagePosts(p.id, { config: { layout: v } })}
+                            className={`rounded-full px-2.5 py-1 font-bold ${(p.postsConfig?.layout ?? 'grid') === v ? 'bg-white shadow text-violet-800' : 'text-gray-500'}`}>
+                            {v === 'grid' ? '格子' : 'リスト'}
+                          </button>
+                        ))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

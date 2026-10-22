@@ -8,6 +8,8 @@ export type PostView = {
   video?: string | null; kind?: 'post' | 'reel';
   // 持ち主のページに載せるか（自分の投稿だけ切り替えられる）
   showOnPage?: boolean;
+  // 外部SNSから取り込んだ投稿（source = instagram / x / tiktok）は元URLを持つ。動画は本体がなく元URLへ案内する
+  source?: string; externalUrl?: string | null;
   author: { username: string | null; name: string; pageSlug?: string | null; pageName?: string | null };
   likes?: number; comments?: number; liked?: boolean;
 };
@@ -62,16 +64,25 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
   return (
     <article className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
       <header className="flex items-center gap-3">
-        <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white font-black flex items-center justify-center text-sm">
-          {post.author.name.slice(0, 1)}
-        </div>
+        {/* アイコンと名前をタップすると、その人が作ったページ（/[slug]）へ。ページが無ければプロフィールへ */}
+        {(() => {
+          const home = post.author.pageSlug ? `/${post.author.pageSlug}` : post.author.username ? `/${post.author.username}` : null;
+          const avatar = <div className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-sky-500 text-white font-black flex items-center justify-center text-sm">{post.author.name.slice(0, 1)}</div>;
+          return home ? <Link href={home} aria-label={`${post.author.name}のページへ`}>{avatar}</Link> : avatar;
+        })()}
         <div className="min-w-0 flex-1">
           {post.author.username ? (
-            <Link href={`/${post.author.username}`} className="block font-bold text-sm truncate">{post.author.name} <span className="font-normal text-gray-400">@{post.author.username}</span></Link>
+            <Link href={post.author.pageSlug ? `/${post.author.pageSlug}` : `/${post.author.username}`} className="block font-bold text-sm truncate">{post.author.name} <span className="font-normal text-gray-400">@{post.author.username}</span></Link>
           ) : <p className="font-bold text-sm truncate">{post.author.name}</p>}
-          <p className="text-[11px] text-gray-400 flex items-center gap-2">
+          <p className="text-[11px] text-gray-400 flex items-center gap-2 flex-wrap">
             {ago(post.createdAt)}
             {post.author.pageSlug && <Link href={`/${post.author.pageSlug}`} className="rounded-full bg-violet-50 text-violet-700 font-bold px-2 py-0.5">ページ → {post.author.pageName || post.author.pageSlug}</Link>}
+            {post.author.pageSlug && post.author.username && <Link href={`/${post.author.username}`} className="underline">プロフィール</Link>}
+            {post.source && post.source !== 'awp' && (
+              post.externalUrl
+                ? <a href={post.externalUrl} target="_blank" rel="noopener noreferrer" className="rounded-full bg-gray-100 text-gray-700 font-bold px-2 py-0.5">{post.source === 'x' ? 'X' : post.source === 'instagram' ? 'Instagram' : post.source === 'tiktok' ? 'TikTok' : post.source} の投稿 ↗</a>
+                : <span className="rounded-full bg-gray-100 text-gray-700 font-bold px-2 py-0.5">{post.source} から取り込み</span>
+            )}
           </p>
         </div>
         {post.mine && onDelete ? (
@@ -97,6 +108,13 @@ export default function PostCard({ post, onDelete, detail = false }: { post: Pos
         <div className={`mt-3 rounded-xl overflow-hidden bg-black ${post.kind === 'reel' ? 'aspect-[9/16] max-h-[70vh] mx-auto' : ''}`}>
           <video src={post.video} controls playsInline preload="metadata" className="w-full h-full object-contain" />
         </div>
+      ) : post.kind === 'reel' && post.externalUrl ? (
+        /* 外部SNSから取り込んだ縦動画: 本体は持たないので、サムネイルと元の投稿へのリンク */
+        <a href={post.externalUrl} target="_blank" rel="noopener noreferrer" className="relative block mt-3 rounded-xl overflow-hidden bg-black aspect-[9/16] max-h-[70vh] mx-auto">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {post.image && <img src={post.image} alt="" loading="lazy" className="w-full h-full object-cover opacity-90" />}
+          <span className="absolute inset-0 flex items-center justify-center"><span className="rounded-full bg-white/90 text-black text-sm font-bold px-4 py-2">▶ 元の動画を見る</span></span>
+        </a>
       ) : post.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={post.image} alt="" loading="lazy" className="mt-3 w-full rounded-xl object-cover max-h-[420px]" />

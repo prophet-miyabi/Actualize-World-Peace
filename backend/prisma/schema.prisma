@@ -146,6 +146,13 @@ model SocialAccount {
   expiresAt    DateTime?
   connectedAt  DateTime  @default(now())
 
+  // ---- 連携の状態と、外部SNSからの取り込み ----
+  status      String    @default("connected") // connected / expired / error
+  lastSyncAt  DateTime?
+  lastError   String?
+  syncEnabled Boolean   @default(false) // 外部SNSの投稿を定期的に AWP へ取り込む
+  scope       String?
+
   @@unique([userId, platform])
 }
 
@@ -163,6 +170,16 @@ model ScheduledPost {
   results     Json? // { x: {ok:true, postId}, instagram: {ok:false, error} } 形式
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // ---- AWP 投稿との連携・媒体・再試行 ----
+  postId        String? // 既存の AWP 投稿を外部へ配信する場合
+  kind          String    @default("post") // post / reel
+  media         Bytes? // 予約時にアップロードした画像・動画（配信時に各SNSへ渡す）
+  mediaType     String?
+  nextAttemptAt DateTime? // 再試行の予定時刻（失敗時に指数的に延ばす）
+  lastError     String?
+  postedIds     Json? // 成功したプラットフォームごとの投稿ID { x: "...", awp: "..." }
+  canceledAt    DateTime?
 
   @@index([status, scheduledAt])
 }
@@ -243,6 +260,8 @@ model LandingPage {
   brief                Json?
   intelligenceSessions PageIntelligenceSession[]
   structureSuggestions PageStructureSuggestion[]
+  // SNS風投稿ブロックの表示設定 { count: 3..12, kinds: ["post","reel"], layout: "grid" | "list" }
+  postsConfig          Json?
 }
 
 // ---- SNS（フォロー・いいね・閲覧/クリックの記録・通報） ----
@@ -664,8 +683,15 @@ model Post {
   likes      PostLike[]
   comments   Comment[]
 
+  // ---- 投稿元・投稿先の紐付け ----
+  source          String  @default("awp") // awp / instagram / x / tiktok（外部SNSから取り込んだもの）
+  externalId      String? // 外部SNS側の投稿ID（重複取り込みの防止）
+  externalUrl     String? // 外部SNS側の投稿URL
+  scheduledPostId String? // この投稿を作った予約（ScheduledPost）
+
   @@index([userId, createdAt])
   @@index([createdAt])
+  @@index([userId, source, externalId])
 }
 
 // 投稿へのいいね

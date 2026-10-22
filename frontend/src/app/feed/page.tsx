@@ -25,6 +25,9 @@ export default function FeedPage() {
   const [error, setError] = useState('');
   // 投稿直後の案内（この投稿がページにも載ったこと）
   const [posted, setPosted] = useState<{ slug: string; name: string } | null>(null);
+  // 同時に配信する外部SNS（連携済みのものだけ選べる）
+  const [connected, setConnected] = useState<{ platform: string; label: string }[]>([]);
+  const [crossPost, setCrossPost] = useState<string[]>([]);
 
   const auth = (): Record<string, string> => (token() ? { Authorization: `Bearer ${token()}` } : {});
 
@@ -43,6 +46,7 @@ export default function FeedPage() {
   useEffect(() => {
     if (!token()) return;
     fetch('/api/lp/list', { headers: auth() }).then((r) => r.json()).then((d) => setPageCount(Array.isArray(d.pages) ? d.pages.length : null)).catch(() => {});
+    fetch('/api/social/accounts', { headers: auth() }).then((r) => r.json()).then((d) => setConnected((d.platforms ?? []).filter((p: any) => p.connected && p.status !== 'expired').map((p: any) => ({ platform: p.platform, label: p.label })))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { setPosts(null); load().catch(() => setPosts([])); }, [load]);
@@ -53,7 +57,7 @@ export default function FeedPage() {
     setBusy(true);
     setError('');
     try {
-      const r = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() }, body: JSON.stringify({ body, imageDataUrl: videoFile ? null : image, hasVideo: !!videoFile, kind: videoFile ? 'reel' : 'post' }) });
+      const r = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth() }, body: JSON.stringify({ body, imageDataUrl: videoFile ? null : image, hasVideo: !!videoFile, kind: videoFile ? 'reel' : 'post', crossPost }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || '投稿できませんでした');
       let post = d.post;
@@ -136,6 +140,22 @@ export default function FeedPage() {
                 <button type="button" onClick={() => setImage(null)} className="absolute top-2 right-2 rounded-full bg-black/60 text-white text-xs px-2 py-1">外す</button>
               </div>
             )}
+            {/* 同時配信: 連携済みの外部SNSを選ぶと、AWP への投稿と同時に各SNSへも配信される（結果は /social で確認） */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="text-gray-500">同時に配信:</span>
+              {connected.length === 0 ? (
+                <Link href="/social" className="rounded-full border border-dashed px-2.5 py-1 text-gray-500">SNSを連携すると Instagram・X・TikTok にも同時投稿できます →</Link>
+              ) : connected.map((c) => {
+                const on = crossPost.includes(c.platform);
+                return (
+                  <button key={c.platform} type="button" onClick={() => setCrossPost((cur) => (on ? cur.filter((x) => x !== c.platform) : [...cur, c.platform]))}
+                    className={`rounded-full px-2.5 py-1 font-bold border ${on ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                    {on ? '✓ ' : ''}{c.label}
+                  </button>
+                );
+              })}
+              {crossPost.length > 0 && <Link href="/social/schedule" className="ml-auto text-violet-700 underline">日時を決めて予約する</Link>}
+            </div>
             <div className="flex items-center justify-between mt-2">
               <label className="text-sm text-violet-700 font-bold cursor-pointer">
                 📷 写真

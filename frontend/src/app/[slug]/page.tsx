@@ -25,6 +25,7 @@ type PublicLp = Lp & {
   chatbotEnabled?: boolean;
   postsEnabled?: boolean;
   postsPlacement?: string;
+  postsConfig?: { count?: number; kinds?: string[]; layout?: 'grid' | 'list'; title?: string } | null;
 };
 
 async function fetchLp(slug: string): Promise<PublicLp | null> {
@@ -123,7 +124,7 @@ export default async function LandingPage({ params }: Params) {
   );
   // 持ち主の最新の投稿（リール・写真・文章）。投稿するたびに自動で更新され、持ち主は投稿ごとに外せる
   const posts = lp.postsEnabled !== false && lp.owner
-    ? <OwnerPostsSection username={lp.owner.username} ownerName={lp.owner.name} design={lp.design} siteUrl={siteUrl} />
+    ? <OwnerPostsSection username={lp.owner.username} ownerName={lp.owner.name} design={lp.design} siteUrl={siteUrl} config={lp.postsConfig ?? null} />
     : null;
   const engagement = (
     <>
