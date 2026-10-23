@@ -93,6 +93,7 @@ docs/council/      会議室の議事録
 - `agents/`: 法令チェック、成長・マーケ・X キャンペーン、自己宣伝、監視、状態レポート。
 - 監視: `SystemError`, `/admin/monitoring`, `/api/health/ai`（Anthropic 鍵・ワークスペース・残高の確認）、`lib/readiness.ts`（公開準備チェックリスト: Runway 鍵の有無なども項目）。
 - 停電・障害時: `company/outage.ts`, `/admin/emergency`。
+- **データ資産（AWP Data Intelligence、2026-10-23 追加）**: 全テナントの行動・成約を匿名化して `AwpIntelligenceLake` に蓄積（業種・チャネル・段階・時間帯・文面のハッシュのみ。利用者 ID・氏名・本文は入れない）。記録箇所はページ来訪/ボタン押下、予約、注文と入金確認、LINE の反応と友だち追加、外部 SNS への発信。6 時間ごとに業種×チャネルの勝ちパターン `IndustryFunnelBenchmark`（反応率・LP 遷移率・予約決済率・平均単価・反応が多い時間帯・効いた言葉、サンプル 5 件以上）へ結晶化し、業種プレイブックの要約に添えてページ生成へ還流。利用者ごとに `HarnessIntentSignal`（LINE 導入・自動返信・SNS 投稿自動化・独自ドメイン・直接販売の推奨と 0〜100 点）を計算し、80 点以上はマイページに提案カード。外部通信は `safeExternalFetch` のホワイトリスト（公式 API のホストのみ）。管理画面 `/admin/intelligence`、エンジン `backend/src/automation/awpDataAssetEngine.ts`。
 
 ---
 
