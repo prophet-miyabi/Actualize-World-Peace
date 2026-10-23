@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../prisma';
+import { InviteRequiredError, assertInviteForPageCreate } from '../lib/inviteGuard';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
@@ -143,6 +144,12 @@ router.post('/sessions/:id/publish', metered('builder_publish', false), async (r
     // 公開に使わなかった項目（推測・不明）は「未確定」として残し、あとで本人が確定できるようにする
     facts: brief.facts.map((f) => (PUBLISHABLE.includes(f.status) ? f : { ...f, status: f.value ? f.status : 'unconfirmed' }))
   };
+  try {
+    await assertInviteForPageCreate(req.user!.id, req.body?.inviteCode);
+  } catch (e: any) {
+    if (e instanceof InviteRequiredError) return res.status(403).json({ error: e.message, code: e.code });
+    throw e;
+  }
   let lp;
   try {
     lp = await prisma.landingPage.create({

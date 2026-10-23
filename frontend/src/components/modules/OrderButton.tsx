@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { captureCid } from '@/lib/cid';
 
 type Shop = { methods: { bank: boolean; inPerson: boolean }; shippingFeeYen: number; freeShippingOverYen: number | null };
 type Product = { id: string; name: string; priceYen: number | null; stock: number | null; requiresShipping: boolean };
@@ -36,7 +37,7 @@ export default function OrderButton({ slug, businessName, product, shop, primary
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: [{ productId: product.id, qty }], paymentMethod: method, buyerName: name, buyerContact: contact,
-          shipping: product.requiresShipping ? { postal, address, name } : undefined, message, agree, website
+          shipping: product.requiresShipping ? { postal, address, name } : undefined, message, agree, website, cid: captureCid()
         })
       });
       const d = await r.json().catch(() => ({}));

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import ReportButton from './ReportButton';
+import { captureCid } from '@/lib/cid';
 
 // 公開ページの下に出す小さなバー: いいね・作った人のプロフィール・通報。
 // 表示時に閲覧を1回記録する（流入元はドメイン名だけ送り、訪問者を特定する情報は送らない）
@@ -28,7 +29,7 @@ export default function PageEngagementBar({ slug, owner, siteUrl }: Props) {
     } catch { /* 無視 */ }
     fetch('/api/community/events', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
-      body: JSON.stringify({ type: 'view', slug, ref })
+      body: JSON.stringify({ type: 'view', slug, ref, cid: captureCid() })
     }).catch(() => {});
 
     // ページ内のリンクが押されたら、行き先の種類だけを記録する（URLや押した人の情報は送らない）

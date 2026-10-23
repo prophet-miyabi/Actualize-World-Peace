@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { OWNER_KEY, OWNER_NAME, setOwnerTaskStatus, syncOwnerTasksFromCrew } from '../company/ownerTasks';
+import { planOwnerBudget } from '../company/ownerBudget';
 import { describeAiError } from '../lib/aiUsage';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { getFlag, setFlag, SETTING_KEYS } from '../lib/systemSettings';
@@ -29,6 +30,7 @@ router.use(async (req: AuthRequest, res, next) => {
 router.get('/status', async (_req, res) => {
   await seedCompany();
   await syncOwnerTasksFromCrew().catch((e) => console.error('owner task sync failed', e?.message));
+  const ownerBudget = await planOwnerBudget().catch(() => null);
   const since30 = new Date(Date.now() - 30 * 86_400_000);
   const since24 = new Date(Date.now() - 86_400_000);
   const [goals, tasks, actions, decided, events, costs, metrics, paused, configs, settings, reports, lastTick, counts, stats, lastRuns, selftests] = await Promise.all([
@@ -70,7 +72,7 @@ router.get('/status', async (_req, res) => {
   const ceoDay = await prisma.crewState.findUnique({ where: { key: 'company:ceoDay' } });
   const managedEnv = await prisma.systemSetting.findUnique({ where: { key: 'company_managed_environment' } });
   res.json({
-    configured: !!process.env.ANTHROPIC_API_KEY, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
+    configured: !!process.env.ANTHROPIC_API_KEY, ownerBudget, paused, goals, org, tasks, actions, decided, events, costs, metrics, settings, reports,
     // タスクの担当として選べる一覧（オーナー＋エージェント）
     assignees: [{ key: OWNER_KEY, name: OWNER_NAME }, ...AGENTS.map((a) => ({ key: a.key, name: a.name }))],
     monthly: { spentUsd: await spentThisMonthUsd(), capUsd: await monthlyCapUsd() },

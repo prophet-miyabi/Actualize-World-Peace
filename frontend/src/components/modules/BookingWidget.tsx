@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { captureCid } from '@/lib/cid';
 
 type Config = { menus: { name: string; note: string }[]; note: string; leadDays: number; maxDays: number };
 type Props = { slug: string; businessName: string; config: Config; primary: string; onPrimary: string; siteUrl: string };
@@ -32,7 +33,7 @@ export default function BookingWidget({ slug, businessName, config, primary, onP
       const requestedAt = new Date(`${date}T${time || '00:00'}:00`).toISOString();
       const r = await fetch(`/api/bookings/${slug}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menu, requestedAt, name, contact, message, agree, website })
+        body: JSON.stringify({ menu, requestedAt, name, contact, message, agree, website, cid: captureCid() })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || '送信できませんでした');

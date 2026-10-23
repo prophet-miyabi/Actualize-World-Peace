@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod/v4';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import prisma from '../prisma';
+import { InviteRequiredError, assertInviteForPageCreate } from '../lib/inviteGuard';
 import { isGenerating, publicLp, runDesignJob, storedSections, type StoredSection } from '../ai/designJob';
 import { classifyIndustryByRules, getPlaybook, industryOf } from '../ai/playbook';
 import { PRESET_KEYS, PRESET_META, presetDesign } from '../ai/design';
@@ -387,6 +388,12 @@ router.post('/wizard', authenticate, metered('page_design', false), async (req: 
   const purpose = normalizePurpose(req.body.purpose);
   const lineAdd = normalizeLineAddUrl(req.body.lineAddUrl);
   if (!lineAdd.ok) return res.status(400).json({ error: LINE_URL_ERROR });
+  try {
+    await assertInviteForPageCreate(userId, req.body?.inviteCode);
+  } catch (e: any) {
+    if (e instanceof InviteRequiredError) return res.status(403).json({ error: e.message, code: e.code });
+    throw e;
+  }
   try {
     const lp = await prisma.landingPage.create({
       data: { userId, businessName, heroTitle, strengths, socialProof, scarcityOffer, slug, siteType, templateKey, accent, purpose, lineAddUrl: lineAdd.value }

@@ -19,6 +19,8 @@ export default function AdminReportsPage() {
   const [reports, setReports] = useState<Report[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [bench, setBench] = useState<{ lake: { total: number; last30d: Record<string, number> }; benchmarks: { id: string; industryLabel: string; channel: string; sampleSize: number; avgGatePassRate: number; avgClickRate: number; avgBookingRate: number; avgOrderValue: number }[] } | null>(null);
+  useEffect(() => { api.get('/intelligence/benchmarks').then((r) => setBench(r.data)).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     const { data } = await api.get('/community/admin/reports');
@@ -83,6 +85,20 @@ export default function AdminReportsPage() {
           ))}
         </div>
       )}
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between mb-2"><h2 className="font-bold text-sm">業種×チャネルの勝ちパターン（匿名データレイク）</h2><a href="/admin/intelligence" className="text-xs text-violet-700 underline">詳しく →</a></div>
+        {!bench ? <p className="text-xs text-gray-400">読み込み中…</p> : (
+          <div className="bg-white border rounded-xl p-4 text-sm">
+            <p className="text-xs text-gray-600">レイク累計 {bench.lake.total.toLocaleString('ja-JP')} 件・30日: {Object.entries(bench.lake.last30d).map(([k, v]) => `${k} ${v}`).join(' / ') || '0'}。各行の件数（n）が 5 未満の組み合わせは作られません。数字は実測の集計で、推定は含みません。</p>
+            {bench.benchmarks.length === 0 ? <p className="text-xs text-gray-500 mt-2">まだ十分なデータがありません。</p> : (
+              <ul className="divide-y mt-2 text-xs">
+                {bench.benchmarks.slice(0, 8).map((b) => <li key={b.id} className="py-2 flex justify-between gap-2"><span className="min-w-0 truncate">{b.industryLabel}・{b.channel}（n={b.sampleSize}）</span><span className="shrink-0 text-gray-600">反応 {Math.round(b.avgGatePassRate * 100)}% / 来訪→次へ {Math.round(b.avgClickRate * 100)}% / 予約 {Math.round(b.avgBookingRate * 100)}% / 客単価 ¥{Math.round(b.avgOrderValue).toLocaleString('ja-JP')}</span></li>)}
+              </ul>
+            )}
+          </div>
+        )}
+      </section>
 
       {closed.length > 0 && (
         <>

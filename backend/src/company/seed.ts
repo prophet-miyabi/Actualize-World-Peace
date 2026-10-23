@@ -34,7 +34,24 @@ export const FUNDS_GOAL = {
   ]
 };
 
+// オーナーの決定（2026-10-23）: 雅テックの受託先行で年内300万円、2027年初頭に浜松市の支援・融資で3,300万円
+export const MIYABI_GOAL = {
+  title: '雅テック: 年内に受託で300万円を確保し、2027年初頭に3,300万円の融資を受ける',
+  description: '屋号「雅テック（Miyabi Tech）」で企業向けに高成約LP・HP、公式LINEの自動動線、広告用動画・カスタムソング、SNS一斉運用基盤を松竹梅（15万/35万/60万円〜）で受注し、2026-12-31までに300万円を確保する。その実績と自己資金を元に浜松市のスタートアップ支援・創業融資で3,300万円を調達する。年内のオーナーの稼働は1日180分（受託の成約 → ドッグフーディング → SNS発信の順）。一般公開はコストガードを整えてから。正本: docs/strategy/miyabi-tech-roadmap.md',
+  kpis: [
+    { key: 'miyabi_revenue', label: '雅テック 受注額（税別・累計）', target: 3_000_000, unit: '円', by: '2026-12-31' },
+    { key: 'miyabi_deals', label: '受託の成約件数', target: 7, unit: '件', by: '2026-12-31' },
+    { key: 'miyabi_maintenance', label: '月額保守の契約数', target: 3, unit: '件', by: '2026-12-31' },
+    { key: 'sns_weekly_posts', label: '4媒体への発信（週）', target: 5, unit: '回', by: 'always' },
+    { key: 'loan_application', label: '浜松市 創業融資の申請', target: 1, unit: '件', by: '2027-02-28' },
+    { key: 'loan_executed', label: '融資の実行', target: 33_000_000, unit: '円', by: '2027-03-31' }
+  ]
+};
+
 export async function seedCompany() {
+  if (!(await prisma.companyGoal.findFirst({ where: { title: MIYABI_GOAL.title } }))) {
+    await prisma.companyGoal.create({ data: { ...MIYABI_GOAL, kpis: MIYABI_GOAL.kpis as any, setBy: 'owner' } });
+  }
   if (!(await prisma.companyGoal.findFirst({ where: { title: FUNDS_GOAL.title } }))) {
     await prisma.companyGoal.create({ data: { ...FUNDS_GOAL, kpis: FUNDS_GOAL.kpis as any, setBy: 'owner' } });
   }

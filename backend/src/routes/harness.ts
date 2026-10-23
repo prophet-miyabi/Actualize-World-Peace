@@ -3,11 +3,14 @@ import prisma from '../prisma';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { isAdminUser } from '../middlewares/admin';
 import { refundHarnessCash } from './wallet';
+import crmRouter from './crm';
 
 // Harness（L Harness / X Harness / IG Harness）の導入支援。
 // ユーザーは「導入（無料）」と有料の追加機能を選んで申し込み、運営者が管理画面で対応する。
 // 決済方法は後から追加する（当面は申し込みと支払い状況の管理のみ）。
+// /crm 配下は AWP 自社実装の Harness（顧客・ゲート・ステップ配信・配信アカウント）
 const router = Router();
+router.use('/crm', crmRouter);
 
 const HARNESSES = ['line', 'x', 'instagram'] as const;
 const ORDER_STATUSES = ['requested', 'in_progress', 'done', 'canceled'];

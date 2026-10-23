@@ -988,6 +988,10 @@ model CompanyTask {
   role             String? // オフィス上の役割キー（office.ts）
   pausedAt         DateTime?
   loopRunId        String?
+  // オーナータスクの時間予算（年内は 1 日 180 分）: 推定所要時間と、売上直結度（1=受託・売上 / 2=ドッグフーディング / 3=SNS発信 / 4=その他）
+  estimateMin      Int?
+  ownerPriority    Int?
+  budgetDay        String? // この日に割り当て（YYYY-MM-DD, JST）
   loopRun          AgentLoopRun?   @relation(fields: [loopRunId], references: [id], onDelete: SetNull)
   approvals        AgentApproval[]
 
@@ -1352,4 +1356,181 @@ model HarnessIntentSignal {
 
   @@unique([ownerId, recommendedAddon])
   @@index([ownerId, intentScore])
+}
+
+// ==========================================
+// AWP Harness（自社実装）: クロスSNSの CRM・エンゲージメントゲート・ステップ配信・配信アカウント管理
+// 外部パッケージに依存しない。外部通信は safeExternalFetch（公式 API のホストのみ）
+// ==========================================
+
+/// 顧客（クロスUUID）。LINE / X / Instagram / TikTok / LP の同一人物を cid で束ねる
+model CrmContact {
+  id           String   @id @default(cuid())
+  ownerId      String // AWP 利用者（事業者）
+  cid          String   @unique @default(uuid()) // クロスUUID（リンクの ?awp_cid= で持ち回る）
+  displayName  String?
+  lineUserId   String?
+  xUserId      String?
+  igUserId     String?
+  tiktokUserId String?
+  email        String?
+  phone        String?
+  source       String   @default("lp") // 最初の接点: line / x / instagram / tiktok / lp
+  stage        String   @default("lead") // lead / engaged / booked / customer / lost
+  leadScore    Int      @default(0) // 0〜100（反応・来訪・予約で加点）
+  lastSeenAt   DateTime @default(now())
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tags        CrmContactTag[]
+  events      CrmContactEvent[]
+  enrollments CrmScenarioEnrollment[]
+
+  @@unique([ownerId, lineUserId])
+  @@index([ownerId, leadScore])
+  @@index([ownerId, stage])
+}
+
+model CrmTag {
+  id        String          @id @default(cuid())
+  ownerId   String
+  name      String
+  color     String?
+  createdAt DateTime        @default(now())
+  contacts  CrmContactTag[]
+
+  @@unique([ownerId, name])
+}
+
+model CrmContactTag {
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       CrmTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@id([contactId, tagId])
+}
+
+/// ステップ配信のシナリオ（LINE が主。X / Instagram の DM は配信アカウントが対応する場合のみ）
+model CrmScenario {
+  id         String   @id @default(cuid())
+  ownerId    String
+  name       String
+  channel    String   @default("line") // line / x / instagram
+  trigger    String   @default("manual") // manual / gate / line_follow / tag / booking
+  triggerRef String? // trigger が tag のときのタグ名など
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  steps       CrmScenarioStep[]
+  enrollments CrmScenarioEnrollment[]
+  gates       EngagementGate[]
+
+  @@index([ownerId])
+}
+
+model CrmScenarioStep {
+  id           String      @id @default(cuid())
+  scenarioId   String
+  scenario     CrmScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  order        Int
+  delayMinutes Int         @default(0) // 前のステップ（または登録）からの遅延
+  template     String // Spintax 可: {こんにちは|お世話になります} {{name}} さん
+  mediaUrl     String?
+  linkPath     String? // 配信するリンク（例: /slug?utm=line）。awp_cid を自動で付ける
+  createdAt    DateTime    @default(now())
+
+  @@unique([scenarioId, order])
+}
+
+model CrmScenarioEnrollment {
+  id          String      @id @default(cuid())
+  scenarioId  String
+  scenario    CrmScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     CrmContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  currentStep Int         @default(0)
+  nextAt      DateTime
+  status      String      @default("active") // active / done / stopped / failed
+  attempts    Int         @default(0)
+  lastError   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([scenarioId, contactId])
+  @@index([status, nextAt])
+}
+
+/// エンゲージメントゲート: SNS 投稿のコメント・DM・LINE のメッセージに含まれるキーワードで反応し、返信してシナリオに登録する
+model EngagementGate {
+  id             String       @id @default(cuid())
+  ownerId        String
+  channel        String // line / x / instagram / tiktok
+  keyword        String // 例: 詳細
+  postExternalId String? // 特定の投稿に限定する場合
+  replyTemplate  String // Spintax 可
+  linkPath       String? // 返信に添えるリンク（awp_cid 付き）
+  scenarioId     String?
+  scenario       CrmScenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  tagName        String? // 通過した人に付けるタグ
+  active         Boolean      @default(true)
+  hits           Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([ownerId, channel, active])
+}
+
+/// 自動化ルール: 出来事（gate_hit / lp_visit / booking / payment / tag_added）→ 条件 → 動作（シナリオ登録・タグ・通知）
+model CrmAutomationRule {
+  id         String   @id @default(cuid())
+  ownerId    String
+  name       String
+  event      String
+  conditions Json? // { minLeadScore?, tag?, channel? }
+  actions    Json // [{ type: "enroll", scenarioId } | { type: "tag", name } | { type: "notify", text } | { type: "score", delta }]
+  active     Boolean  @default(true)
+  fired      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId, event, active])
+}
+
+/// 配信アカウントのプール: 健全性（エラー率）と日次上限を見て、送信先アカウントを切り替える（BAN 対策のフェイルオーバー）
+model ChannelAccountPool {
+  id              String    @id @default(cuid())
+  ownerId         String
+  channel         String // line / x / instagram / tiktok
+  socialAccountId String? // SocialAccount.id（X / Instagram / TikTok）。LINE は LineConfig を使う
+  label           String
+  healthScore     Int       @default(100) // 0〜100
+  errorCount      Int       @default(0)
+  sentToday       Int       @default(0)
+  sentDay         String? // YYYY-MM-DD（JST）
+  dailyLimit      Int       @default(200)
+  minIntervalMs   Int       @default(2500) // 送信ジッターの下限
+  cooldownUntil   DateTime?
+  lastErrorAt     DateTime?
+  lastError       String?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([ownerId, channel, active])
+}
+
+model CrmContactEvent {
+  id        String     @id @default(cuid())
+  contactId String
+  contact   CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type      String // gate_hit / message_in / step_sent / lp_visit / booking / payment / tag_added / score
+  channel   String?
+  payload   Json?
+  createdAt DateTime   @default(now())
+
+  @@index([contactId, createdAt])
 }

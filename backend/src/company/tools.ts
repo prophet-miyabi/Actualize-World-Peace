@@ -9,6 +9,9 @@ import { awpMediaPosts, instagramOverview, publicBase, queueInstagramPost } from
 import { generateImage } from '../ai/design';
 import { generateReelPost } from '../ai/reel';
 import { runwayConfigured } from '../ai/runway';
+import { aggregateIndustryBenchmarks } from '../automation/awpDataAssetEngine';
+import { industryOf } from '../ai/playbook';
+import { planOwnerBudget } from './ownerBudget';
 
 // エージェントの「手」（Hands）。エージェントがシステムに触れる唯一の方法。
 // 読む道具は low、記録や依頼を作る道具は medium、設定・お金・公開に触る道具は high（人間の承認後に execute が走る）
@@ -185,7 +188,9 @@ export const TOOLS: ToolDef[] = [
         assignee: { type: 'string', description: 'エージェントのキー（research/product/engineering/qa/data/marketing/content/instagram/growth/cs/finance/partnership/security/legal/coo）。人にしかできないこと（PRのマージ・契約・支払い・外部サービスの設定）は owner（Miyabi）に頼める' },
         title: { type: 'string' }, instructions: { type: 'string' },
         risk: { type: 'string', enum: ['low', 'medium'], description: '成果が外部に影響するなら medium（監査役が検証する）' },
-        runInHours: { type: 'number', description: '何時間後に実行するか（既定: すぐ）' }
+        runInHours: { type: 'number', description: '何時間後に実行するか（既定: すぐ）' },
+        estimateMin: { type: 'integer', minimum: 5, maximum: 480, description: 'owner 宛てのとき必須: 推定所要時間（分）。オーナーの1日の予算は年内180分' },
+        ownerPriority: { type: 'integer', minimum: 1, maximum: 4, description: 'owner 宛てのとき: 1=受託の成約・売上直結 / 2=ドッグフーディングの修正 / 3=SNS発信 / 4=その他' }
       },
       required: ['assignee', 'title', 'instructions']
     },
@@ -198,12 +203,41 @@ export const TOOLS: ToolDef[] = [
       const t = await prisma.companyTask.create({
         data: {
           goalId: ctx.goalId, parentId: ctx.taskId, title: text(i.title, 120), instructions: text(i.instructions, 6000), assignee, createdBy: ctx.agent.key,
-          risk: i.risk === 'medium' ? 'medium' : 'low', runAt: new Date(Date.now() + Math.max(0, Math.min(72, Number(i.runInHours) || 0)) * 3600_000)
+          risk: i.risk === 'medium' ? 'medium' : 'low', runAt: new Date(Date.now() + Math.max(0, Math.min(72, Number(i.runInHours) || 0)) * 3600_000),
+          ...(assignee === 'owner' ? { estimateMin: Math.min(480, Math.max(5, Number(i.estimateMin) || 30)), ownerPriority: [1, 2, 3, 4].includes(Number(i.ownerPriority)) ? Number(i.ownerPriority) : null } : {})
         }
       });
       await emitEvent('task.created', ctx.agent.key, { id: t.id, assignee, title: t.title }, ctx.taskId);
+      // オーナー宛ては時間予算（年内 180 分/日）で日付を割り当て直す。今日に入らなければ翌日以降へ送られる
+      if (assignee === 'owner') {
+        const b = await planOwnerBudget().catch(() => null);
+        const mine = b?.today.find((r) => r.id === t.id) ?? b?.deferred.find((r) => r.id === t.id);
+        return { ok: true, id: t.id, budgetDay: mine?.budgetDay ?? null, todayPlannedMin: b?.plannedMin ?? null, minutesPerDay: b?.minutesPerDay ?? null, note: mine?.budgetDay && mine.budgetDay !== b?.day ? `今日の予算（${b?.minutesPerDay}分）に入らないため ${mine.budgetDay} に送りました` : undefined };
+      }
       return { ok: true, id: t.id };
     }
+  },
+  {
+    name: 'owner_budget', risk: 'low',
+    description: 'オーナーの時間予算（年内は 1 日 180 分）と、今日に割り当てられたオーナータスク・翌日以降に送られたタスク。オーナー宛てのタスクを作る前に確認する',
+    input_schema: { type: 'object', properties: {} },
+    run: () => planOwnerBudget()
+  },
+  {
+    name: 'industry_benchmarks', risk: 'low',
+    description: '業種×チャネルの勝ちパターン（匿名データレイクの集計。各行に sampleSize があり、5件未満の組み合わせは出ない）。industryKey を省くと全業種。数字は実測の集計値で、推定ではない',
+    input_schema: { type: 'object', properties: { industryKey: { type: 'string', description: '業種キー（例: beauty-salon）。省略で全業種' } } },
+    run: async (i) => {
+      const industryKey = text(i?.industryKey, 40) || undefined;
+      const rows = await prisma.industryFunnelBenchmark.findMany({ where: industryKey ? { industryKey } : {}, orderBy: { sampleSize: 'desc' }, take: 60 });
+      return { count: rows.length, note: rows.length ? undefined : 'まだ集計がありません（5件以上の反応がたまると出ます）', benchmarks: rows.map((r) => ({ industryKey: r.industryKey, industryLabel: industryOf(r.industryKey).label, channel: r.channel, sampleSize: r.sampleSize, gatePassRate: r.avgGatePassRate, clickRate: r.avgClickRate, bookingRate: r.avgBookingRate, avgOrderValueYen: r.avgOrderValue, bestSendHours: r.bestSendHoursJson, winningKeywords: r.winningKeywordsJson, optimalJitterMs: r.optimalJitterMs, updatedAt: r.updatedAt })) };
+    }
+  },
+  {
+    name: 'aggregate_benchmarks', risk: 'low',
+    description: '匿名データレイクの集計（業種×チャネルの勝ちパターン）を今すぐ実行する。通常は 6 時間ごとに自動で動く',
+    input_schema: { type: 'object', properties: {} },
+    run: () => aggregateIndustryBenchmarks()
   },
   {
     name: 'report_to_owner', risk: 'low',

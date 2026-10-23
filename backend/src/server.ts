@@ -38,6 +38,7 @@ import pageIntelligenceRoutes from './routes/pageIntelligence';
 import officeRoutes from './routes/office';
 import intelligenceRoutes from './routes/intelligence';
 import { startDataAssetJobs } from './automation/awpDataAssetEngine';
+import { startHarnessEngine } from './automation/harnessEngine';
 import { startOffice } from './company/office';
 import { startCompany } from './company/loop';
 import { startCrew } from './crew/orchestrator';
@@ -151,6 +152,7 @@ startCrew();
 startCompany();
 startOffice();
 startDataAssetJobs();
+startHarnessEngine();
 // AWP 公式アカウント・公式ページ・最初の投稿（無ければ作る）
 void seedOfficial().then((r) => { if (r.created) console.log(`official account seeded: ${r.created} posts`); }).catch((e) => console.error('official seed failed', e?.message));
 // ブランドのアカウント（URARA など）

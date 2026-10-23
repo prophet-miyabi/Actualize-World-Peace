@@ -5,7 +5,8 @@ export const SETTING_KEYS = {
   pauseAgentLoop: 'pause_agent_loop',
   pauseSnsPosting: 'pause_sns_posting',
   pauseCrew: 'pause_crew',
-  pauseCompany: 'pause_company'
+  pauseCompany: 'pause_company',
+  inviteOnlyPages: 'invite_only_pages'
 } as const;
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
 export const ALL_SETTING_KEYS = Object.values(SETTING_KEYS) as SettingKey[];
@@ -14,7 +15,8 @@ export const SETTING_LABEL: Record<SettingKey, string> = {
   pause_agent_loop: 'AWPエージェントの定期実行を止める',
   pause_sns_posting: 'SNSの予約投稿を止める',
   pause_crew: 'ローンチ・クルー（Discordの進行・GitHubへの実装依頼）を止める',
-  pause_company: 'AWP企業（CEO以下のエージェントの自律運営）を止める'
+  pause_company: 'AWP企業（CEO以下のエージェントの自律運営）を止める',
+  invite_only_pages: '新しいページの作成を招待制にする（コストガード: 招待コード AWP_INVITE_CODE がない利用者はページを作れない。管理者と既にページを持つ人は対象外）'
 };
 
 export async function getFlag(key: SettingKey): Promise<boolean> {

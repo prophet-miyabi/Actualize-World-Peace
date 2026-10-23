@@ -14,10 +14,19 @@ const dir = path.join(ROOT, 'input', id);
 const brief = JSON.parse(fs.readFileSync(path.join(dir, 'brief.json'), 'utf8'));
 const deploy = fs.existsSync(path.join(dir, 'deploy.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'deploy.json'), 'utf8')) : { url: '（デプロイ後にURLが入ります）' };
 let prices = {};
-try { prices = JSON.parse(fs.readFileSync(path.join(REPO, 'finance', 'plan.json'), 'utf8')).prices; } catch { /* 無ければ既定 */ }
+let packages = null;
+try { const plan = JSON.parse(fs.readFileSync(path.join(REPO, 'finance', 'plan.json'), 'utf8')); prices = plan.prices; packages = plan.packages; } catch { /* 無ければ既定 */ }
+// 雅テックの松竹梅（finance/plan.json の packages が正本）。LP 案件は梅、LINE 付きは竹、HP＋動画＋SNS は松を軸に提案する
+const pkgLines = packages ? ['ume', 'take', 'matsu'].filter((k) => packages[k]).map((k) => {
+  const pk = packages[k];
+  return `- ${pk.label} ${Math.round(pk.price / 10000)}万円〜: ${(pk.includes || []).join(' / ')}`;
+}).concat(packages.maintenance ? [`- 公開後の保守: 月額 ${Math.round(packages.maintenance.light / 1000).toLocaleString('ja-JP')},000円〜（監視・バックアップ・更新・障害時の一次対応）`] : []) : [];
 
-const typeOf = { lp: 'LP', crm: 'System', booking: 'WebApp' }[brief.screen?.template] || 'HP';
-const price = prices[typeOf] || { min: 300000, max: 800000, maintenance: 33000 };
+const typeOf = { lp: 'LP', lp_drm: 'LP', crm: 'System', booking: 'WebApp' }[brief.screen?.template] || 'HP';
+// 価格帯: 松竹梅があれば LP=梅〜竹、HP=竹〜松、システム系は従来の prices
+const price = packages && (typeOf === 'LP' || typeOf === 'HP')
+  ? (typeOf === 'LP' ? { min: packages.ume.price, max: packages.take.price, maintenance: packages.maintenance.standard } : { min: packages.take.price, max: packages.matsu.price, maintenance: packages.maintenance.standard })
+  : (prices[typeOf] || { min: 300000, max: 800000, maintenance: 33000 });
 const yen = (n) => `${Math.round(n / 10000)}万円`;
 const c = brief.client || {};
 const t = brief.screen?.template;
@@ -44,7 +53,8 @@ const vars = {
   assumptions: (brief.assumptions || []).slice(0, 3).map((x) => `- ${x}（と想定しています。違っていればお知らせください）`).join('\n') || '- （特になし）',
   deadline: brief.deadline || 'ご希望に合わせて調整',
   price_range: `${yen(price.min)}〜${yen(price.max)}（税別）`, maintenance: `月額 ${Math.round(price.maintenance / 1000) * 1000 >= 10000 ? yen(price.maintenance) : `${price.maintenance.toLocaleString('ja-JP')}円`}〜（税別）`,
-  type_label: { lp: 'ランディングページ', crm: '業務管理システム', booking: '予約・顧客管理システム' }[t] || 'ホームページ',
+  packages: pkgLines.join('\n') || '- （finance/plan.json の packages が未設定）',
+  type_label: { lp: 'ランディングページ', lp_drm: 'ランディングページ', crm: '業務管理システム', booking: '予約・顧客管理システム' }[t] || 'ホームページ',
   today: new Date().toLocaleDateString('ja-JP')
 };
 const out = template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => vars[k] ?? '');

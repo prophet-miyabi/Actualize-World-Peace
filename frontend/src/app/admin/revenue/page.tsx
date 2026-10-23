@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
+import FundingTracker from '@/components/admin/FundingTracker';
 
 type Event = {
   id: string; toolKey: string; slug: string | null; grossYen: number; ownerYen: number; platformYen: number;
@@ -71,6 +72,8 @@ export default function AdminRevenuePage() {
       <p className="text-sm text-gray-600 mt-1">
         ASPの管理画面で<span className="font-bold">確定</span>した報酬だけを記録してください（発生・未確定の報酬は記録しない）。ページのURLを入れると、持ち主に78%がキャッシュとして分配されます。
       </p>
+
+      <FundingTracker />
 
       {d && (
         <div className="grid grid-cols-2 gap-3 mt-5">

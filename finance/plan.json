@@ -1,7 +1,7 @@
 {
   "_comment": "資金計画。goal は 2026-12-31 までに法人設立の原資 300 万円を確保すること。pipeline は見込み案件（受注前は probability で期待値に換算）。prices は受託の標準価格（税別）。monthly_costs は固定費の見込み（円）。",
   "entity": {
-    "name": "AWP（個人事業・法人化準備中）",
+    "name": "雅テック（Miyabi Tech・個人事業）→ 法人化準備中",
     "owner": "Miyabi",
     "fiscal_year_start": "2026-01-01",
     "incorporation_target": "2026-12-31"
@@ -108,5 +108,85 @@
     "12月": {
       "target_deals": 2
     }
+  },
+  "packages": {
+    "_comment": "雅テックの松竹梅（税別）。提案文・見積書の既定値。契約書は contracts/ の各書式を使う",
+    "ume": {
+      "label": "梅（LP）",
+      "price": 150000,
+      "includes": [
+        "高成約LP 1本（10セクション・スマホ最適化・GTM/GA4）",
+        "公開作業（御社名義のドメイン・サーバー）",
+        "操作説明 1回"
+      ]
+    },
+    "take": {
+      "label": "竹（LP＋LINE）",
+      "price": 350000,
+      "includes": [
+        "梅の全内容",
+        "公式LINEの自動動線（エンゲージメントゲート・ステップ配信・予約フォーム）",
+        "広告用ショート動画 1本（15〜30秒）"
+      ]
+    },
+    "matsu": {
+      "label": "松（フル）",
+      "price": 600000,
+      "includes": [
+        "竹の全内容",
+        "ホームページ（5〜6ページ）",
+        "カスタムソング付き動画 1本",
+        "SNS一斉運用基盤（X / Instagram / TikTok / YouTube）の設定と1か月の伴走"
+      ]
+    },
+    "maintenance": {
+      "light": 11000,
+      "standard": 33000,
+      "premium": 77000
+    }
+  },
+  "funding": {
+    "_comment": "年内300万円 → 2027年初頭に浜松市スタートアップ支援・創業融資で3,300万円。実績は /admin/revenue のトラッカーで入力・表示",
+    "self_capital_target_jpy": 3000000,
+    "self_capital_by": "2026-12-31",
+    "loan_target_jpy": 33000000,
+    "loan_apply_by": "2027-02-28",
+    "loan_by": "2027-03-31",
+    "lender": "浜松市スタートアップ支援・金融機関（創業融資）",
+    "evidence_checklist": [
+      {
+        "key": "self_capital_ratio",
+        "label": "自己資金比率（300万/3,300万 ≒ 9%。10%以上が望ましい）"
+      },
+      {
+        "key": "signed_deals",
+        "label": "受託の成約件数と契約書・請求書・入金記録"
+      },
+      {
+        "key": "awp_roi",
+        "label": "AWP の自社実証 ROI（投稿・閲覧・予約・成約の実測）"
+      },
+      {
+        "key": "maintenance_contracts",
+        "label": "月額保守への転換数（継続収入の根拠）"
+      },
+      {
+        "key": "business_plan",
+        "label": "事業計画書・資金繰り表（finance/ の P/L・B/S・CF から作成）"
+      },
+      {
+        "key": "registration",
+        "label": "開業届・屋号口座・インボイス登録"
+      }
+    ]
+  },
+  "owner_time": {
+    "until_2026_12_31_minutes_per_day": 180,
+    "from_2027_01_01_minutes_per_day": 720,
+    "priority_order": [
+      "受託の成約・売上直結",
+      "ドッグフーディングの修正",
+      "SNS発信"
+    ]
   }
 }

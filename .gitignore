@@ -45,5 +45,6 @@ finance/output/
 auto-sales-agent/input/*
 !auto-sales-agent/input/sample-reform/
 !auto-sales-agent/input/sample-ai-asset/
+!auto-sales-agent/input/miyabi-tech/
 auto-sales-agent/dist/
 auto-sales-agent/output/

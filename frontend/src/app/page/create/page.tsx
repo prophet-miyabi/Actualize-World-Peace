@@ -51,6 +51,8 @@ function Flow() {
   const [session, setSession] = useState<Session | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [checks, setChecks] = useState<Check[]>([]);
   const [previewMode, setPreviewMode] = useState<'mobile' | 'desktop'>('mobile');
@@ -160,9 +162,9 @@ function Flow() {
     setError('');
     try {
       setBusy('ページに反映しています…');
-      const { data } = await api.post(`/page-intelligence/sessions/${session.id}/apply`, { businessName: businessName.trim(), slug: session.lpId ? undefined : slug, lineAddUrl: lineAddUrl || null });
+      const { data } = await api.post(`/page-intelligence/sessions/${session.id}/apply`, { businessName: businessName.trim(), slug: session.lpId ? undefined : slug, lineAddUrl: lineAddUrl || null, inviteCode: inviteCode || null });
       router.push(`/dashboard?lp=${encodeURIComponent(data.lpId)}&created=1`);
-    } catch (e) { fail(e, '反映できませんでした'); }
+    } catch (e: any) { if (e?.response?.data?.code === 'invite_required') setInviteRequired(true); fail(e, '反映できませんでした'); }
   };
 
   const slugValid = /^[a-z0-9-]{3,40}$/.test(slug);
@@ -434,6 +436,9 @@ function Flow() {
               </label>
             )}
             <label className="block"><span className="text-sm font-bold">LINE公式アカウントの友だち追加URL（任意）</span><input type="url" className={`${inputCls} mt-1`} placeholder="https://lin.ee/..." value={lineAddUrl} onChange={(e) => setLineAddUrl(e.target.value)} /></label>
+            {inviteRequired && (
+              <label className="block"><span className="text-sm font-bold">招待コード</span><input className={`${inputCls} mt-1`} autoCapitalize="none" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="いまは招待制で運用しています" /><span className="text-xs text-gray-500">招待コードをお持ちでない方は、公開のお知らせをお待ちください。</span></label>
+            )}
             <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">公開の最終確認はあなたが行います。AWP が勝手に公開することはありません。ページは反映後、ダッシュボードから確認・修正できます。</div>
             <div className="space-y-3">
               <button type="button" disabled={!!busy || !businessName.trim() || (!session.lpId && !slugValid)} onClick={apply} className={primaryBtn}>{session.lpId ? 'このページに反映する' : 'ページを作成する'}</button>

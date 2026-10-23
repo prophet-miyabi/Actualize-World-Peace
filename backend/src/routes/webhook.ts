@@ -7,6 +7,7 @@ import { captureError } from '../lib/errors';
 import { notifyUser } from '../lib/push';
 import { aiQuota, runAsUser } from '../lib/aiUsage';
 import { industryOfUser, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
+import { matchGate, onLineFollow } from '../automation/harnessEngine';
 
 const router = Router();
 
@@ -49,12 +50,21 @@ router.post('/:tenantId', async (req: any, res) => {
         data: { tenantId, senderName, message: event.message.text, source: 'LINE' }
       });
       // 自動応答メッセージ（失敗しても問い合わせの保存・店主への通知・LINEへの応答は止めない）
+      let gateHit = false;
       try {
-        const lp = await prisma.landingPage.findFirst({ where: { userId: tenantId } });
-        // AWPの自動応答は持ち主の intelligence 利用枠を使う。枠を使い切っていたら、定型の応答にする
         const text = event.message.text;
-        const canUseAi = lp && !(await aiQuota(tenantId)).exceeded;
-        const replyText = canUseAi ? await runAsUser(tenantId, 'line_reply', () => generateLineReply(lp, text)) : fallbackReply(text);
+        const lineUserId = 'userId' in event.source ? event.source.userId ?? null : null;
+        // Harness のエンゲージメントゲート: キーワードに当たれば、その返信（クロスUUID付きリンク）を優先し、シナリオに登録する
+        const hit = lineUserId ? await matchGate(tenantId, 'line', lineUserId, text).catch(() => null) : null;
+        gateHit = !!hit;
+        let replyText: string;
+        if (hit) replyText = hit.reply;
+        else {
+          const lp = await prisma.landingPage.findFirst({ where: { userId: tenantId } });
+          // AWPの自動応答は持ち主の intelligence 利用枠を使う。枠を使い切っていたら、定型の応答にする
+          const canUseAi = lp && !(await aiQuota(tenantId)).exceeded;
+          replyText = canUseAi ? await runAsUser(tenantId, 'line_reply', () => generateLineReply(lp, text)) : fallbackReply(text);
+        }
         await client.replyMessage({
           replyToken: event.replyToken,
           messages: [{ type: 'text', text: replyText }]
@@ -67,10 +77,12 @@ router.post('/:tenantId', async (req: any, res) => {
       void notifyOwner(tenantId, event.message.text);
       // 匿名のデータレイク: LINE での反応。本文は保存せず、定型のキーワードに当たったものだけを残す
       const kw = ['予約', '料金', '詳細', '場所', 'メニュー', '空き', '相談'].find((k) => event.message.type === 'text' && event.message.text.includes(k)) ?? null;
-      void industryOfUser(tenantId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'line', funnelStage: 'gate_dm', converted: !!kw, triggerKeyword: kw }));
+      if (!gateHit) void industryOfUser(tenantId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'line', funnelStage: 'gate_dm', converted: !!kw, triggerKeyword: kw }));
     }
     if (event.type === 'follow') {
       await prisma.lineConfig.update({ where: { id: config.id }, data: { friendsAdded: { increment: 1 } } });
+      // Harness: 顧客を作り、「友だち追加」トリガーのステップ配信に登録する
+      if ('userId' in event.source && event.source.userId) void onLineFollow(tenantId, event.source.userId).catch((e) => console.error('harness follow failed', e?.message));
       void industryOfUser(tenantId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'line', funnelStage: 'step_message', converted: true, triggerKeyword: 'follow' }));
     }
   }

@@ -77,6 +77,11 @@ export default function Social() {
           <p className="text-sm opacity-90 mt-1">日付を選んで、AWP・Instagram・X・TikTok へ同時に配信。写真や縦動画も付けられます。</p>
         </Link>
 
+        <div className="rounded-2xl bg-white border p-4 mb-6 text-sm">
+          <p className="font-bold">1回の投稿で X / Instagram / TikTok / YouTube（ショート）/ AWP に同時配信</p>
+          <p className="text-xs text-gray-600 mt-1">カレンダーで文面と動画を1回つくると、選んだ媒体すべてに同じ時刻で配信します。YouTube は縦動画がショートとして投稿されます（Google の連携が未設定のときは失敗として残り、配信の履歴に理由が出ます）。</p>
+          <Link href="/social/schedule" className="inline-block mt-2 text-xs font-bold text-violet-700">まとめて投稿する →</Link>
+        </div>
         <section className="bg-white border rounded-2xl p-5 mb-6">
           <h2 className="font-bold mb-3">アカウント連携と取り込み</h2>
           {notice && <p className="text-green-700 text-sm mb-3">{notice}</p>}

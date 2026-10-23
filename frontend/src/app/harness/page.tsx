@@ -129,6 +129,13 @@ export default function HarnessPage() {
         <Link href="/dashboard" className="text-sm text-gray-500">← ダッシュボードへ戻る</Link>
         <h1 className="text-2xl font-black mt-3 mb-1">LINE・X・Instagramを自動化</h1>
         <p className="text-sm text-gray-600 mb-4">必要なものを選んで申し込むだけ。<strong>導入は無料</strong>です。ボットや投稿の自動作成などの機能は、表示の料金で追加できます。</p>
+        <Link href="/harness/crm" className="mb-3 flex items-center gap-3 rounded-2xl p-4 text-white bg-gradient-to-r from-fuchsia-500 via-violet-500 to-sky-500">
+          <span className="text-2xl" aria-hidden>🧲</span>
+          <span className="min-w-0">
+            <span className="block font-bold text-sm">AWP だけで動く: キーワード反応 → LINE ステップ配信 → 予約・注文まで追跡</span>
+            <span className="block text-[11px] opacity-90">導入作業なし・外部サーバーなし。投稿に「◯◯とコメントしてね」と書くだけで始められます</span>
+          </span>
+        </Link>
         <Link href="/harness/post" className="mb-4 flex items-center gap-3 rounded-2xl bg-white border-2 border-violet-200 p-4">
           <span className="text-2xl" aria-hidden>🗓️</span>
           <span className="min-w-0">

@@ -15,6 +15,7 @@
 import { Router } from 'express';
 import { z } from 'zod/v4';
 import prisma from '../prisma';
+import { InviteRequiredError, assertInviteForPageCreate } from '../lib/inviteGuard';
 import { authenticate, type AuthRequest } from '../middlewares/auth';
 import { metered } from '../lib/aiUsage';
 import { classifyIndustry } from '../ai/playbook';
@@ -49,7 +50,7 @@ const SelectionsBody = z.object({
   slug: short(40).optional(),
   lineAddUrl: short(200).optional()
 });
-const ApplyBody = z.object({ businessName: short(60).min(1), slug: short(40).optional(), lineAddUrl: short(200).optional().nullable(), purpose: z.enum(['business', 'creator']).optional() });
+const ApplyBody = z.object({ businessName: short(60).min(1), slug: short(40).optional(), lineAddUrl: short(200).optional().nullable(), purpose: z.enum(['business', 'creator']).optional(), inviteCode: short(40).optional().nullable() });
 
 const bad = (res: any, e: unknown, fallback: string) => {
   const msg = e instanceof z.ZodError ? '入力の形式が正しくありません' : (e as any)?.message || fallback;
@@ -188,12 +189,14 @@ router.post('/sessions/:id/apply', authenticate, metered('page_intelligence', fa
       if (!body.slug || !/^[a-z0-9-]{3,40}$/.test(body.slug)) return res.status(400).json({ error: '公開用URLは半角英数字とハイフンで3〜40文字にしてください' });
       if (RESERVED_SLUGS.includes(body.slug)) return res.status(400).json({ error: 'このURLはシステムで使用しているため選べません' });
       if (await prisma.user.findUnique({ where: { username: body.slug }, select: { id: true } })) return res.status(400).json({ error: 'このURLは既に使われています' });
+      await assertInviteForPageCreate(req.user!.id, body.inviteCode);
     }
     const lineAddUrl = body.lineAddUrl && /^https:\/\/(lin\.ee|line\.me)\//.test(body.lineAddUrl) ? body.lineAddUrl : null;
     const out = await applySession(s.id, req.user!.id, { businessName: body.businessName, slug: body.slug, purpose: body.purpose, lineAddUrl });
     res.json(out);
   } catch (e: any) {
     if (e?.code === 'P2002') return res.status(400).json({ error: 'このURLは既に使われています' });
+    if (e instanceof InviteRequiredError) return res.status(403).json({ error: e.message, code: e.code });
     bad(res, e, '反映できませんでした');
   }
 });

@@ -40,7 +40,7 @@ export const AGENTS: AgentDef[] = [
     mission: `AWP企業「AWP」の最高意思決定層。人間のオーナーが設定した目標（100万ユーザー・継続的なサービス提供・拡張性）に対し、戦略を判断し、KPIと優先順位を決め、COOに業務を委任し、オーナーへ報告する。
 自分でコードや文章を作らない。判断に必要な事実は道具で確認し、わからないことは「わからない」と言う。数字を作らない。
 毎日の見直しでは: 1) KPIの実績と計画の差、2) 前日の成果（タスクの結果）、3) 詰まり（承認待ち・失敗）、4) 今日COOに委任する最大3つの重点、5) オーナーに判断を仰ぐこと（あれば）、を整理する。`,
-    tools: ['get_overview', 'get_metrics', 'get_goals', 'list_tasks', 'read_memory', 'write_memory', 'create_task', 'get_costs', 'report_to_owner'],
+    tools: ['get_overview', 'get_metrics', 'get_goals', 'list_tasks', 'read_memory', 'write_memory', 'create_task', 'get_costs', 'report_to_owner', 'owner_budget'],
     memoryRead: ['company', 'dept:executive', 'dept:finance', 'dept:data', 'dept:product', 'dept:marketing', 'dept:growth', 'dept:cs', 'dept:security', 'dept:legal', 'agent:ceo'],
     memoryWrite: ['company', 'dept:executive', 'agent:ceo'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 2
@@ -49,7 +49,7 @@ export const AGENTS: AgentDef[] = [
     key: 'coo', name: 'COO（マネージャー）', department: 'executive', reportsTo: 'ceo',
     mission: `運営責任者。CEOから受けた重点を、担当エージェントごとの具体的なタスク（目的・入力・期待する成果物・期限）に分解して割り当て、戻ってきた結果を統合してCEOに報告する。
 1つのタスクは1つの成果物に絞る。同じ内容のタスクを重複して作らない（list_tasks で確認する）。専門エージェントの結果は鵜呑みにせず、矛盾があれば指摘して差し戻す。`,
-    tools: ['get_overview', 'get_metrics', 'get_goals', 'list_tasks', 'get_task', 'read_memory', 'write_memory', 'create_task', 'get_launch_plan'],
+    tools: ['get_overview', 'get_metrics', 'get_goals', 'list_tasks', 'get_task', 'read_memory', 'write_memory', 'create_task', 'get_launch_plan', 'owner_budget'],
     memoryRead: ['company', 'dept:executive', 'dept:product', 'dept:marketing', 'dept:growth', 'dept:data', 'dept:cs', 'dept:engineering', 'agent:coo'],
     memoryWrite: ['dept:executive', 'agent:coo'],
     maxAutoRisk: 'low', model: STRONG, dailyBudgetUsd: 2
@@ -57,7 +57,7 @@ export const AGENTS: AgentDef[] = [
   {
     key: 'research', name: 'リサーチ', department: 'product', reportsTo: 'coo',
     mission: `市場・競合・技術・ユーザーニーズを調査する。出力では必ず「事実（出典つき）」「推測」「分析」「情報源（URL）」を分けて書く。出典のない数字は「推測」に入れる。日本市場（若いクリエイター・個人事業主）を最優先に見る。`,
-    tools: ['read_memory', 'write_memory', 'get_overview', 'list_tasks'],
+    tools: ['read_memory', 'write_memory', 'get_overview', 'list_tasks', 'industry_benchmarks'],
     memoryRead: [...COMMON_READ, 'dept:product', 'dept:marketing', 'agent:research'],
     memoryWrite: ['dept:product', 'agent:research'],
     maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5, webSearch: true
@@ -89,7 +89,7 @@ export const AGENTS: AgentDef[] = [
   {
     key: 'data', name: 'データ分析', department: 'data', reportsTo: 'coo',
     mission: `プラットフォーム全体の数字を見る。登録・公開ページ・投稿・予約・注文・PR枠・確定報酬・ intelligence 費用の推移、継続率、導線ごとの転換率を get_metrics で取り、計画（company/strategy の目標）との差を説明する。数字は道具で取ったものだけを使い、推定は推定と書く。個人を特定する情報は扱わない。`,
-    tools: ['get_metrics', 'get_overview', 'get_costs', 'get_goals', 'read_memory', 'write_memory', 'list_tasks'],
+    tools: ['get_metrics', 'get_overview', 'get_costs', 'get_goals', 'read_memory', 'write_memory', 'list_tasks', 'industry_benchmarks', 'aggregate_benchmarks'],
     memoryRead: [...COMMON_READ, 'dept:data', 'dept:finance', 'agent:data'],
     memoryWrite: ['dept:data', 'agent:data'],
     maxAutoRisk: 'low', model: BALANCED, dailyBudgetUsd: 1.5

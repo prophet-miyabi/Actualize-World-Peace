@@ -6,6 +6,7 @@ import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
 import { notifyUser } from '../lib/push';
 import { industryOfLp, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
+import { onCrossEvent } from '../automation/harnessEngine';
 
 // 予約リクエスト: 訪問者が希望日時と連絡先を送り、持ち主が「確定」「お断り」を返す。
 // 決済は扱わない。訪問者は受付番号で状況を確認できる（連絡先などは確認画面に出さない）
@@ -62,6 +63,9 @@ router.post('/:slug', async (req, res) => {
 
   const code = crypto.randomBytes(9).toString('base64url');
   await prisma.booking.create({ data: { lpId: lp.id, code, menu, requestedAt, name, contact, message } });
+  // Harness のクロスUUID: 予約を顧客の段階（booked）に反映
+  const cid = String(req.body?.cid ?? '');
+  if (/^[0-9a-f-]{36}$/.test(cid)) void onCrossEvent(lp.userId, cid, 'booking', { code, menu }).catch(() => {});
   // 匿名のデータレイク: 予約リクエスト（個人情報は入れない。メニュー名だけを反応要素として残す）
   void industryOfLp(lp.id).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'lp', funnelStage: 'booking', converted: true, triggerKeyword: menu }));
   void prisma.booking.deleteMany({ where: { lpId: lp.id, requestedAt: { lt: new Date(now - RETENTION_DAYS * 86_400_000) } } }).catch(() => {});

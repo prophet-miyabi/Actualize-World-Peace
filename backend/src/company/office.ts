@@ -13,6 +13,7 @@ import { getFlag, SETTING_KEYS } from '../lib/systemSettings';
 import { AGENT_BY_KEY, AGENTS, COMPANY_MODELS, isAgentKey } from './registry';
 import { listActivity } from './activity';
 import { collectMetrics, emitEvent } from './tools';
+import { planOwnerBudget } from './ownerBudget';
 import { runTask } from './runtime';
 import { aiOutageInfo } from './outage';
 
@@ -419,6 +420,7 @@ export async function officeTick(now = new Date()) {
     if (!(await getFlag(SETTING_KEYS.pauseCompany))) await scheduleLoops(now);
     await collectAlerts(now);
     await updateMetrics(now);
+    await planOwnerBudget(jstDay(now)).catch(() => {});
     // 期限が来た定期タスク（recurrence）を複製して再キュー
     const due = await prisma.companyTask.findMany({ where: { recurrence: { in: ['daily', 'weekly', 'monthly'] }, status: 'done', parentId: null }, select: { id: true, title: true, instructions: true, assignee: true, role: true, risk: true, recurrence: true, finishedAt: true, priority: true, kpi: true, approvalRequired: true, doneCriteria: true, feature: true, services: true, goalId: true }, take: 50 });
     for (const t of due) {
@@ -513,6 +515,7 @@ export async function officeState() {
 
   const open = taskRows.filter((t) => ['ASSIGNED', 'IN_PROGRESS', 'RETRYING', 'WAITING_INPUT'].includes(t.state));
   const today = open.filter((t) => t.priority <= 2 || (t.dueAt && t.dueAt.getTime() - now.getTime() < 2 * 86_400_000)).slice(0, 12);
+  const ownerBudget = await planOwnerBudget(jstDay(now)).catch(() => null);
   const decisions = [
     ...approvalItems.map((a) => ({ kind: 'approval', id: a.id, title: a.title, source: a.source })),
     ...alerts.filter((a) => a.level === 'critical' && a.status === 'open').map((a) => ({ kind: 'alert', id: a.id, title: a.title, source: 'alert' })),
@@ -528,7 +531,7 @@ export async function officeState() {
   });
   const counts = { running: taskRows.filter((t) => t.state === 'IN_PROGRESS').length, done: taskRows.filter((t) => t.state === 'COMPLETED').length, waitingApproval: approvalItems.length, failed: taskRows.filter((t) => ['FAILED', 'RETRYING'].includes(t.state)).length, open: open.length };
   const kpi = metrics ? { totals: metrics.totals, period: metrics.period, series: metrics.series.slice(-14), goals: goals.map((g) => ({ id: g.id, title: g.title, kpis: g.kpis })) } : null;
-  return { generatedAt: now.toISOString(), paused, configured: !!process.env.ANTHROPIC_API_KEY, departments: deptHealth, agents, tasks: taskRows, approvals: approvalItems, alerts, loops: loops.map((l) => ({ ...l, runs: runs.filter((r) => r.loopKey === l.key).slice(0, 5), stats: loopStats(runs.filter((r) => r.loopKey === l.key)) })), today, decisions, counts, kpi, events: events.slice(0, 25), states: { task: TASK_STATES, agent: AGENT_STATES } };
+  return { generatedAt: now.toISOString(), paused, configured: !!process.env.ANTHROPIC_API_KEY, departments: deptHealth, agents, tasks: taskRows, approvals: approvalItems, alerts, loops: loops.map((l) => ({ ...l, runs: runs.filter((r) => r.loopKey === l.key).slice(0, 5), stats: loopStats(runs.filter((r) => r.loopKey === l.key)) })), today, ownerBudget, decisions, counts, kpi, events: events.slice(0, 25), states: { task: TASK_STATES, agent: AGENT_STATES } };
 }
 
 function primaryRoleOf(agentKey: string) {

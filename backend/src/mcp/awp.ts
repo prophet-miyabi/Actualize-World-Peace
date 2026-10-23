@@ -215,6 +215,22 @@ server.registerTool('awp_crew_tick', { title: 'クルーを今すぐ動かす', 
 server.registerTool('awp_ops_overview', { title: '運営の全体像', description: '登録・ページ・エラー・通報・注文など、運営者ダッシュボードの数字', inputSchema: {} },
   async () => guard(() => api('GET', '/ops/overview')));
 
+// ---- Harness（自社実装の CRM・ゲート・ステップ配信）と データ資産 ----
+server.registerTool('awp_harness_summary', { title: 'Harness の状況（管理者自身の分）', description: '顧客数・段階別・ゲートのヒット・配信の待ち/失敗・配信アカウントの健全性・直近の反応', inputSchema: {} },
+  async () => guard(() => api('GET', '/harness/crm/summary')));
+server.registerTool('awp_harness_gates', { title: 'エンゲージメントゲート', description: 'キーワード反応（LINE/X/Instagram/TikTok）の一覧。test に文面を渡すと、どのゲートに当たり、どんな返信になるかを試せる（送信はしない）', inputSchema: { test: z.object({ channel: z.enum(['line', 'x', 'instagram', 'tiktok']), text: z.string() }).optional() } },
+  async ({ test }) => guard(() => (test ? api('POST', '/harness/crm/gates/test', test) : api('GET', '/harness/crm/gates'))));
+server.registerTool('awp_harness_scenarios', { title: 'ステップ配信のシナリオ', description: 'シナリオと各ステップ（遅延・文面）、登録数。runQueue=true で期限の来た配信を今すぐ処理する', inputSchema: { runQueue: z.boolean().optional() } },
+  async ({ runQueue }) => guard(() => (runQueue ? api('POST', '/harness/crm/scenarios/run-queue') : api('GET', '/harness/crm/scenarios'))));
+server.registerTool('awp_harness_health', { title: '配信アカウントの健全性', description: '配信プール（アカウントごとの健全性スコア・今日の送信数・クールダウン・最後のエラー）', inputSchema: {} },
+  async () => guard(() => api('GET', '/harness/crm/pools')));
+server.registerTool('awp_benchmarks', { title: '業種×チャネルの勝ちパターン', description: '匿名データレイクの集計（sampleSize 付き。5件未満は出ない）とレイクの件数。aggregate=true で今すぐ集計', inputSchema: { aggregate: z.boolean().optional() } },
+  async ({ aggregate }) => guard(() => (aggregate ? api('POST', '/intelligence/aggregate') : api('GET', '/intelligence/benchmarks'))));
+server.registerTool('awp_funding_tracker', { title: '雅テック 資金トラッカー', description: '年内300万円（受託の入金 + AWP の収益）と 3,300万円の融資に向けた進捗・案件一覧・エビデンスの達成状況', inputSchema: {} },
+  async () => guard(() => api('GET', '/intelligence/funding-tracker')));
+server.registerTool('awp_owner_budget', { title: 'オーナーの今日の予算', description: 'オーナータスクの時間予算（年内 1 日 180 分）: 今日に入ったタスク・翌日以降に送られたタスク', inputSchema: {} },
+  async () => guard(async () => (await api('GET', '/company/status')).ownerBudget));
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

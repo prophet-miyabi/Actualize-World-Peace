@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import prisma from '../prisma';
 import { industryOfLp, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
+import { onCrossEvent } from '../automation/harnessEngine';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
@@ -247,6 +248,9 @@ router.post('/orders/:slug', async (req, res) => {
       });
     });
     void notifyUser(lp.userId, '新しい注文', `${buyerName}さん・¥${order.totalYen.toLocaleString('ja-JP')}`, { type: 'order' });
+    // Harness のクロスUUID: 注文を顧客の段階（customer）に反映
+    const cid = String(req.body?.cid ?? '');
+    if (/^[0-9a-f-]{36}$/.test(cid)) void onCrossEvent(lp.userId, cid, 'payment', { code: order.code, amountYen: order.totalYen, method }).catch(() => {});
     // 匿名のデータレイク: 注文（決済前）。入金確認で converted になる
     void industryOfLp(lp.id).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'lp', funnelStage: 'payment', converted: false, revenueAmount: order.totalYen, triggerKeyword: method }));
     res.status(201).json({ code: order.code });

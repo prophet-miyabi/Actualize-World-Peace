@@ -1,4 +1,4 @@
-# AWP システム構成書（他の LLM に渡す用）v2026-10-21
+# AWP システム構成書（他の LLM に渡す用）v2026-10-23
 
 > 目的: ChatGPT / Gemini / Claude など別の LLM に貼り付けて、改善のブレインストーミングや、Claude Code に渡すプロンプトの洗練に使うための「現状の全体像」。事実は 2026-10-21 時点のリポジトリ（`prophet-miyabi/Actualize-World-Peace`, main）に基づく。数字・名称はそのまま引用してよい。秘密情報（鍵・トークン・顧客情報）は含めていない。
 
@@ -96,6 +96,14 @@ docs/council/      会議室の議事録
 - **データ資産（AWP Data Intelligence、2026-10-23 追加）**: 全テナントの行動・成約を匿名化して `AwpIntelligenceLake` に蓄積（業種・チャネル・段階・時間帯・文面のハッシュのみ。利用者 ID・氏名・本文は入れない）。記録箇所はページ来訪/ボタン押下、予約、注文と入金確認、LINE の反応と友だち追加、外部 SNS への発信。6 時間ごとに業種×チャネルの勝ちパターン `IndustryFunnelBenchmark`（反応率・LP 遷移率・予約決済率・平均単価・反応が多い時間帯・効いた言葉、サンプル 5 件以上）へ結晶化し、業種プレイブックの要約に添えてページ生成へ還流。利用者ごとに `HarnessIntentSignal`（LINE 導入・自動返信・SNS 投稿自動化・独自ドメイン・直接販売の推奨と 0〜100 点）を計算し、80 点以上はマイページに提案カード。外部通信は `safeExternalFetch` のホワイトリスト（公式 API のホストのみ）。管理画面 `/admin/intelligence`、エンジン `backend/src/automation/awpDataAssetEngine.ts`。
 
 ---
+
+### 3.3 Harness エンジン・データ資産・事業ピボット（2026-10-23 追加）
+
+- **事業ピボット（オーナー決定）**: 年内は屋号「雅テック」の受託（松竹梅 15万 / 35万 / 60万円〜）を先行し、300 万円 → 2027 年初頭に浜松市の創業融資 3,300 万円。一般公開は招待制のコストガード（`invite_only_pages` ＋ `AWP_INVITE_CODE`）を整えてから。オーナーの稼働は年内 1 日 180 分で、`company/ownerBudget.ts` がオーナータスクに推定時間と優先度（①受託 ②ドッグフーディング ③SNS）を付けて日付を割り当てる。正本は `docs/strategy/miyabi-tech-roadmap.md`、`company/strategy.ts` 第 8 章、`CompanyGoal`「雅テック…」。
+- **Harness エンジン（自社実装・外部送信なし）** `backend/src/automation/harnessEngine.ts` ＋ `routes/crm.ts`（`/api/harness/crm/*`）。モデル: CrmContact（クロスUUID `cid`、LINE/X/IG/TikTok の ID を同一人物に結合）、EngagementGate（キーワード反応 → 返信 → シナリオ登録）、CrmScenario/Step/Enrollment（LINE ステップ配信、毎分、Spintax ＋ ジッター）、ChannelAccountPool（健全性スコア・クールダウン・切替）、CrmAutomationRule、CrmContactEvent。LINE Webhook はゲートに当たれば自動応答より優先。公開ページの `?awp_cid=` を来訪・予約・注文に付けて `onCrossEvent`。画面 `/harness/crm`。Claude Code: `awp_harness_summary / gates / scenarios / health`。
+- **データ資産** `automation/awpDataAssetEngine.ts`: 匿名レイク（AwpIntelligenceLake）→ 6 時間ごとに業種×チャネルの勝ちパターン（IndustryFunnelBenchmark、n≥5）→ 業種プレイブックに還流、導入インテント（HarnessIntentSignal、80 点以上を /me に提案）。会社エージェントの道具 `industry_benchmarks` / `aggregate_benchmarks`。画面 `/admin/intelligence`、`/admin/reports` 下部。
+- **資金トラッカー** `GET/PUT /api/intelligence/funding-tracker`（SystemSetting JSON ＋ 台帳）。`/admin/revenue` 上部。
+- **営業資産の更新**: `finance/plan.json` の `packages`、提案文の `{{packages}}`、`contracts/projects/package_{ume,take,matsu}.json`、自社ショーケース `/demos/miyabi-tech`。
 
 ## 4. 受託営業の資産（売上をつくる側）
 

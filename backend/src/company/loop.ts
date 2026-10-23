@@ -119,7 +119,7 @@ export async function weeklyCycle(day: string) {
   });
   await createIfAbsent({
     assignee: 'data', createdBy: 'system', goalId: goal?.id ?? null, title: `週次の指標レポート ${day}`,
-    instructions: 'get_metrics(30) と get_goals を使い、KPIの実績と計画（read_memory(company, strategy) の四半期目標）の差、伸びている導線・伸びていない導線、来週注目すべき指標を、write_memory(dept:data, weekly-' + day + ') に残して finish_task で報告してください。推定は推定と書くこと。'
+    instructions: 'get_metrics(30) と get_goals を使い、KPIの実績と計画（read_memory(company, strategy) の四半期目標と「事業ピボット」の300万円）の差、伸びている導線・伸びていない導線、来週注目すべき指標を、write_memory(dept:data, weekly-' + day + ') に残して finish_task で報告してください。industry_benchmarks で業種×チャネルの勝ちパターン（sampleSize 付き）も確認し、件数が十分な組み合わせだけを「事実」として書くこと。推定は推定と書くこと。'
   });
   await createIfAbsent({
     assignee: 'auditor', createdBy: 'system', goalId: goal?.id ?? null, title: `週次監査 ${day}`,
