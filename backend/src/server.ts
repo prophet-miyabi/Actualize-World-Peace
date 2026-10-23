@@ -36,6 +36,8 @@ import shopRoutes, { sweepOrders } from './routes/shop';
 import companyRoutes from './routes/company';
 import pageIntelligenceRoutes from './routes/pageIntelligence';
 import officeRoutes from './routes/office';
+import intelligenceRoutes from './routes/intelligence';
+import { startDataAssetJobs } from './automation/awpDataAssetEngine';
 import { startOffice } from './company/office';
 import { startCompany } from './company/loop';
 import { startCrew } from './crew/orchestrator';
@@ -123,6 +125,7 @@ app.use('/api/shop', shopRoutes);
 app.use('/api/company', companyRoutes);
 app.use('/api/page-intelligence', pageIntelligenceRoutes);
 app.use('/api/office', officeRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 // 想定外のエラーでもサーバー全体を落とさず、500を返す（Express 5はasync処理の例外もここへ流す）
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -147,6 +150,7 @@ startAgentLoop();
 startCrew();
 startCompany();
 startOffice();
+startDataAssetJobs();
 // AWP 公式アカウント・公式ページ・最初の投稿（無ければ作る）
 void seedOfficial().then((r) => { if (r.created) console.log(`official account seeded: ${r.created} posts`); }).catch((e) => console.error('official seed failed', e?.message));
 // ブランドのアカウント（URARA など）

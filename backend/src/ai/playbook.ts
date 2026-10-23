@@ -83,6 +83,8 @@ export async function classifyIndustry(text: string): Promise<string> {
 
 // --- 手本の形 ----------------------------------------------------------------------------
 
+import { benchmarkBrief } from '../automation/awpDataAssetEngine';
+
 const SECTION_IDS = ['hero', 'strengths', ...FEATURES.map((f) => f.id), 'tools', 'line'] as const;
 
 const PlaybookSchema = z.object({
@@ -123,7 +125,7 @@ const PlaybookSchema = z.object({
   })).describe('調べた実在ページ（運営者の確認用。ユーザーのページには出さない）')
 });
 
-export type Playbook = z.infer<typeof PlaybookSchema> & { key: string; label: string; generatedAt: string; source: 'web' | 'model' | 'fallback' };
+export type Playbook = z.infer<typeof PlaybookSchema> & { key: string; label: string; generatedAt: string; source: 'web' | 'model' | 'fallback'; benchmark?: string | null };
 
 const FRESH_MS = 60 * 24 * 3600_000;
 // 「作成中」のまま止まったもの（デプロイでサーバーが再起動した等）は、この時間を過ぎたら作り直してよい
@@ -280,7 +282,20 @@ export async function buildPlaybook(key: string): Promise<Playbook> {
 
 // 手本を取り出す。wait=true なら未作成のとき作成を待つ（デザイン作成など裏で動く処理向け）。
 // wait=false なら今あるもの（なければ一般的な型）をすぐ返し、作成は裏で始める（画面の応答を止めない）。
+// 手本に「AWP 全体の実測（業種別の勝ちパターン）」を添える。実測はデータレイクの集計で、10分ごとに引き直す
+const benchmarkMemory = new Map<string, { text: string | null; until: number }>();
 export async function getPlaybook(key: string | null | undefined, opts: { wait?: boolean } = {}): Promise<Playbook> {
+  const pb = await loadPlaybook(key, opts);
+  const hit = benchmarkMemory.get(pb.key);
+  let text = hit && hit.until > Date.now() ? hit.text : null;
+  if (!hit || hit.until <= Date.now()) {
+    text = await benchmarkBrief(pb.key).catch(() => null);
+    benchmarkMemory.set(pb.key, { text, until: Date.now() + 10 * 60_000 });
+  }
+  return text ? { ...pb, benchmark: text } : pb;
+}
+
+async function loadPlaybook(key: string | null | undefined, opts: { wait?: boolean } = {}): Promise<Playbook> {
   const ind = industryOf(key);
   const hit = memory.get(ind.key);
   if (hit && hit.until > Date.now()) return hit.pb;
@@ -316,8 +331,9 @@ export function playbookBriefForDesign(pb: Playbook) {
     `書体・角・レイアウトの傾向: ${pb.visual.font} / ${pb.visual.corner} / ${pb.visual.heroLayout} / 強み ${pb.visual.strengthsStyle}`,
     `写真の傾向: ${pb.visual.imagery}`,
     `ファーストビュー: 上の一行=${pb.hero.eyebrowGuide} / 見出し=${pb.hero.headlineGuide} / 補足=${pb.hero.subcopyGuide} / 主ボタン=「${pb.hero.ctaLabel}」`,
-    `避けること:\n${bullets(pb.mustAvoid)}`
-  ].join('\n');
+    `避けること:\n${bullets(pb.mustAvoid)}`,
+    pb.benchmark ? `\n${pb.benchmark}\n（実測で反応の良かった流入チャネルと言葉を、主ボタンと冒頭の訴求に優先して使う）` : ''
+  ].filter(Boolean).join('\n');
 }
 
 export function playbookBriefForCopy(pb: Playbook) {
@@ -327,8 +343,9 @@ export function playbookBriefForCopy(pb: Playbook) {
     `お客様の不安と動機: ${pb.audience}`,
     `文章で守ること:\n${bullets(pb.writingRules)}`,
     `信頼の要素（預かった情報にあるものだけ使う）: ${pb.trustElements.join(' / ')}`,
-    `避けること:\n${bullets(pb.mustAvoid)}`
-  ].join('\n');
+    `避けること:\n${bullets(pb.mustAvoid)}`,
+    pb.benchmark ? `\n${pb.benchmark}\n（実測で成約に結びついた言葉は、事実の範囲で見出しや CTA に活かす。数値そのものはページに書かない）` : ''
+  ].filter(Boolean).join('\n');
 }
 
 export function playbookBriefForConversation(pb: Playbook) {

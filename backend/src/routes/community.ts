@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
+import { channelFromSource, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
 import { authenticate, AuthRequest, JWT_SECRET } from '../middlewares/auth';
 import { RESERVED_SLUGS } from './lp';
 import { hitRateLimit } from '../lib/rateLimit';
@@ -336,7 +337,7 @@ router.post('/events', async (req, res) => {
   const type = req.body?.type === 'click' ? 'click' : req.body?.type === 'view' ? 'view' : null;
   const slug = String(req.body?.slug ?? '');
   if (!type || !/^[a-z0-9-]{3,40}$/.test(slug)) return res.status(204).end();
-  const lp = await prisma.landingPage.findUnique({ where: { slug }, select: { id: true } });
+  const lp = await prisma.landingPage.findUnique({ where: { slug }, select: { id: true, industryKey: true } });
   if (!lp) return res.status(204).end();
   let source: string | null = null;
   try {
@@ -347,6 +348,9 @@ router.post('/events', async (req, res) => {
   }
   const target = ['tool', 'line', 'sns', 'ad'].includes(req.body?.target) ? req.body.target : null;
   await prisma.pageEvent.create({ data: { lpId: lp.id, type, target: type === 'click' ? target : null, source } }).catch(() => {});
+  // 匿名のデータレイク: 来訪（lp_visit）と、ボタン押下（次の段階へ進んだ）を業種×流入チャネルで記録する
+  const dwell = Number(req.body?.dwellMs);
+  void recordCommercialIntelligence({ industryKey: lp.industryKey, channel: channelFromSource(source), funnelStage: 'lp_visit', converted: type === 'click', triggerKeyword: type === 'click' ? target : null, dwellTimeMs: Number.isFinite(dwell) && dwell > 0 ? Math.min(dwell, 3_600_000) : null });
   res.status(204).end();
 });
 

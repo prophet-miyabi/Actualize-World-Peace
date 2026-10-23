@@ -5,6 +5,7 @@
 import prisma from '../prisma';
 import { instagramRecentMedia } from './platforms/instagram';
 import type { Platform, SocialAccountRecord } from './types';
+import { safeExternalFetch } from '../automation/awpDataAssetEngine';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 20_000;
@@ -15,7 +16,8 @@ async function fetchJson(url: string, init: RequestInit = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    // 公式 API のホストだけに通信する（safeExternalFetch が他のホストを遮断する）
+    const res = await safeExternalFetch(url, { ...init, signal: ctrl.signal });
     const data: any = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
   } finally { clearTimeout(t); }

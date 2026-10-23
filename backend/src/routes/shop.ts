@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import prisma from '../prisma';
+import { industryOfLp, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
 import { authenticate, AuthRequest } from '../middlewares/auth';
 import { hitRateLimit } from '../lib/rateLimit';
 import { isAdminUser } from '../middlewares/admin';
@@ -158,6 +159,8 @@ router.put('/orders/:id', authenticate, async (req: AuthRequest, res) => {
       where: { id: o.id },
       data: { status: flow[action].to, ...(flow[action].stamp ? { [flow[action].stamp!]: new Date() } : {}), ...(note !== undefined ? { sellerNote: note } : {}) }
     });
+    // 匿名のデータレイク: 入金の確認 ＝ 決済の成立（金額だけを残し、購入者の情報は入れない）
+    if (action === 'paid') void industryOfLp(o.lpId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'lp', funnelStage: 'payment', converted: true, revenueAmount: o.totalYen }));
   } else if (note !== undefined) {
     await prisma.order.update({ where: { id: o.id }, data: { sellerNote: note } });
   } else {
@@ -244,6 +247,8 @@ router.post('/orders/:slug', async (req, res) => {
       });
     });
     void notifyUser(lp.userId, '新しい注文', `${buyerName}さん・¥${order.totalYen.toLocaleString('ja-JP')}`, { type: 'order' });
+    // 匿名のデータレイク: 注文（決済前）。入金確認で converted になる
+    void industryOfLp(lp.id).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'lp', funnelStage: 'payment', converted: false, revenueAmount: order.totalYen, triggerKeyword: method }));
     res.status(201).json({ code: order.code });
   } catch (e: any) {
     res.status(400).json({ error: e?.message?.length < 80 ? e.message : '注文できませんでした' });

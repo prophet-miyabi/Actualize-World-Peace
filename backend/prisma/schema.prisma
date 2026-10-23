@@ -1289,3 +1289,67 @@ model OperationsAlert {
 
   @@index([status, createdAt])
 }
+
+// ==========================================
+// AWP Data Intelligence & Commercial Asset Models
+// （全テナントの行動・成約データを匿名化・構造化して蓄積する資産基盤。個人を特定する値は入れない）
+// ==========================================
+
+/// 1. 匿名化行動・ファネルデータレイク（AWP全体の集合知）
+model AwpIntelligenceLake {
+  id             String   @id @default(uuid())
+  industryKey    String // 27業種プレイブックのキー（例: hair_salon / clinic）
+  channel        String // x / instagram / tiktok / line / lp / facebook / youtube
+  funnelStage    String // awareness_post / gate_dm / lp_visit / step_message / booking / payment
+  // どの文面・要素が効いたかの構造化メタデータ（個人情報は含めない）
+  templateHash   String? // 文面パターンの識別ハッシュ
+  spintaxVariant String? // 選択された言い回し（例: 特典をお送りします）
+  triggerKeyword String? // 反応したキーワード（例: 詳細）
+  // 成果・経済価値メトリクス
+  converted      Boolean  @default(false) // 次ステージへ遷移または決済したか
+  revenueAmount  Int      @default(0) // 発生した売上金額（円）
+  dwellTimeMs    Int? // 滞在ミリ秒
+  hourOfDay      Int // 反応が発生した時間帯（JST 0〜23: 最適配信時間の学習用）
+  dayOfWeek      Int // 曜日（0〜6）
+  createdAt      DateTime @default(now())
+
+  @@index([industryKey, channel, funnelStage])
+  @@index([createdAt, converted])
+}
+
+/// 2. 業種別・チャネル別 勝ちパターン統計（IndustryPlaybook へ自動還流する結晶データ）
+model IndustryFunnelBenchmark {
+  id                  String   @id @default(uuid())
+  industryKey         String
+  channel             String
+  sampleSize          Int      @default(0)
+  avgGatePassRate     Float    @default(0) // SNS投稿からのDM・反応獲得率
+  avgClickRate        Float    @default(0) // DM・LINEからのLP遷移率
+  avgBookingRate      Float    @default(0) // LPからの予約・決済成約率
+  avgOrderValue       Int      @default(0) // 平均客単価（円）
+  bestSendHoursJson   Json     @default("[]") // 最も反応率が高い時間帯トップ3
+  winningKeywordsJson Json     @default("[]") // 最も成約率が高いトリガーワード・文面特徴
+  optimalJitterMs     Int      @default(2500) // エラー率が最小だった送信間隔ミリ秒
+  updatedAt           DateTime @updatedAt
+
+  @@unique([industryKey, channel])
+}
+
+/// 3. ハーネス（外部サービス連携）導入インテント・スコアリング
+/// どのユーザーが今どの外部ツール（決済・ドメイン・予約・広告等）を必要としているかを予測する
+model HarnessIntentSignal {
+  id               String   @id @default(uuid())
+  ownerId          String // AWPユーザー（企業・クリエイター）ID
+  industryKey      String
+  monthlyTraffic   Int      @default(0)
+  monthlyBookings  Int      @default(0)
+  lineFriendCount  Int      @default(0)
+  recommendedAddon String // 推奨する HarnessAddon のキー
+  intentScore      Int      @default(0) // 0〜100（80以上でダッシュボードに導入を提案）
+  reason           String? // 提案の根拠（利用者に見せる一文）
+  isConverted      Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+
+  @@unique([ownerId, recommendedAddon])
+  @@index([ownerId, intentScore])
+}

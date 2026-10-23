@@ -39,6 +39,10 @@ export default function MePage() {
     setD((prev) => prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== id) } : prev);
   };
 
+  // いま導入すると効く外部ツールの提案（閲覧・予約・LINE の友だち数などから AWP が判定。80点以上だけ出す）
+  const [intents, setIntents] = useState<{ key: string; label: string; score: number; reason: string | null; suggest: boolean; href: string }[]>([]);
+  useEffect(() => { api.get('/intelligence/intent').then((r) => setIntents((r.data.intents ?? []).filter((i: { suggest: boolean }) => i.suggest))).catch(() => {}); }, []);
+
   if (!d) return <main className="min-h-screen p-6 text-sm text-gray-500">{error || '読み込み中…'}</main>;
   const m = d.me;
 
@@ -71,6 +75,20 @@ export default function MePage() {
             <p className="text-[11px] mt-2 opacity-90 flex flex-wrap gap-x-3">{d.contribution.byKind.map((k) => <span key={k.kind}>{KIND_LABEL[k.kind] ?? k.kind} {k.count}</span>)}</p>
           )}
         </section>
+
+        {/* いま導入すると効く外部ツール（データ資産の予測。80点以上のときだけ） */}
+        {intents.length > 0 && (
+          <section className="rounded-3xl bg-white border-2 border-violet-200 p-5">
+            <p className="text-[11px] font-bold text-violet-700 tracking-widest mb-1">AWP からの提案</p>
+            {intents.map((i) => (
+              <div key={i.key} className="mt-2">
+                <p className="font-black">{i.label}</p>
+                {i.reason && <p className="text-sm text-gray-600 mt-1">{i.reason}</p>}
+                <Link href={i.href} className="inline-block mt-2 rounded-full bg-violet-600 text-white text-sm font-bold px-4 py-2">くわしく見る</Link>
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* あなたのページ */}
         <section>

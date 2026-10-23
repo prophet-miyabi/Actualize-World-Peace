@@ -6,6 +6,7 @@ import { fallbackReply, generateLineReply } from '../ai/lineReply';
 import { captureError } from '../lib/errors';
 import { notifyUser } from '../lib/push';
 import { aiQuota, runAsUser } from '../lib/aiUsage';
+import { industryOfUser, recordCommercialIntelligence } from '../automation/awpDataAssetEngine';
 
 const router = Router();
 
@@ -64,9 +65,13 @@ router.post('/:tenantId', async (req: any, res) => {
       }
       // 通知は応答を遅らせないよう待たない
       void notifyOwner(tenantId, event.message.text);
+      // 匿名のデータレイク: LINE での反応。本文は保存せず、定型のキーワードに当たったものだけを残す
+      const kw = ['予約', '料金', '詳細', '場所', 'メニュー', '空き', '相談'].find((k) => event.message.type === 'text' && event.message.text.includes(k)) ?? null;
+      void industryOfUser(tenantId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'line', funnelStage: 'gate_dm', converted: !!kw, triggerKeyword: kw }));
     }
     if (event.type === 'follow') {
       await prisma.lineConfig.update({ where: { id: config.id }, data: { friendsAdded: { increment: 1 } } });
+      void industryOfUser(tenantId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'line', funnelStage: 'step_message', converted: true, triggerKeyword: 'follow' }));
     }
   }
   res.status(200).end();

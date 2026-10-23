@@ -7,6 +7,8 @@ import { postToX } from './platforms/x';
 import { postToYouTubeShorts } from './platforms/youtube';
 import { syncAllEnabled } from './sync';
 import type { Platform, PostResult } from './types';
+import crypto from 'crypto';
+import { industryOfUser, recordCommercialIntelligence, type Channel } from '../automation/awpDataAssetEngine';
 
 // Redis/BullMQを使わない、データベースだけで動く予約投稿の仕組み。
 // 一定間隔でDBを見に行き、時刻が来た投稿を実行する（1台構成のうちはこれで十分機能する）。
@@ -90,6 +92,10 @@ async function processOne(id: string) {
     }
     const r = results[target];
     if (r.ok) postedIds[target] = r.postId;
+    // 匿名のデータレイク: 外部SNSへの発信（awareness_post）。本文は保存せず、文面のハッシュだけ残す
+    if (target !== 'awp') {
+      void industryOfUser(post.userId).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: target as Channel, funnelStage: 'awareness_post', converted: r.ok, templateHash: crypto.createHash('sha256').update(post.text).digest('hex').slice(0, 16) }));
+    }
   }
 
   const attempts = post.attempts + 1;
