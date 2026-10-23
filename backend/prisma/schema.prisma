@@ -633,6 +633,7 @@ model Booking {
   message     String?
   status      String      @default("requested") // requested / confirmed / declined / canceled
   ownerNote   String? // 持ち主から訪問者への一言（状況確認ページに表示）
+  contactId String? // Harness の顧客（?awp_cid= 付きで予約したとき）。リマインダーの宛先
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -1380,12 +1381,22 @@ model CrmContact {
   leadScore    Int      @default(0) // 0〜100（反応・来訪・予約で加点）
   lastSeenAt   DateTime @default(now())
   note         String?
+  fields        Json?     // カスタム項目（アンケートの回答・自由項目）{ key: value }
+  blocked       Boolean   @default(false) // LINE でブロックされた（解除で false）
+  lineAccountId String?   // 最後に反応のあった LINE 公式アカウント（CrmLineAccount.id）
+  assignee      String?   // 受信箱の担当（表示名）
+  unreadCount   Int       @default(0)
+  lastInboundAt DateTime?
+  handledAt     DateTime? // 対応済みにした時刻
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   tags        CrmContactTag[]
   events      CrmContactEvent[]
   enrollments CrmScenarioEnrollment[]
+  messages      CrmMessage[]
+  deliveries    CrmDelivery[]
+  surveyAnswers CrmSurveyAnswer[]
 
   @@unique([ownerId, lineUserId])
   @@index([ownerId, leadScore])
@@ -1421,6 +1432,7 @@ model CrmScenario {
   channel    String   @default("line") // line / x / instagram
   trigger    String   @default("manual") // manual / gate / line_follow / tag / booking
   triggerRef String? // trigger が tag のときのタグ名など
+  lineAccountId String? // 送信に使う LINE 公式アカウント（省略で既定）
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -1441,6 +1453,9 @@ model CrmScenarioStep {
   template     String // Spintax 可: {こんにちは|お世話になります} {{name}} さん
   mediaUrl     String?
   linkPath     String? // 配信するリンク（例: /slug?utm=line）。awp_cid を自動で付ける
+  message   Json?   // MessageSpec（text / image / buttons / card / carousel / survey）。null なら template をテキストで送る
+  condition Json?   // 送る条件 { hasTag?, notTag?, minScore?, stages?, answered?: { surveyId, key, value } }
+  onSkip    String  @default("next") // 条件に合わないとき: next（飛ばす）/ stop（終了）
   createdAt    DateTime    @default(now())
 
   @@unique([scenarioId, order])
@@ -1476,6 +1491,8 @@ model EngagementGate {
   scenarioId     String?
   scenario       CrmScenario? @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
   tagName        String? // 通過した人に付けるタグ
+  replyMessage Json?   // MessageSpec（ボタン・カード付きの返信）。null なら replyTemplate をテキストで
+  surveyId     String? // 反応したらこのアンケートを始める
   active         Boolean      @default(true)
   hits           Int          @default(0)
   createdAt      DateTime     @default(now())
@@ -1533,4 +1550,151 @@ model CrmContactEvent {
   createdAt DateTime   @default(now())
 
   @@index([contactId, createdAt])
+}
+
+// ---- AWP Harness（LINE 公式アカウント複数・受信箱・一斉配信・リマインダー・アンケート・配信ログ） ----
+// スマホ 1 台で導入・運用できる自社実装。外部サーバーには送らず、LINE は公式 Messaging API のみ。
+
+model CrmLineAccount {
+  id                 String    @id @default(cuid())
+  ownerId            String
+  label              String
+  channelId          String
+  channelSecret      String
+  channelAccessToken String
+  botBasicId         String?   // @xxxx（友だち追加 URL の生成に使う）
+  webhookActivated   Boolean   @default(false)
+  isDefault          Boolean   @default(false)
+  active             Boolean   @default(true)
+  healthScore        Int       @default(100) // 送信エラーで下がる。しきい値を割ると別アカウントへ切替
+  errorCount         Int       @default(0)
+  sentToday          Int       @default(0)
+  sentDay            String?
+  cooldownUntil      DateTime?
+  lastError          String?
+  lastErrorAt        DateTime?
+  friendsAdded       Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([ownerId, channelId])
+  @@index([ownerId])
+}
+
+model CrmMessage {
+  id            String     @id @default(cuid())
+  ownerId       String
+  contactId     String
+  contact       CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lineAccountId String?
+  direction     String     // in / out
+  kind          String     @default("text") // text / image / sticker / video / audio / file / location / postback / flex / buttons / card / carousel / survey / other
+  text          String?
+  payload       Json?      // 送信した MessageSpec、受信の添付情報など（本文以外）
+  source        String?    // out のとき: step / broadcast / reminder / gate / survey / manual / awp
+  status        String     @default("received") // received / sent / failed
+  error         String?
+  createdAt     DateTime   @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([contactId, createdAt])
+}
+
+model CrmDelivery {
+  id            String     @id @default(cuid())
+  ownerId       String
+  contactId     String
+  contact       CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lineAccountId String?
+  kind          String     // step / broadcast / reminder / gate / survey / manual
+  refId         String?    // シナリオ・配信・リマインダーの id
+  ok            Boolean
+  error         String?
+  templateHash  String?
+  createdAt     DateTime   @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([refId])
+}
+
+model CrmBroadcast {
+  id            String    @id @default(cuid())
+  ownerId       String
+  lineAccountId String?
+  name          String
+  audience      Json      // { all?: true, tags?: string[], excludeTags?: string[], stages?: string[], minScore?: number, source?: string, field?: { key, value } }
+  message       Json      // MessageSpec
+  scheduledAt   DateTime?
+  status        String    @default("draft") // draft / scheduled / sending / done / failed / canceled
+  targetCount   Int       @default(0)
+  sentCount     Int       @default(0)
+  failedCount   Int       @default(0)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  error         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([status, scheduledAt])
+}
+
+model CrmReminder {
+  id            String    @id @default(cuid())
+  ownerId       String
+  lineAccountId String?
+  name          String
+  basis         String    @default("booking") // booking（予約の希望日時）/ enrollment（シナリオ登録日時）
+  basisRef      String?   // basis=enrollment のときシナリオ id
+  offsetMinutes Int       // 基準からの差（負なら前。例: -1440 = 前日の同時刻）
+  message       Json      // MessageSpec
+  active        Boolean   @default(true)
+  sentCount     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sends         CrmReminderSend[]
+
+  @@index([ownerId])
+}
+
+model CrmReminderSend {
+  id         String      @id @default(cuid())
+  reminderId String
+  reminder   CrmReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  contactId  String
+  refKey     String      // 予約 id など（同じ予約に 2 回送らない）
+  sentAt     DateTime    @default(now())
+
+  @@unique([reminderId, refKey])
+}
+
+model CrmSurvey {
+  id         String   @id @default(cuid())
+  ownerId    String
+  name       String
+  questions  Json     // [{ key, text, options: [{ label, value, tag?, scenarioId? }] }]
+  onComplete Json?    // { replyMessage?: MessageSpec, tag?, scenarioId?, linkPath? }
+  active     Boolean  @default(true)
+  starts     Int      @default(0)
+  completes  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  answers    CrmSurveyAnswer[]
+
+  @@index([ownerId])
+}
+
+model CrmSurveyAnswer {
+  id          String     @id @default(cuid())
+  surveyId    String
+  survey      CrmSurvey  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  answers     Json       // { key: value }
+  currentIdx  Int        @default(0)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([surveyId, contactId])
 }

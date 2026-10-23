@@ -9,9 +9,13 @@
 //   - すべての反応・配信は匿名のデータレイク（recordCommercialIntelligence）にも記録する
 // 外部通信は safeExternalFetch（公式 API のホストのみ）。LINE は公式 SDK（api.line.me）を使う。
 import crypto from 'crypto';
-import { messagingApi } from '@line/bot-sdk';
 import prisma from '../prisma';
 import { recordCommercialIntelligence, renderTrackedMessage, type Channel } from './awpDataAssetEngine';
+import { textSpec, type MessageSpec } from '../line/messages';
+import { pushSpec } from '../line/send';
+import { evaluateCondition, type Condition } from '../crm/conditions';
+import { processDueBroadcasts } from '../crm/broadcast';
+import { processDueReminders } from '../crm/reminders';
 
 export { renderTrackedMessage as renderTrackedStealthMessage };
 
@@ -97,7 +101,7 @@ export async function runAutomationRules(ownerId: string, event: string, ctx: Ru
 }
 
 // ---- エンゲージメントゲート ----------------------------------------------------------------------------------
-export type GateHit = { gate: { id: string; keyword: string; scenarioId: string | null; tagName: string | null }; contactId: string; cid: string; reply: string; templateHash: string; chosenVariants: string[] };
+export type GateHit = { gate: { id: string; keyword: string; scenarioId: string | null; tagName: string | null; surveyId: string | null }; contactId: string; cid: string; reply: string; spec: MessageSpec; link: string; templateHash: string; chosenVariants: string[] };
 
 // 受信した文面に合うゲートを探し、顧客を作り、返信文を組み立てる（送信は呼び出し側）
 export async function matchGate(ownerId: string, channel: HarnessChannel, externalUserId: string, text: string, displayName?: string | null, postExternalId?: string | null): Promise<GateHit | null> {
@@ -115,18 +119,36 @@ export async function matchGate(ownerId: string, channel: HarnessChannel, extern
   if (gate.scenarioId) await enroll(gate.scenarioId, contact.id).catch(() => {});
   await runAutomationRules(ownerId, 'gate_hit', { contactId: contact.id, channel });
   void prisma.landingPage.findFirst({ where: { userId: ownerId }, select: { industryKey: true } }).then((lp) => recordCommercialIntelligence({ industryKey: lp?.industryKey, channel: channel as Channel, funnelStage: 'gate_dm', converted: true, triggerKeyword: gate.keyword, templateHash: rendered.templateHash, spintaxVariant: rendered.chosenVariants[0] ?? null }));
-  return { gate: { id: gate.id, keyword: gate.keyword, scenarioId: gate.scenarioId, tagName: gate.tagName }, contactId: contact.id, cid: contact.cid, reply, templateHash: rendered.templateHash, chosenVariants: rendered.chosenVariants };
+  const spec: MessageSpec = (gate.replyMessage as MessageSpec | null) ?? textSpec(gate.replyTemplate);
+  return { gate: { id: gate.id, keyword: gate.keyword, scenarioId: gate.scenarioId, tagName: gate.tagName, surveyId: gate.surveyId }, contactId: contact.id, cid: contact.cid, reply, spec, link, templateHash: rendered.templateHash, chosenVariants: rendered.chosenVariants };
 }
 
 // LINE の友だち追加: 顧客を作り、trigger=line_follow のシナリオに登録
-export async function onLineFollow(ownerId: string, lineUserId: string) {
-  const contact = await upsertContact(ownerId, 'line', lineUserId);
+export async function onLineFollow(ownerId: string, lineUserId: string, lineAccountId?: string | null, displayName?: string | null) {
+  const contact = await upsertContact(ownerId, 'line', lineUserId, displayName);
+  await prisma.crmContact.update({ where: { id: contact.id }, data: { blocked: false, ...(lineAccountId ? { lineAccountId } : {}) } }).catch(() => {});
   await touchContact(contact.id, 'follow', 'line', undefined, 10, 'engaged');
   const scenarios = await prisma.crmScenario.findMany({ where: { ownerId, trigger: 'line_follow', active: true }, select: { id: true } });
   for (const s of scenarios) await enroll(s.id, contact.id).catch(() => {});
   await runAutomationRules(ownerId, 'line_follow', { contactId: contact.id, channel: 'line' });
   return contact;
 }
+
+export async function onLineUnfollow(ownerId: string, lineUserId: string) {
+  const contact = await prisma.crmContact.findFirst({ where: { ownerId, lineUserId } });
+  if (!contact) return null;
+  await prisma.crmContact.update({ where: { id: contact.id }, data: { blocked: true } });
+  await prisma.crmScenarioEnrollment.updateMany({ where: { contactId: contact.id, status: 'active' }, data: { status: 'stopped', lastError: 'ブロックされました' } });
+  await prisma.crmContactEvent.create({ data: { contactId: contact.id, type: 'unfollow', channel: 'line' } });
+  return contact;
+}
+
+// アンケート（crm/surveys.ts）から呼ぶ道具
+export const surveyHooks = {
+  addTag,
+  enroll: (scenarioId: string, contactId: string) => enroll(scenarioId, contactId),
+  touch: (contactId: string, type: string, payload?: Record<string, unknown>, score = 0) => touchContact(contactId, type, 'line', payload, score)
+};
 
 // クロスUUID 付きの来訪・予約・決済（LP 側から cid が渡されたとき）
 export async function onCrossEvent(ownerId: string, cid: string, type: 'lp_visit' | 'booking' | 'payment', payload?: Record<string, unknown>) {
@@ -162,61 +184,45 @@ export async function pickPoolAccount(ownerId: string, channel: HarnessChannel) 
   return null;
 }
 
-async function markPoolResult(poolId: string | null, ok: boolean, error?: string) {
-  if (!poolId) return;
-  const today = jstDay();
-  const p = await prisma.channelAccountPool.findUnique({ where: { id: poolId } });
-  if (!p) return;
-  const sentToday = (p.sentDay === today ? p.sentToday : 0) + (ok ? 1 : 0);
-  const health = ok ? Math.min(100, p.healthScore + 1) : Math.max(0, p.healthScore - 15);
-  const errorCount = ok ? p.errorCount : p.errorCount + 1;
-  // 連続エラーで健全性が下がったら 30 分休ませる（フェイルオーバー）
-  const cooldownUntil = !ok && health < 50 ? new Date(Date.now() + 30 * 60_000) : p.cooldownUntil;
-  await prisma.channelAccountPool.update({ where: { id: poolId }, data: { sentToday, sentDay: today, healthScore: health, errorCount, cooldownUntil, ...(ok ? {} : { lastErrorAt: new Date(), lastError: (error ?? '').slice(0, 300) }) } });
-}
-
-type SendResult = { ok: true } | { ok: false; error: string; fatal?: boolean };
-
-async function sendLine(ownerId: string, lineUserId: string, text: string): Promise<SendResult> {
-  const cfg = await prisma.lineConfig.findUnique({ where: { userId: ownerId } });
-  if (!cfg?.channelAccessToken) return { ok: false, error: 'LINE 公式アカウントが未設定です', fatal: true };
-  try {
-    const client = new messagingApi.MessagingApiClient({ channelAccessToken: cfg.channelAccessToken });
-    await client.pushMessage({ to: lineUserId, messages: [{ type: 'text', text: text.slice(0, 5000) }] });
-    return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: String(e?.message || e) };
-  }
-}
-
 export async function processDueEnrollments(limit = 20) {
   const due = await prisma.crmScenarioEnrollment.findMany({
     where: { status: 'active', nextAt: { lte: new Date() } }, orderBy: { nextAt: 'asc' }, take: limit,
-    include: { scenario: { include: { steps: { orderBy: { order: 'asc' } } } }, contact: true }
+    include: { scenario: { include: { steps: { orderBy: { order: 'asc' } } } }, contact: { include: { tags: { include: { tag: true } } } } }
   });
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, skipped = 0;
   for (const en of due) {
     const steps = en.scenario.steps;
-    const step = steps[en.currentStep];
-    if (!step || !en.scenario.active) { await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { status: 'done' } }); continue; }
     const channel = en.scenario.channel as HarnessChannel;
-    const pool = await pickPoolAccount(en.scenario.ownerId, channel);
-    const link = step.linkPath ? crossLink(step.linkPath, en.contact.cid, { utm_source: channel, utm_medium: 'step' }) : '';
-    const rendered = renderTrackedMessage(step.template, { name: en.contact.displayName ?? '', link });
-    const text = link && !step.template.includes('{{link}}') ? `${rendered.text}\n${link}` : rendered.text;
-    // ジッター: 一斉に同じ間隔で送らない
-    await sleep(jitterMs(pool?.minIntervalMs ?? 2500));
-    let result: SendResult;
-    if (channel === 'line') result = en.contact.lineUserId ? await sendLine(en.scenario.ownerId, en.contact.lineUserId, text) : { ok: false, error: 'この顧客の LINE ID がありません', fatal: true };
-    else result = { ok: false, error: `${channel} への DM 配信は未対応です（LINE のみ）`, fatal: true };
-    await markPoolResult(pool?.id ?? null, result.ok, result.ok ? undefined : result.error);
+    const advance = async (from: number, status: 'done' | 'active' = 'active') => {
+      const next = steps[from + 1];
+      await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: next && status === 'active' ? { currentStep: from + 1, nextAt: new Date(Date.now() + next.delayMinutes * 60_000), attempts: 0, lastError: null } : { status: 'done', attempts: 0, lastError: null } });
+    };
+    if (!en.scenario.active || !steps[en.currentStep]) { await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { status: 'done' } }); continue; }
+    // 条件分岐: 合わなければ飛ばす（next）か終える（stop）。飛ばした先が「すぐ送る」ステップなら同じ回で続けて判定する
+    let idx = en.currentStep;
+    let ended = false;
+    while (steps[idx].condition && !(await evaluateCondition(en.contact, steps[idx].condition as Condition))) {
+      skipped++;
+      if (steps[idx].onSkip === 'stop' || !steps[idx + 1]) { await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { status: 'done', lastError: steps[idx].onSkip === 'stop' ? '条件に合わないため終了' : null } }); ended = true; break; }
+      idx++;
+      if (steps[idx].delayMinutes > 0) { await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { currentStep: idx, nextAt: new Date(Date.now() + steps[idx].delayMinutes * 60_000), attempts: 0, lastError: null } }); ended = true; break; }
+    }
+    if (ended) continue;
+    if (idx !== en.currentStep) await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { currentStep: idx } });
+    const step = steps[idx];
+    if (channel !== 'line') {
+      failed++;
+      await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: { status: 'failed', lastError: `${channel} への配信は未対応です（LINE のみ）` } });
+      continue;
+    }
+    const link = step.linkPath ? crossLink(step.linkPath, en.contact.cid, { utm_source: 'line', utm_medium: 'step' }) : '';
+    const spec: MessageSpec = (step.message as MessageSpec | null) ?? textSpec(step.template);
     const industry = await prisma.landingPage.findFirst({ where: { userId: en.scenario.ownerId }, select: { industryKey: true } });
-    void recordCommercialIntelligence({ industryKey: industry?.industryKey, channel: channel as Channel, funnelStage: 'step_message', converted: result.ok, templateHash: rendered.templateHash, spintaxVariant: rendered.chosenVariants[0] ?? null });
+    const result = await pushSpec(en.scenario.ownerId, en.contact, spec, { kind: 'step', refId: en.scenarioId, accountId: en.scenario.lineAccountId, vars: { link }, industryKey: industry?.industryKey, stage: 'step_message' });
     if (result.ok) {
       sent++;
-      await touchContact(en.contactId, 'step_sent', channel, { scenarioId: en.scenarioId, step: en.currentStep, templateHash: rendered.templateHash }, 2);
-      const next = steps[en.currentStep + 1];
-      await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: next ? { currentStep: en.currentStep + 1, nextAt: new Date(Date.now() + next.delayMinutes * 60_000), attempts: 0, lastError: null } : { status: 'done', attempts: 0, lastError: null } });
+      await touchContact(en.contactId, 'step_sent', channel, { scenarioId: en.scenarioId, step: idx }, 2);
+      await advance(idx);
     } else {
       failed++;
       const attempts = en.attempts + 1;
@@ -224,19 +230,19 @@ export async function processDueEnrollments(limit = 20) {
       await prisma.crmScenarioEnrollment.update({ where: { id: en.id }, data: giveUp ? { status: 'failed', attempts, lastError: result.error } : { attempts, lastError: result.error, nextAt: new Date(Date.now() + [10, 30, 90][Math.min(attempts - 1, 2)] * 60_000) } });
     }
   }
-  return { due: due.length, sent, failed };
+  return { due: due.length, sent, failed, skipped };
 }
 
 // ---- 健全性の要約（画面・MCP 用） -------------------------------------------------------------------------
 export async function accountHealth(ownerId: string) {
   const [pools, line, enrollments, gates] = await Promise.all([
     prisma.channelAccountPool.findMany({ where: { ownerId }, orderBy: [{ channel: 'asc' }, { healthScore: 'desc' }] }),
-    prisma.lineConfig.findUnique({ where: { userId: ownerId }, select: { webhookActivated: true, friendsAdded: true, channelAccessToken: true } }),
+    prisma.crmLineAccount.findMany({ where: { ownerId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], select: { id: true, label: true, channelId: true, botBasicId: true, webhookActivated: true, isDefault: true, active: true, healthScore: true, errorCount: true, sentToday: true, sentDay: true, cooldownUntil: true, lastError: true, friendsAdded: true } }),
     prisma.crmScenarioEnrollment.groupBy({ by: ['status'], _count: { _all: true }, where: { scenario: { ownerId } } }),
     prisma.engagementGate.findMany({ where: { ownerId }, select: { id: true, channel: true, keyword: true, hits: true, active: true } })
   ]);
   return {
-    line: { configured: !!line?.channelAccessToken, webhookActivated: !!line?.webhookActivated, friends: line?.friendsAdded ?? 0 },
+    line: { configured: line.length > 0, webhookActivated: line.some((a) => a.webhookActivated), friends: line.reduce((a, b) => a + b.friendsAdded, 0), accounts: line.map((a) => ({ ...a, sentToday: a.sentDay === jstDay() ? a.sentToday : 0 })) },
     pools: pools.map((p) => ({ id: p.id, channel: p.channel, label: p.label, healthScore: p.healthScore, errorCount: p.errorCount, sentToday: p.sentDay === jstDay() ? p.sentToday : 0, dailyLimit: p.dailyLimit, cooldownUntil: p.cooldownUntil, active: p.active, lastError: p.lastError })),
     enrollments: Object.fromEntries(enrollments.map((e) => [e.status, e._count._all])),
     gates
@@ -247,5 +253,10 @@ export async function accountHealth(ownerId: string) {
 let timer: NodeJS.Timeout | null = null;
 export function startHarnessEngine() {
   if (timer) return;
-  timer = setInterval(() => { processDueEnrollments().catch((e) => console.error('harness step queue failed', e?.message)); }, 60_000);
+  const tick = async () => {
+    await processDueEnrollments().catch((e) => console.error('harness step queue failed', e?.message));
+    await processDueBroadcasts().catch((e) => console.error('harness broadcast failed', e?.message));
+    await processDueReminders().catch((e) => console.error('harness reminder failed', e?.message));
+  };
+  timer = setInterval(() => { void tick(); }, 60_000);
 }

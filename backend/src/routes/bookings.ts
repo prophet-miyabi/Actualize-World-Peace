@@ -62,10 +62,11 @@ router.post('/:slug', async (req, res) => {
   if (!(await isAdminUser(lp.userId)) && hitRateLimit(`booking:${lp.id}`, DAILY_PER_PAGE, 24 * 3600_000)) return res.status(429).json({ error: 'ただいま予約リクエストが混み合っています。時間をおいてお試しください。' });
 
   const code = crypto.randomBytes(9).toString('base64url');
-  await prisma.booking.create({ data: { lpId: lp.id, code, menu, requestedAt, name, contact, message } });
-  // Harness のクロスUUID: 予約を顧客の段階（booked）に反映
+  // Harness のクロスUUID: 予約を顧客（booked）に結びつけ、リマインダーの宛先にする
   const cid = String(req.body?.cid ?? '');
-  if (/^[0-9a-f-]{36}$/.test(cid)) void onCrossEvent(lp.userId, cid, 'booking', { code, menu }).catch(() => {});
+  const crmContact = /^[0-9a-f-]{36}$/.test(cid) ? await prisma.crmContact.findFirst({ where: { ownerId: lp.userId, cid }, select: { id: true } }) : null;
+  const created = await prisma.booking.create({ data: { lpId: lp.id, code, menu, requestedAt, name, contact, message, contactId: crmContact?.id ?? null } });
+  if (crmContact) void onCrossEvent(lp.userId, cid, 'booking', { code, menu, bookingId: created.id, requestedAt: requestedAt.toISOString() }).catch(() => {});
   // 匿名のデータレイク: 予約リクエスト（個人情報は入れない。メニュー名だけを反応要素として残す）
   void industryOfLp(lp.id).then((industryKey) => recordCommercialIntelligence({ industryKey, channel: 'lp', funnelStage: 'booking', converted: true, triggerKeyword: menu }));
   void prisma.booking.deleteMany({ where: { lpId: lp.id, requestedAt: { lt: new Date(now - RETENTION_DAYS * 86_400_000) } } }).catch(() => {});

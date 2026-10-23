@@ -72,7 +72,7 @@
 | オーナーの 180 分予算 | `company/ownerBudget.ts`、`CompanyTask.estimateMin / ownerPriority / budgetDay` | `/admin/office` 今日、`awp_owner_budget` |
 | 松竹梅の価格 | `finance/plan.json` の `packages`、`auto-sales-agent/scripts/propose.js`（提案文の `{{packages}}`）、`contracts/projects/package_{ume,take,matsu}.json` | `node auto-sales-agent/scripts/propose.js <案件>`、`node contracts/generate.js contracts/projects/package_take.json` |
 | 自社ショーケース LP | `auto-sales-agent/input/miyabi-tech/`（lp_drm）→ `frontend/public/demos/miyabi-tech/` | `/demos/miyabi-tech`（画像は構成案 3 つを選んでから） |
-| 公式LINE の自動動線（Harness） | `automation/harnessEngine.ts`、`routes/crm.ts`（`/api/harness/crm/*`）、LINE Webhook のゲート判定・友だち追加トリガー、`?awp_cid=` の来訪・予約・注文の追跡 | `/harness/crm`、`awp_harness_*` |
+| 公式LINE の自動動線（Harness・L Harness 相当 第1段階） | `line/messages.ts`（MessageSpec → テキスト・画像・Flex カード・カルーセル・クイックリプライ）、`line/send.ts`（複数の LINE 公式アカウント・健全性・BAN 検知・切替・配信ログ）、`crm/broadcast.ts`（一斉・セグメント・予約配信）、`crm/reminders.ts`（予約日時基準）、`crm/surveys.ts`（アンケート形式のボタン選択 → カスタム項目・タグ・シナリオ）、`crm/conditions.ts`（ステップの条件分岐）、`routes/webhook.ts`（受信箱・postback・follow/unfollow）、`routes/crm.ts`（`/api/harness/crm/*`） | `/harness/crm`（設定でスマホだけで接続）、`awp_harness_*` |
 | 4 媒体の同時配信 | `social/scheduler.ts`（awp / x / instagram / facebook / youtube / tiktok） | `/social/schedule` |
 | 資金トラッカー（300万 → 3,300万） | `routes/intelligence.ts` の `GET/PUT /api/intelligence/funding-tracker`（SystemSetting JSON ＋ 台帳の AWP 収益） | `/admin/revenue` 上部、`awp_funding_tracker` |
 | 業種別の勝ちパターン | `awpDataAssetEngine.ts`、道具 `industry_benchmarks` / `aggregate_benchmarks`（data・research） | `/admin/intelligence`、`/admin/reports` 下部、`awp_benchmarks` |
@@ -87,5 +87,6 @@
 ## 変更履歴
 
 - 2026-10-23（夜）: 実装の対応表、コストガードの運用、オーナー予算の実装（`ownerBudget.ts`）、Harness エンジン、資金トラッカーを追記。
+- 2026-10-24: 方針変更「the-harness.com の導入支援はやめ、自社実装を使ってもらう」。L Harness 相当の第1段階（複数 LINE アカウント・メッセージ種別・一斉/セグメント/予約配信・リマインダー・条件分岐・受信箱・アンケート形式のボタン選択・予約導線）を実装。第2段階（トラッキング/流入リンク・リッチメニュー・CSV・集計）、第3段階（Webhook OUT・API キー・権限・アフィリエイト承認・`/harness` の置き換え）は未着手。
 
 - 2026-10-23: 初版。従来の「1 年で 100 万ユーザー」計画は長期目標として残し、年内は受託先行・ドッグフーディングに重点を移す（`company/strategy` 第 8 章）。
